@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+@@include('./src/main/html/parts/meta-charset.html', { })
+@@include('./src/main/html/parts/importmap.html', { })
+		<title>沙盘 - 玩家视图</title>
+@@include('./src/main/html/parts/favicon.html', { })
+
+@@include('./src/main/html/parts/vendor-98css.html', { })
+@@include('./src/main/html/parts/theme-window-ui.html', { })
+		<!--
+			桌面要占满视口，而 html/body 的高度默认是内容高度，
+			所以这两层都得显式设 100% —— 只设内部元素没用。
+			和 demo/test-jade-trpg-ui.html 同一个写法
+			--->
+		<style>
+html,body {width:99%; height: 99%; overflow: auto;}
+		</style>
+	</head>
+	<body>
+<div id="sandbox-desktop" class="desktop dock-content"></div>
+	</body>
+	<script type="module">
+		import { WebUtil } from "@jade-dungeon/jade-utils/web";
+		import { initSandboxView } from "@jade-dungeon/site-page/sandbox-view";
+
+		// 场景三级定位走 URL 参数，和老应用一致
+		let params = new URLSearchParams(window.location.search);
+		let campaignId = params.get('campaignId');
+		let placeId    = params.get('placeId'   );
+		let sceneId    = params.get('sceneId'   );
+
+		// 三个都齐了才进场景。缺了就回登录页去选 ——
+		// 老应用这里是重定向到一组写死的 demo ID，那会让人以为场景存在
+		if (!(campaignId && placeId && sceneId)) {
+			window.location = './index.html';
+		} else {
+			window.onload = function() {
+				initSandboxView({
+					apiRoot  : '@@apiRoot',
+					// 只有存量老数据里的相对路径会用到它，新数据存绝对 URL
+					assetRoot: '@@staticRoot/themes/trpg/images',
+					desktopId: 'sandbox-desktop',
+					scene    : { campaignId: campaignId, placeId: placeId, sceneId: sceneId },
+					// 棋子 ID 与用户名一致的那个就是「自己」
+					username  : WebUtil.loadCookieValue('username'  ) || '',
+					loginToken: WebUtil.loadCookieValue('loginToken') || ''
+				}).catch(e => {
+					console.error('沙盘启动失败:', e);
+					document.getElementById('sandbox-desktop').innerHTML =
+						'<p style="padding:1em">沙盘启动失败：' + e.message + '</p>';
+				});
+			}
+		}
+	</script>
+</html>

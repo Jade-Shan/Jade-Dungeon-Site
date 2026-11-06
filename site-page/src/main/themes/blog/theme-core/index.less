@@ -1,0 +1,8 @@
+// theme-core 的独立入口：默认值 + 结构，不含任何主题的覆盖
+//
+// 用它能编出一套「纯默认」的样式（外观等同 hobbit，但不含 hobbit 的
+// SyntaxHighlighter 主题）。三套内容主题不走这个入口 ——
+// 它们各自的 `index.less` 要在 variables 和 structure 之间插入覆盖，
+// 所以得分别 @import 那两个文件。
+@import "./variables.less";
+@import "./structure.less";

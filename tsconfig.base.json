@@ -1,0 +1,20 @@
+// 两边共享的编译选项
+//
+// common-utils/ 和 site-page/ 各自的 tsconfig 继承这份，只覆盖 outDir / rootDir / include
+// 这类路径相关的项。
+//
+// 切 workspaces 之前这些选项在根 tsconfig.json 里，见
+// docs/refactor-20261101.md 第 18 节。
+{
+	"compilerOptions": {
+		"target": "ES6",
+		"module": "ES6",
+		"lib": ["ES6", "DOM", "ES2019.String"],
+		"moduleResolution": "bundler",
+		"strict": true,
+		"noImplicitAny": true,
+		"declaration": true,
+		"sourceMap": true,
+		"inlineSources": true
+	}
+}

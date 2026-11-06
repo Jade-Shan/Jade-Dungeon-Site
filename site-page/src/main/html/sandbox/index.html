@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+@@include('./src/main/html/parts/meta-charset.html', { })
+@@include('./src/main/html/parts/importmap.html', { })
+		<title>沙盘 - 登录</title>
+@@include('./src/main/html/parts/favicon.html', { })
+
+@@include('./src/main/html/parts/vendor-98css.html', { })
+@@include('./src/main/html/parts/theme-window-ui.html', { })
+		<!--
+			桌面要占满视口，而 html/body 的高度默认是内容高度，
+			所以这两层都得显式设 100% —— 只设内部元素没用。
+			和 view.html 同一个写法
+			--->
+		<style>
+html,body {width:99%; height: 99%; overflow: auto;}
+		</style>
+	</head>
+	<body>
+<div id="sandbox-desktop" class="desktop dock-content"></div>
+	</body>
+	<script type="module">
+		import { initSandboxLogin } from "@jade-dungeon/site-page/sandbox-login";
+		window.onload = function() {
+			initSandboxLogin({ apiRoot: '@@apiRoot' });
+		}
+	</script>
+</html>

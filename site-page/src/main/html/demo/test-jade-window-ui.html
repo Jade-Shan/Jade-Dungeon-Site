@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		@@include('./src/main/html/parts/meta-charset.html', { })
+		@@include('./src/main/html/parts/importmap.html', { })
+		<title>test-win-98</title>
+		@@include('./src/main/html/parts/favicon.html', { })
+
+		@@include('./src/main/html/parts/vendor-98css.html', { })
+		@@include('./src/main/html/parts/theme-window-ui.html', { })
+		<style>
+.desktop-out { width:800px; height:800px; }
+		</style>
+	</head>
+	<body>
+		<h1>test-destop-00</h1><div class="desktop-out"><div id="test-desktop-00" class="desktop"></div></div>
+		<h1>test-destop-01</h1><div class="desktop-out"><div id="test-desktop-01" class="desktop dock-content"></div></div>
+		<h1>test-destop-02</h1><div class="desktop-out"><div id="test-desktop-02" class="desktop dock-content"></div></div>
+	</body>
+	<script type="module">
+		import { TestJadeUI } from "@jade-dungeon/site-page/test-jade-ui";
+		// $(window).on('load', function() { TestJadeUI.testWindowUI(); });
+		window.onload = function() { TestJadeUI.testWindowUI(); TestJadeUI.testCanvasWindow(); }
+	</script> 
+
+
+</html>
+

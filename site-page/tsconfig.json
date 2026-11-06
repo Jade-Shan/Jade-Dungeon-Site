@@ -1,0 +1,27 @@
+// site-page 项目的 CDN 构建配置（gulp 用）
+//
+// web 不发 npm 包，所以没有 tsconfig.build.json —— 只有 CDN 构建和测试两份。
+//
+// **不配 `paths`。** site-page 侧用包名 import 库
+// （`@jade-dungeon/jade-utils/basic` 这种，见第 18 节决定 11 与 9.6 节第 2 条），
+// 由 npm workspaces 建的符号链接解析：
+//
+//     node_modules/@jade-dungeon/jade-utils → ../../common-utils/
+//
+// 然后走 common-utils/package.json 的 `exports` 找到 `common-utils/dist/*.js` 和同名 `.d.ts`。
+//
+// 所以**编译 web 之前库必须先 build:pkg** —— 根上的 `npm run build`
+// 已经排好顺序（先 common-utils 后 site-page）。
+//
+// 一开始试过把 `paths` 指向库的源码（`../common-utils/src/*.ts`），想省掉「先建库」
+// 这一步。结果库的源文件被拉进 web 的编译单元，而它们在 web 的 `rootDir`
+// 之外，`tsc` 报一片 TS6059。要那么做得改用 project references，
+// 但走符号链接 + `exports` 更简单，而且和 npm 消费方的解析路径完全一致。
+{
+	"extends": "../tsconfig.base.json",
+	"compilerOptions": {
+		"outDir": "webroot/scripts/ts",
+		"rootDir": "src/main/ts"
+	},
+	"include": ["src/main/ts"]
+}

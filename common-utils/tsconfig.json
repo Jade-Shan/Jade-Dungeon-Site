@@ -1,0 +1,14 @@
+// 库的 CDN 构建配置（gulp 用）
+//
+// 三份 tsconfig 的分工（和切分之前一样，只是路径变了）：
+//   tsconfig.json       → gulp 的 CDN 构建，输出 webroot/scripts/ts/
+//   tsconfig.build.json → npm 打包，输出 dist/
+//   tsconfig.test.json  → 单元测试，src/ 和 test/ 一起编到 .test-build/
+{
+	"extends": "../tsconfig.base.json",
+	"compilerOptions": {
+		"outDir": "webroot/scripts/ts",
+		"rootDir": "src/main/ts"
+	},
+	"include": ["src/main/ts"]
+}

@@ -1,0 +1,99 @@
+{
+	"name": "@jade-dungeon/site-page",
+	"version": "3.0.0",
+	"description": "jade-dungeon 的站点：博客 / 相册 / Wiki / TRPG 沙盘 / 健身肌肉图页面",
+	"license": "GPL-3.0-or-later",
+	"author": "Jade Shan",
+	"private": true,
+	"sideEffects": false,
+	"dependencies": {
+		"@jade-dungeon/jade-utils": "*"
+	},
+	"exports": {
+		"./3rd-lib-tool": {
+			"types": "./dist/3rdLibTool.d.ts",
+			"default": "./dist/3rdLibTool.js"
+		},
+		"./sandtable": {
+			"types": "./dist/trpg/sandtable.d.ts",
+			"default": "./dist/trpg/sandtable.js"
+		},
+		"./sandbox-api": {
+			"types": "./dist/sandbox/sandboxApi.d.ts",
+			"default": "./dist/sandbox/sandboxApi.js"
+		},
+		"./sandbox-scene": {
+			"types": "./dist/sandbox/sandboxScene.d.ts",
+			"default": "./dist/sandbox/sandboxScene.js"
+		},
+		"./sandbox-windows": {
+			"types": "./dist/sandbox/sandboxWindows.d.ts",
+			"default": "./dist/sandbox/sandboxWindows.js"
+		},
+		"./sandbox-view": {
+			"types": "./dist/sandbox/sandboxView.d.ts",
+			"default": "./dist/sandbox/sandboxView.js"
+		},
+		"./sandbox-editor": {
+			"types": "./dist/sandbox/sandboxEditor.d.ts",
+			"default": "./dist/sandbox/sandboxEditor.js"
+		},
+		"./sandbox-login": {
+			"types": "./dist/sandbox/sandboxLogin.d.ts",
+			"default": "./dist/sandbox/sandboxLogin.js"
+		},
+		"./blog-comm": {
+			"types": "./dist/blog/common.d.ts",
+			"default": "./dist/blog/common.js"
+		},
+		"./blog": {
+			"types": "./dist/blog/blog.d.ts",
+			"default": "./dist/blog/blog.js"
+		},
+		"./gallery": {
+			"types": "./dist/blog/gallery.d.ts",
+			"default": "./dist/blog/gallery.js"
+		},
+		"./wiki": {
+			"types": "./dist/blog/wiki.d.ts",
+			"default": "./dist/blog/wiki.js"
+		},
+		"./workout": {
+			"types": "./dist/workout/workout.d.ts",
+			"default": "./dist/workout/workout.js"
+		},
+		"./workout-data": {
+			"types": "./dist/workout/workoutData.d.ts",
+			"default": "./dist/workout/workoutData.js"
+		},
+		"./workout-pose": {
+			"types": "./dist/workout/workoutPoseData.d.ts",
+			"default": "./dist/workout/workoutPoseData.js"
+		},
+		"./test-jade-utils": {
+			"types": "./dist/testJadeUtils.d.ts",
+			"default": "./dist/testJadeUtils.js"
+		},
+		"./test-jade-ui": {
+			"types": "./dist/ui/testJadeUI.d.ts",
+			"default": "./dist/ui/testJadeUI.js"
+		},
+		"./test-jade-trpg": {
+			"types": "./dist/trpg/testJadeTRPG.d.ts",
+			"default": "./dist/trpg/testJadeTRPG.js"
+		},
+		"./test-workout": {
+			"types": "./dist/workout/testWorkout.d.ts",
+			"default": "./dist/workout/testWorkout.js"
+		},
+		"./site-config": {
+			"types": "./dist/site.config.d.ts",
+			"default": "./dist/site.config.js"
+		}
+	},
+	"scripts": {
+		"build": "gulp compress-typescript",
+		"build:test": "tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('.test-build/package.json','{\\\"type\\\":\\\"module\\\"}\\n')\"",
+		"test": "npm run build:test && node --test \".test-build/src/test/ts/**/*.test.js\""
+	}
+}

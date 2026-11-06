@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>98.css 菜单栏 / 弹出菜单 demo</title>
+    <link rel="stylesheet" href="https://unpkg.com/98.css" />
+    <link rel="stylesheet" href="./98-menu.css" />
+    <style>
+      body {
+        background: #008080;
+        padding: 24px;
+        font-family: 'Pixelated MS Sans Serif', Arial;
+      }
+      .window {
+        width: 460px;
+        margin-bottom: 24px;
+      }
+      /* 让窗口内的菜单栏贴着标题栏，符合 Win98 习惯 */
+      .window > ul[role='menubar'] {
+        margin: 1px 0 0;
+      }
+      .desk-note {
+        color: #fff;
+        font-size: 12px;
+        margin: 0 0 12px;
+      }
+      code {
+        background: #c0c0c0;
+        color: #222;
+        padding: 0 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="desk-note">
+      左边窗口的菜单栏带 <code>can-hover</code>（悬停即展开）；右下角那个独立弹出菜单不带，需要点击才展开。
+    </p>
+
+    <!-- ============ 场景 1：窗口内的菜单栏 ============ -->
+    <div class="window">
+      <div class="title-bar">
+        <div class="title-bar-text">记事本 - 未命名</div>
+        <div class="title-bar-controls">
+          <button aria-label="Minimize"></button>
+          <button aria-label="Maximize"></button>
+          <button aria-label="Close"></button>
+        </div>
+      </div>
+
+      <ul role="menubar" class="can-hover">
+        <li role="menuitem" tabindex="0" aria-haspopup="true">
+          文件(F)
+          <ul role="menu">
+            <li role="menuitem"><a href="#">新建 <span>Ctrl+N</span></a></li>
+            <li role="menuitem"><a href="#">打开... <span>Ctrl+O</span></a></li>
+            <li role="menuitem" class="has-divider">
+              <a href="#">保存 <span>Ctrl+S</span></a>
+            </li>
+            <li role="menuitem"><a href="#">页面设置...</a></li>
+            <li role="menuitem" class="has-divider"><a href="#">打印...</a></li>
+            <li role="menuitem"><a href="#">退出</a></li>
+          </ul>
+        </li>
+
+        <li role="menuitem" tabindex="0" aria-haspopup="true">
+          编辑(E)
+          <ul role="menu">
+            <li role="menuitem"><a href="#">撤销 <span>Ctrl+Z</span></a></li>
+            <li role="menuitem" class="has-divider">
+              <a href="#">剪切 <span>Ctrl+X</span></a>
+            </li>
+            <!-- 禁用项：灰字 + 白色浮雕 -->
+            <li role="menuitem" aria-disabled="true">
+              <a href="#">粘贴 <span>Ctrl+V</span></a>
+            </li>
+            <li role="menuitem" aria-disabled="true" class="has-divider">
+              <a href="#">删除 <span>Del</span></a>
+            </li>
+            <li role="menuitem"><a href="#">全选 <span>Ctrl+A</span></a></li>
+          </ul>
+        </li>
+
+        <li role="menuitem" tabindex="0" aria-haspopup="true">
+          查看(V)
+          <ul role="menu">
+            <!-- 三级嵌套：验证 :focus-within 向上冒泡 -->
+            <!-- 同时带 aria-haspopup + has-divider：验证箭头(::before)
+                 与分隔线(::after)不抢同一个伪元素 -->
+            <li
+              role="menuitem"
+              tabindex="0"
+              aria-haspopup="true"
+              class="has-divider"
+            >
+              缩放
+              <ul role="menu">
+                <li role="menuitem"><button>放大</button></li>
+                <li role="menuitem"><button>缩小</button></li>
+                <li role="menuitem" tabindex="0" aria-haspopup="true">
+                  更多
+                  <ul role="menu">
+                    <li role="menuitem"><button>200%</button></li>
+                    <li role="menuitem"><button>400%</button></li>
+                  </ul>
+                </li>
+              </ul>
+            </li>
+            <!-- 勾选项：checkbox 当勾号用 -->
+            <li role="menuitem">
+              <input type="checkbox" id="mi-statusbar" checked />
+              <label for="mi-statusbar">状态栏</label>
+            </li>
+            <li role="menuitem">
+              <input type="checkbox" id="mi-wrap" />
+              <label for="mi-wrap">自动换行</label>
+            </li>
+          </ul>
+        </li>
+
+        <li role="menuitem" tabindex="0" aria-haspopup="true">
+          帮助(H)
+          <ul role="menu">
+            <li role="menuitem"><a href="#">帮助主题</a></li>
+            <li role="menuitem"><a href="#">关于记事本</a></li>
+          </ul>
+        </li>
+      </ul>
+
+      <div class="window-body">
+        <p>菜单栏挂在 <code>.title-bar</code> 和 <code>.window-body</code> 之间。</p>
+        <p>
+          「缩放」同时带 <code>aria-haspopup</code> 和 <code>has-divider</code>，箭头不会丢也不会变形，
+          因为箭头用 <code>::before</code>、分隔线用 <code>::after</code>，不抢同一个伪元素。
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ 场景 2：独立的右键式弹出菜单（不带 can-hover） ============ -->
+    <div style="display: flex; gap: 24px; align-items: flex-start">
+      <ul role="menu" style="width: 200px">
+        <li role="menuitem" tabindex="0" aria-haspopup="true">
+          查看
+          <ul role="menu">
+            <li role="menuitem"><a href="#">大图标</a></li>
+            <li role="menuitem"><a href="#">小图标</a></li>
+            <li role="menuitem"><a href="#">列表</a></li>
+          </ul>
+        </li>
+        <li role="menuitem" tabindex="0" aria-haspopup="true">
+          排列图标
+          <ul role="menu">
+            <li role="menuitem"><a href="#">按名称</a></li>
+            <li role="menuitem"><a href="#">按类型</a></li>
+            <li role="menuitem"><a href="#">按大小</a></li>
+            <li role="menuitem"><a href="#">按日期</a></li>
+          </ul>
+        </li>
+        <li role="menuitem" class="has-divider"><a href="#">刷新</a></li>
+        <li role="menuitem" aria-disabled="true"><a href="#">粘贴</a></li>
+        <li role="menuitem" class="has-divider">
+          <a href="#">粘贴快捷方式</a>
+        </li>
+        <!-- 单选项组：radio 当圆点标记用 -->
+        <li role="menuitem">
+          <input type="radio" name="sort" id="mi-asc" checked />
+          <label for="mi-asc">升序</label>
+        </li>
+        <li role="menuitem" class="has-divider">
+          <input type="radio" name="sort" id="mi-desc" />
+          <label for="mi-desc">降序</label>
+        </li>
+        <li role="menuitem"><a href="#">属性</a></li>
+      </ul>
+
+      <!-- 独立菜单栏，验证不在窗口里也正常 -->
+      <ul role="menubar" class="can-hover" style="width: 220px">
+        <li role="menuitem" tabindex="0">无子菜单项</li>
+        <li role="menuitem" tabindex="0" aria-haspopup="true">
+          有子菜单
+          <ul role="menu">
+            <li role="menuitem"><a href="#">子项 A</a></li>
+            <li role="menuitem"><a href="#">子项 B</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </body>
+</html>

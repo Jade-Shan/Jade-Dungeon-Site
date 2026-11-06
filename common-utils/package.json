@@ -1,0 +1,72 @@
+{
+	"name": "@jade-dungeon/jade-utils",
+	"version": "3.0.0",
+	"description": "个人前端工具库：通用工具、2D 几何、Canvas 绘图、桌面式窗口 UI、TRPG 沙盘、博客/Wiki 页面框架",
+	"license": "GPL-3.0-or-later",
+	"author": "Jade Shan",
+	"sideEffects": false,
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./basic": {
+			"types": "./dist/basic.d.ts",
+			"default": "./dist/basic.js"
+		},
+		"./data": {
+			"types": "./dist/dataStructure.d.ts",
+			"default": "./dist/dataStructure.js"
+		},
+		"./web": {
+			"types": "./dist/web.d.ts",
+			"default": "./dist/web.js"
+		},
+		"./ui-resource": {
+			"types": "./dist/ui/uiResource.d.ts",
+			"default": "./dist/ui/uiResource.js"
+		},
+		"./resource": {
+			"types": "./dist/resource.d.ts",
+			"default": "./dist/resource.js"
+		},
+		"./bootstrap-template": {
+			"types": "./dist/ui/bootstrapTemplate.d.ts",
+			"default": "./dist/ui/bootstrapTemplate.js"
+		},
+		"./geo2d": {
+			"types": "./dist/ui/geo2d.d.ts",
+			"default": "./dist/ui/geo2d.js"
+		},
+		"./canvas": {
+			"types": "./dist/ui/canvas.d.ts",
+			"default": "./dist/ui/canvas.js"
+		},
+		"./ui-window": {
+			"types": "./dist/ui/UIWindow.d.ts",
+			"default": "./dist/ui/UIWindow.js"
+		},
+		"./web-html-page": {
+			"types": "./dist/ui/webHtmlPage.d.ts",
+			"default": "./dist/ui/webHtmlPage.js"
+		}
+	},
+	"peerDependencies": {
+		"98.css": "^0.1.19"
+	},
+	"peerDependenciesMeta": {
+		"98.css": {
+			"optional": true
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "gulp compress-typescript",
+		"build:pkg": "tsc -p tsconfig.build.json && node -e \"require('fs').writeFileSync('dist/package.json','{\\\"type\\\":\\\"module\\\"}\\n')\"",
+		"build:test": "tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('.test-build/package.json','{\\\"type\\\":\\\"module\\\"}\\n')\"",
+		"test": "npm run build:test && node --test \".test-build/src/test/ts/**/*.test.js\"",
+		"prepare": "npm run build:pkg"
+	}
+}

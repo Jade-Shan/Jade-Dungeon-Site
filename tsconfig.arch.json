@@ -1,0 +1,19 @@
+// 架构约束测试专用配置
+//
+// test/arch.split.test.ts 测的是跨 common-utils/ 与 site-page/ 的边界约束，
+// 所以它不属于任何一边，放在根上单独编译。
+//
+// 它只读文件系统（fs / path），不 import 两边的任何模块 ——
+// 所以这份配置不需要 paths、不需要 project references。
+//
+// 用法：npm run test:arch
+{
+	"extends": "./tsconfig.base.json",
+	"compilerOptions": {
+		"outDir": ".arch-build",
+		"rootDir": ".",
+		"declaration": false,
+		"types": ["node"]
+	},
+	"include": ["test"]
+}

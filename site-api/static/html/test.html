@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>test html</title>
+	</head>
+	<body>
+		<h1>test static html</h1>
+		<br/>
+		<a target="_blank" href="/testGet?first_name=aa&last_name=bb">测试GET</a>
+		<br/>
+		<a target="_blank" href="/testGet2?first_name=a2&last_name=b2">测试GET2</a>
+		<br/>
+		<form action="/testPost" method="POST" enctype="multipart/form-data">
+			First Name: <input type="text" name="first_name"><br/>
+			Last Name:  <input type="text" name="last_name" ><br/>
+			<input type="file" name="uploadFiles" size="50" /><br/>
+			<input type="file" name="uploadFiles" size="50" /><br/>
+			<input type="submit" value="Submit">
+		</form>
+		<form action="/testPost2" method="POST" enctype="multipart/form-data">
+			First Name: <input type="text" name="first_name"><br/>
+			Last Name:  <input type="text" name="last_name" ><br/>
+			<input type="file" name="uploadFiles" size="50" /><br/>
+			<input type="file" name="uploadFiles" size="50" /><br/>
+			<input type="submit" value="Submit">
+		</form>
+			<br/>
+			<br/>
+			<a href="/static/image/emj.jpg" target="_blank"  \>
+				<img src="/static/image/emj.jpg"   alt="测试图片1"></a><br/>
+			<br/>
+			<br/>
+			<br/>
+			<a href="/testDownFile" target="_blank">测试下载文件</a>
+	</body>
+</html>

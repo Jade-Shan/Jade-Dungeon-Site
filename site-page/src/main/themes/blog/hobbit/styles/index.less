@@ -1,0 +1,18 @@
+// hobbit 主题的入口：霍比特 / 古典羊皮纸
+//
+// **加载顺序写在这里，不再依赖 gulp concat 的文件名排序。**
+// Less 是「最后赋值生效」，所以必须是：
+//
+//   1. theme-core/variables.less  —— 87 个变量的默认值
+//   2. 本主题的 part.1.less       —— 覆盖想改的
+//   3. theme-core/structure.less  —— 应用结构规则
+//
+// 顺序一反主题色就全失效。改这个文件前先看 2.4 节和第 19 节。
+
+@import "../../theme-core/variables.less";
+
+@import "./part.1.less";
+@import "./shCoreDefault.less";
+@import "./shThemeDefault.less";
+
+@import "../../theme-core/structure.less";

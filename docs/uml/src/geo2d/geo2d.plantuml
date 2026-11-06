@@ -1,0 +1,292 @@
+@startuml geo2d
+
+package geo2d { }
+package canvas { }
+package sandtable { }
+
+	enum QuadPos {
+		QUAD_1ST 
+		QUAD_2ND 
+		QUAD_3RD 
+		QUAD_4TH 
+		ORIG_PNT 
+		AXIS_X_POS
+		AXIS_X_NAG
+		AXIS_Y_POS
+		AXIS_Y_NAG
+	}
+
+	interface IAngle {
+		oriAgl: number
+		fmtAgl: number
+		oriDgr: number
+		fmtDgr: number
+	}
+
+	interface IRevolveOption {
+		start: number
+		end  : number
+		diff : number
+	}
+
+
+	interface IGeo2D
+
+	interface GeoShape2D {
+		getCenter() : Point2D
+		getMostCloseVertex(x: number, y: number) : {vertex: Point2D, distance: number}
+		getVertexesFrom(x: number, y: number) : Array<Point2D>
+	}
+	IGeo2D <|-- GeoShape2D
+
+	interface GeoCurve2D {
+	}
+	GeoShape2D <|-- GeoCurve2D
+
+	interface GeoPolygon2D {
+		getVertex(): Array<Point2D>
+	}
+	GeoShape2D <|-- GeoPolygon2D
+
+
+	record ICircle2D {
+		c : Point2D
+		radius : number 
+	}
+	class Circle2D 
+	{
+		constructor(x: number, y: number, radius: number): Circle2D
+	}
+	GeoCurve2D <|.. Circle2D
+	ICircle2D  <|.. Circle2D
+
+	record IPoint2D { 
+		x: number
+		y: number 
+	}
+	class Point2D 
+	{
+		constructor(x: number, y: number) : Point2D
+	}
+	IPoint2D   <|.. Point2D
+	GeoCurve2D <|.. Point2D
+
+	record ILine2D {
+		a: IPoint2D
+		b: IPoint2D 
+	}
+	class Line2D 
+	{
+		constructor(a: IPoint2D, b: IPoint2D): Line2D 
+	}
+	ILine2D      <|.. Line2D
+	GeoPolygon2D <|.. Line2D
+
+	record IRay2D {
+		start   : IPoint2D
+		mid     : IPoint2D  
+		angle   : number  
+		cAngle  : number 
+		angleStr: string
+		length  : number
+	}
+	class Ray2D 
+	{
+		constructor(start: IPoint2D, mid: IPoint2D): Ray2D
+	}
+	IRay2D       <|.. Ray2D
+	GeoPolygon2D <|.. Ray2D
+
+	record IRectangle2D 
+	{
+		x     : number
+		y     : number
+		width : number
+		height: number 
+	}
+	class Rectangle2D 
+	{
+		center : Point2D
+		vertexs: Array<Point2D>
+		sides  : Array<Line2D>
+
+		constructor(x: number, y: number, width: number, height: number): Rectangle2D 
+	}
+	IRectangle2D <|.. Rectangle2D
+	GeoPolygon2D <|.. Rectangle2D
+
+	interface ICanvasStyle {
+		lineWidth  ?: number
+		strokeStyle?: string
+		fillStyle  ?: string
+	}
+
+
+
+	interface ICanvas2D {}
+	IGeo2D <|-down- ICanvas2D
+
+	interface CanvasShape2D { }
+	GeoShape2D <|-down- CanvasShape2D
+
+	interface CanvasCurve2D { }
+	CanvasShape2D <|-- CanvasCurve2D
+	GeoCurve2D    <|-- CanvasCurve2D
+
+	interface CanvasPolygon2D { }
+	CanvasShape2D <|-- CanvasPolygon2D
+	GeoPolygon2D  <|-- CanvasPolygon2D
+
+	record ICanvasPoint2D {
+		radius   : number
+		fillStyle: string
+	}
+	ICanvas2D <|-- ICanvasPoint2D
+	IPoint2D  <|-- ICanvasPoint2D
+	class CanvasPoint2D 
+	{
+		constructor(x: number, y: number, radius: number, fillStyle: string): CanvasPoint2D
+	}
+	Point2D        <|-- CanvasPoint2D
+	CanvasCurve2D  <|.. CanvasPoint2D
+	ICanvasPoint2D <|.. CanvasPoint2D
+
+	record ICanvasLine2D {
+		lineWidth   : number
+		lineCap    ?: "butt" | "round" | "square"
+		lineJoin   ?: "miter" | "round" | "bevel"
+		strokeStyle : string
+	}
+	ICanvas2D <|--  ICanvasLine2D
+	ILine2D   <|--  ICanvasLine2D
+	class CanvasLine2D 
+	{
+		constructor(a: IPoint2D, b: IPoint2D, lineWidth: number, strokeStyle: string): CanvasLine2D
+	}
+	Line2D          <|-- CanvasLine2D
+	CanvasPolygon2D <|.. CanvasLine2D
+	ICanvasLine2D   <|.. CanvasLine2D
+
+	record ICanvasRay2D {
+		lineWidth  : number
+		lineCap   ?: "butt" | "round" | "square"
+		lineJoin  ?: "miter" | "round" | "bevel"
+		strokeStyle: string
+	}
+	IRay2D <|-- ICanvasRay2D
+	class CanvasRay2D 
+	{
+		constructor(start: IPoint2D, mid: IPoint2D, lineWidth: number, strokeStyle: string): CanvasRay2D
+	}
+	Ray2D           <|-- CanvasRay2D
+	CanvasPolygon2D <|.. CanvasRay2D
+	ICanvasRay2D    <|.. CanvasRay2D
+
+	record ICanvasRectangle2D {
+		lineWidth  : number
+		strokeStyle: string
+		fillStyle  : string
+	}
+	IRectangle2D <|-- ICanvasRectangle2D 
+	class CanvasRectangle2D  
+	{
+		constructor(x: number, y: number, width: number, height: number, lineWidth: number, strokeStyle: string, fillStyle: string): CanvasRectangle2D
+	}
+	Rectangle2D        <|-- CanvasRectangle2D
+	CanvasPolygon2D    <|.. CanvasRectangle2D
+	ICanvasRectangle2D <|.. CanvasRectangle2D
+
+	record ICanvasCircle2D {
+		lineWidth  : number;
+		strokeStyle: string;
+		fillStyle  : string;
+	}
+	ICanvas2D <|-- ICanvasCircle2D
+	ICircle2D <|-- ICanvasCircle2D
+	class CanvasCircle2D 
+	{
+		constructor(x: number, y: number, radius: number, lineWidth: number, strokeStyle: string, fillStyle: string): CanvasCircle2D
+	}
+	Circle2D         <|-- CanvasCircle2D
+	CanvasCurve2D    <|.. CanvasCircle2D
+	ICanvasCircle2D  <|.. CanvasCircle2D
+
+	interface ImageResource {
+		type    : "Image" | "Other"
+		id      : string
+		url     : string
+		imgElem?: HTMLImageElement
+	}
+
+	interface ImageClip {
+		imgKey    : string
+		sx        : number
+		sy        : number
+		width     : number
+		height    : number
+		imageElem?: HTMLImageElement
+	};
+
+
+
+	record ICircleToken 
+	{
+		color  : string;
+		imgClip: ImageClip;
+	};
+	ICanvasCircle2D <|-- ICircleToken;
+	class CircleToken 
+	{
+		id       : string;
+		color    : string;
+		visiable : boolean;
+		blockView: boolean;
+		imgClip  : ImageClip;
+
+		draw(cvsCtx: CanvasRenderingContext2D): void;
+	}
+	CanvasCircle2D <|-- CircleToken
+	IToken2D       <|.. CircleToken
+	ICircleToken   <|.. CircleToken
+
+
+	record IRectangleToken {
+		color  : string; 
+		imgClip: ImageClip;
+	};
+	ICanvasRectangle2D <|-- IRectangleToken;
+	class RectangleToken
+	{
+		id       : string;
+		color    : string;
+		visiable : boolean;
+		blockView: boolean;
+		imgClip  : ImageClip;
+
+		draw(cvsCtx: CanvasRenderingContext2D): void;
+	}
+	CanvasRectangle2D <|-- RectangleToken
+	IToken2D          <|.. RectangleToken
+	IRectangleToken   <|.. RectangleToken
+
+	record ILineToken 
+	{
+		color: string
+	}
+	ICanvasLine2D <|-- ILineToken
+	class LineToken  
+	{
+		id       : string = "";
+		color    : string;
+		visiable : boolean = true;
+		blockView: boolean = true;
+
+		draw(cvsCtx: CanvasRenderingContext2D): void;
+	}
+	CanvasLine2D <|-- LineToken 
+	IToken2D     <|.. LineToken 
+	ILineToken   <|.. LineToken 
+
+
+
+@enduml

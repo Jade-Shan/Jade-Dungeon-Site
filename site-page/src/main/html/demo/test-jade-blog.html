@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+@@include('./src/main/html/parts/head.html', {
+	      "author" : "Jade Shan",
+	   "page-title": "test blog", 
+	     "keywords": "jade-dungeon, Journal",
+	 "description": "jade-dungeon, Journal"
+})
+	</head>
+	<body>
+
+		<nav id="topnav" class="navbar navbar-inverse  navbar-fixed-top" role="navigation"> </nav>
+
+		<main role="main" class="container">
+			<div class="row">		
+				<div class="col-xs-12 col-sm-12 col-md-8 col-lg-9 ctx-main"> 
+
+					<!-- banner start -->
+					<div class="pattern"><span></span></div>
+					<div class="vestibule"><h1>Jade Dungeon</h1><p id="subTitle"></p></div>
+					<div class="pattern"><span></span></div>
+					<!-- banner end -->
+
+					<!-- contents start -->
+					<div id="articles" class="content">
+
+
+						<!-- toc start -->
+						<div class="toc">
+							<ul>
+								<li><a href="#toc_1.0">Title 01</a></li>
+								<ul>
+									<li><a href="#toc_1.0.1">Title 1.01</a></li>
+									<li><a href="#toc_1.0.2">Title 1.01</a></li>
+									<li><a href="#toc_1.0.3">Title 1.01</a></li>
+								</ul>
+								<li><a href="#toc_2.0">Title 02</a></li>
+								<ul>
+									<li><a href="#toc_2.0.1">Title 2.01</a></li>
+									<li><a href="#toc_2.0.2">Title 2.01</a></li>
+									<li><a href="#toc_2.0.3">Title 2.01</a></li>
+								</ul>
+								<li><a href="#toc_3.0">Title 03</a></li>
+								<ul>
+									<li><a href="#toc_3.0.1">Title 3.01</a></li>
+									<li><a href="#toc_3.0.2">Title 3.01</a></li>
+									<li><a href="#toc_3.0.3">Title 3.01</a></li>
+								</ul>
+								<li><a href="#toc_4.0">Title 03</a></li>
+								<ul>
+									<li><a href="#toc_4.0.1">Title 3.01</a></li>
+									<li><a href="#toc_4.0.2">Title 3.01</a></li>
+									<li><a href="#toc_4.0.3">Title 3.01</a></li>
+								</ul>
+								<li><a href="#toc_5.0">Title 03</a></li>
+								<ul>
+									<li><a href="#toc_5.0.1">Title 3.01</a></li>
+									<li><a href="#toc_5.0.2">Title 3.01</a></li>
+									<li><a href="#toc_5.0.3">Title 3.01</a></li>
+								</ul>
+								<li><a href="#toc_6.0">Title 03</a></li>
+								<ul>
+									<li><a href="#toc_6.0.1">Title 3.01</a></li>
+									<li><a href="#toc_6.0.2">Title 3.01</a></li>
+									<li><a href="#toc_6.0.3">Title 3.01</a></li>
+								</ul>
+							</ul>
+						</div>
+						<!-- toc end -->
+
+
+						<h1>Test Blog</h1>
+
+						<h1 id="test-tag-001">Test Unicode</h1>
+
+						<p>AS Dec：<esp-unicode>test &#9973;  and  &#9972;  </esp-unicode></p>
+						<p>AS Hex：<esp-unicode>test &#x26f5; and  &#x26f3; </esp-unicode></p>
+
+						<h1 id="test-pagebar-001">Test page-bar</h1>
+
+						<div id="pageBar01"></div>
+						<div id="pageBar02"></div>
+						<div id="pageBar03"></div>
+						<div id="pageBar04"></div>
+						<div id="pageBar05"></div>
+						<div id="pageBar06"></div>
+						<div id="pageBar07"></div>
+						<div id="pageBar08"></div>
+						<div id="pageBar09"></div>
+
+						<h1 id="test-table001-001">Test page-bar</h1>
+
+						<table>
+							<tr><th>简码</th><th>默认值</th><th>含义说明</th><th>V2支持</th><th>V3支持</th></tr>
+							<tr><td>lang</td><td>无</td><td>说明代码块是哪种语言？</td><td>支持</td><td>支持</td></tr>
+							<tr><td>autolinks</td><td>true</td><td>Toggle automatic URL linking. 是否自动将网址转换为链接。 默认转换。可以后台管理页面修改默认值。 示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>classname</td><td>无</td><td>Add an additional CSS class to the code box. 允许你添加一个或多个自定义的样式。 默认没有。可以后台管理页面修改默认值。示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>collapse</td><td>&nbsp;</td><td>Toggle collapsing the code box by default, requiring a click to expand it. Good for large code posts. 是否默认折叠代码段。如果折叠，这需要一个「点击」操作，才能展开。非常适合有大段代码的文章。默认不折叠。可以后台管理页面修改默认值。 示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>firstline</td><td>1</td><td>An interger specifying what number the first line should be (for the line numbering). 设置起始行的行号。示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>gutter</td><td>&nbsp;</td><td>Toggle the left-side line numbering. 是否显示行号。默认显示。可以后台管理页面修改默认值。 示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>highlight</td><td>无</td><td>A comma-sperated list of line numbers to highlight. You can also specify a range. Example: 2,5-10,12 需要高亮显示并使用逗号分隔的行号。同时，也支持区间（开始行号-结束行号）。例如：2,5-10,12。 示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>htmlscript</td><td>&nbsp;</td><td>Toggle highlighting any extra HTML/XML. Good for when you're mixing HTML/XML with another language, such as having PHP inside an HTML web page. The above preview has it enabled for example. This only works with certain languages. 是否高亮显示功能任何额外的HTML / XML。特别适合混合HTML/XML与另一种语言混合的情况下。如在HTML代码中含有部分PHP代码。注意，这仅仅适用于特定的语言。示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>light</td><td>false</td><td>Toggle light mode which disables the gutter and toolbar all at once. 是否显示高亮模式。默认是关闭。可以后台管理页面修改默认值。</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+							<tr><td>padlinenumbers</td><td>off</td><td>Controls line number padding. 设置行号的格式化，前面是否补零。默认是关闭。可以后台管理页面修改默认值。</td><td>支持</td><td>支持</td></tr>
+							<tr><td>title</td><td>无</td><td>Sets some text to show up before the code. 设置文本的标题。默认没有。可以后台管理页面修改默认值。</td><td>不支持</td><td>支持</td></tr>
+							<tr><td>toolbar</td><td>false</td><td>Toggle the toolbar (buttons in v2, the about question mark in v3) 默认不显示。可以后台管理页面修改默认值。 示例：点击查看</td><td>支持</td><td>不支持</td></tr>
+							<tr><td>wraplines</td><td>false</td><td>Toggle line wrapping. 是否开启自动换行。可以后台管理页面修改默认值。</td><td>支持</td><td>不支持</td></tr>
+							<tr><td>smarttabs</td><td>true</td><td>Allows you to turn smart tabs feature on and off. Click here for a demo.智能制表符</td><td>支持</td><td>不支持</td></tr>
+							<tr><td>tabsize</td><td>4</td><td>Allows you to adjust tab size. Click here for a demo.制表符的长度。</td><td>支持</td><td>支持</td></tr>
+							<tr><td>lang</td><td>无</td><td>说明代码块是哪种语言？</td><td>支持</td><td>支持</td></tr>
+							<tr><td>autolinks</td><td>true</td><td>Toggle automatic URL linking. 是否自动将网址转换为链接。 默认转换。可以后台管理页面修改默认值。 示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>classname</td><td>无</td><td>Add an additional CSS class to the code box. 允许你添加一个或多个自定义的样式。 默认没有。可以后台管理页面修改默认值。示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>collapse</td><td>&nbsp;</td><td>Toggle collapsing the code box by default, requiring a click to expand it. Good for large code posts. 是否默认折叠代码段。如果折叠，这需要一个「点击」操作，才能展开。非常适合有大段代码的文章。默认不折叠。可以后台管理页面修改默认值。 示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>firstline</td><td>1</td><td>An interger specifying what number the first line should be (for the line numbering). 设置起始行的行号。示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>gutter</td><td>&nbsp;</td><td>Toggle the left-side line numbering. 是否显示行号。默认显示。可以后台管理页面修改默认值。 示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>highlight</td><td>无</td><td>A comma-sperated list of line numbers to highlight. You can also specify a range. Example: 2,5-10,12 需要高亮显示并使用逗号分隔的行号。同时，也支持区间（开始行号-结束行号）。例如：2,5-10,12。 示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>htmlscript</td><td>&nbsp;</td><td>Toggle highlighting any extra HTML/XML. Good for when you're mixing HTML/XML with another language, such as having PHP inside an HTML web page. The above preview has it enabled for example. This only works with certain languages. 是否高亮显示功能任何额外的HTML / XML。特别适合混合HTML/XML与另一种语言混合的情况下。如在HTML代码中含有部分PHP代码。注意，这仅仅适用于特定的语言。示例：点击查看</td><td>支持</td><td>支持</td></tr>
+							<tr><td>light</td><td>false</td><td>Toggle light mode which disables the gutter and toolbar all at once. 是否显示高亮模式。默认是关闭。可以后台管理页面修改默认值。</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+							<tr><td>padlinenumbers</td><td>off</td><td>Controls line number padding. 设置行号的格式化，前面是否补零。默认是关闭。可以后台管理页面修改默认值。</td><td>支持</td><td>支持</td></tr>
+							<tr><td>title</td><td>无</td><td>Sets some text to show up before the code. 设置文本的标题。默认没有。可以后台管理页面修改默认值。</td><td>不支持</td><td>支持</td></tr>
+							<tr><td>toolbar</td><td>false</td><td>Toggle the toolbar (buttons in v2, the about question mark in v3) 默认不显示。可以后台管理页面修改默认值。 示例：点击查看</td><td>支持</td><td>不支持</td></tr>
+							<tr><td>wraplines</td><td>false</td><td>Toggle line wrapping. 是否开启自动换行。可以后台管理页面修改默认值。</td><td>支持</td><td>不支持</td></tr>
+							<tr><td>smarttabs</td><td>true</td><td>Allows you to turn smart tabs feature on and off. Click here for a demo.智能制表符</td><td>支持</td><td>不支持</td></tr>
+							<tr><td>tabsize</td><td>4</td><td>Allows you to adjust tab size. Click here for a demo.制表符的长度。</td><td>支持</td><td>支持</td></tr>
+						</table>
+
+						<h1 id="test-image-001">Test image</h1>
+
+						<img class="atc-img img-newwin" alt="test new window" src="@@staticRoot/themes/blog/hobbit/images/bg.jpg">
+
+						<br/>
+
+						<img class="atc-img img-frame" alt="test in frame" src="@@staticRoot/themes/blog/hobbit/images/bg.jpg">
+
+						<br/>
+
+						<img id="imageProxyTest" alt="image proxy test" src="">
+
+						<h1 id="test-math-001">Test MathJax</h1>
+
+						<p>当\(u=g(x)\)，\(y=f(u)\)时，复合函数\(y=f(g(x))\)的导数可以使用以下「复合函数求导公式」也叫「链式法则」：</p>
+
+						\[
+						\begin{equation}
+						\frac{{\rm d}y}{{\rm d}x}=\frac{{\rm d}y}{{\rm d}u}\frac{{\rm d}u}{{\rm d}x}
+						\end{equation}  \label{rpc_chnfp}
+						\]
+
+						<p>公式\(\ref{rpc_chnfp}\)当作分数来看，右边约分去掉\(\rm{d}u\)也等于左边。（注：这个约分方法不适用于\(\rm{d}x\)、\(\rm{d}y\)平方地场景）</p>
+
+						<p>例：\(y=f(u)\)，\(u=f(v)\)，\(v=f(x)\)时，求导：</p>
+
+						\[
+						\begin{equation}
+						\frac{{\rm d}y}{{\rm d}x}=\frac{{\rm d}y}{{\rm d}u}\frac{{\rm d}u}{{\rm d}v}\frac{{\rm d}v}{{\rm d}x}
+						\end{equation}  \label{rpc_chnfp2}
+						\]
+
+
+						<h1 id="test-code-001">Test Code</h1>
+
+						<pre class="brush:bash">
+if [ -n "${JAVA_HOME}" ] &amp;&amp; [ -x "${JAVA_HOME}/bin/java" ] ; then
+		JAVA="${JAVA_HOME}/bin/java"
+elif [ -x /usr/bin/java ] ; then
+		JAVA=/usr/bin/java
+else
+		echo Cannot find JVM
+		exit 1
+fi
+
+$JAVA -jar appJarFIle.jar ${@}
+						</pre>
+
+
+					</div>
+					<!-- contents end -->
+
+				@@include('./src/main/html/parts/footer.html', { })
+
+				</div> <!-- ctx-main end -->
+
+				@@include('./src/main/html/parts/side-index.html', { })
+
+			</div><!-- /.row -->
+		</main><!-- /.container -->
+
+		<div id="photo-frame" class="modal fade photo-frame" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+		</div>
+
+
+	</body>
+
+	<script type="module">
+		import { TestJadeUtils } from "@jade-dungeon/site-page/test-jade-utils";
+		TestJadeUtils.testAll({ apiRoot: '@@apiRoot', cdn3rd: '@@cdn3rd' });
+	</script> 
+</html>
+

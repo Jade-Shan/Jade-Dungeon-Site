@@ -1,0 +1,12 @@
+<!-- import map：把包名映射到 CDN 上的模块路径。
+
+     必须满足两个约束：
+       1. 出现在页面里第一个 <script type="module"> 之前
+       2. 一个文档只能有一个 import map
+
+     映射表由 gulpfile.js 的 buildImportMap() 从 package.json 的 exports
+     生成，基址取 envs.js 的 importMapRoot。所以页面里的 import 写法与 npm
+     消费方一致，不再出现 @@staticRoot/scripts/ts/ 这种硬编码路径。 -->
+<script type="importmap">
+@@importmap
+</script>

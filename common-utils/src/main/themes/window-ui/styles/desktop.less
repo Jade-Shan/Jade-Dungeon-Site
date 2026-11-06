@@ -1,0 +1,420 @@
+// 窗口 UI 的样式
+//
+// **外观主要来自 98.css，本文件只补它没有的部分。**
+// 98.css 是可选的 peer 依赖（见 ../../../package.json）——
+// 不装也能跑，但窗口没有边框和标题栏。
+//
+// **改尺寸时注意 TS 侧有两个常量在复述 98.css 的值**：
+// `src/ui/UIWindow.ts` 的 `WIN_BORDER_SIZE`（= `.window` 的 padding×2）
+// 和 `WIN_BODY_PADDING`（= `.window-body` 的 margin×2 + 标题栏高度）。
+// 那两个值不是从本文件来的，而是从 98.css 来的 —— 换 98.css 版本时要一起量。
+// 取舍记录见 docs/refactor-20261101.md 5.4 节。
+
+.desktop {
+	overflow: hidden;
+}
+
+div.desktop>div.window>div.window-body {
+	user-select: auto;
+}
+
+/**
+ * 与鼠标选择相关的控制。作为窗口元素有些是不能作为文本选中的。
+ */
+.cannot-select {
+	user-select: none;
+}
+
+.title-bar-icon-text {
+	display: flex;
+}
+
+.title-bar-icon {
+	font-weight: bold;
+	color: white;
+	letter-spacing: 0;
+	margin-right: 5px;
+}
+
+/**
+ * 没有图标时的退化外观。
+ *
+ * `UIWindow.ts` 的图标数据来自 `ui/uiResource.ts` 的注册表，没注册 provider
+ * 时（不调 `registerDefaultUIResource()`）就不写 backgroundImage，而是加这个
+ * class。标题栏里把那 12px 宽度和右边距一起收掉，否则标题文字会凭空缩进一块空白。
+ */
+.title-bar-icon.no-icon {
+	width: 0 !important;
+	margin-right: 0;
+}
+
+/* dock 栏的任务项没图标时，留出方块让 CSS 自己画，不然点不到 */
+.menu-item.no-icon {
+	background: var(--surface, #c0c0c0);
+	box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff;
+}
+
+.title-bar-controls>button {
+	cursor: pointer;
+}
+
+/**
+ * 桌面环境底部的 dock-bar
+ */
+.dock-content {
+	width: 100%;
+	height: 100%;
+	justify-content: center;
+	align-items: end;
+	display: flex;
+}
+
+.dock-bar {
+	margin-bottom: 0px;
+	padding: 6px 15px;
+	height: 24px;
+	display: flex;
+	justify-content: center;
+	align-items: end;
+	border-radius: 12px;
+	backdrop-filter: blur(20px);
+	--webkit-backdrop-filter: blur(20px);
+	opacity: 55;
+}
+
+.dock-bar:hover {
+	height: 56px;
+	opacity: 75%;
+}
+
+.dock-bar>.menu-item {
+	--i: 1;
+	border-radius: 10px;
+	width: calc(40px * var(--i));
+	height: calc(40px * var(--i));
+	margin-bottom: calc(var(--i) * 15px - 15px);
+	opacity: 55%;
+}
+
+.dock-bar>.menu-item:hover {
+	opacity: 75%;
+}
+
+.dock-bar>.gap {
+	--i: 1;
+	width: calc(15px * var(--i));
+}
+
+/* 增加menu功能 */
+:root {
+  /* 菜单项左侧留给勾选标记 / 图标的宽度。
+     注意：Win98 菜单没有 7.css 那条竖直凹槽分隔线，所以这里只留空白。 */
+  --menu-gutter: 20px;
+  /* 右侧留给子菜单箭头的宽度 */
+  --menu-arrow-gutter: 16px;
+  /* Win98 菜单选中项 = 深蓝底白字（系统 highlight 色），
+     菜单栏与弹出菜单共用同一套高亮，与 7.css 的 Aero 玻璃渐变完全不同。 */
+  --menu-highlight-bg: var(--dialog-blue);
+  --menu-highlight-text: var(--button-highlight);
+}
+
+/* -----------------------------
+ * 增加了菜单
+ * ----------------------------- */
+
+/* ------------------------------------------------------------------
+ * 1. 基础重置
+ * ------------------------------------------------------------------ */
+ /*
+div.menubardiv {
+  box-shadow:
+    inset 0 8px var(--button-shadow),
+    inset 0 -8px var(--button-highlight);
+}
+	*/
+ul[role='menubar']{
+  box-shadow:
+    inset 0 -1px var(--button-highlight),
+    inset 0 -2px var(--button-shadow);
+}
+ul[role='menubar'],
+ul[role='menu'] {
+  cursor: default;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /* Win98 菜单文字不可选中，能拖选会让菜单显得很廉价 */
+  user-select: none;
+}
+
+/* 子菜单与箭头的定位锚点。
+   ⚠️ 下面第 4 节对 li[aria-haspopup] 用了 all: unset，会把这里的
+   position 重置成 static，所以那条规则里必须再补一次 position: relative。 */
+ul [role='menuitem'] {
+  position: relative;
+}
+
+/* ------------------------------------------------------------------
+ * 2. 菜单栏（横向）
+ * ------------------------------------------------------------------ */
+
+ul[role='menubar'] {
+  display: flex;
+  background: var(--surface);
+  padding: 1px;
+}
+
+ul[role='menubar'] > [role='menuitem'] {
+  padding: 3px 7px;
+}
+
+/* Win98 菜单栏被打开/掠过的项 = 深蓝底白字。
+   （若想要 IE4 风格的 hot-tracking 凸起边框，把下面两行换成
+     box-shadow: var(--border-raised-outer); 即可。） */
+ul[role='menubar'] > [role='menuitem']:hover,
+ul[role='menubar'] > [role='menuitem']:focus,
+ul[role='menubar'] > [role='menuitem']:focus-within {
+  background: var(--menu-highlight-bg);
+  color: var(--menu-highlight-text);
+  outline: none;
+}
+
+/* ------------------------------------------------------------------
+ * 3. 弹出面板（竖向）
+ * ------------------------------------------------------------------ */
+
+ul[role='menu'] {
+  position: relative;
+  background: var(--surface);
+  /* Win98 菜单面板 = 双层凸起边框，且没有投影 */
+  box-shadow: var(--border-raised-outer), var(--border-raised-inner);
+  min-width: 150px;
+  padding: 2px;
+  /* 高亮条是深蓝底，文字色必须重置，
+     否则会继承菜单栏父项高亮时的白色而在灰底上看不见 */
+  color: var(--text-color);
+}
+
+/* 默认收起 */
+[role='menuitem'] ul[role='menu'] {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 99;
+}
+
+/* 二级及以后：从父项右侧飞出。
+   top: -2px 抵消子面板自身的 2px padding，使子菜单首项与父项顶端对齐。 */
+ul[role='menu'] [role='menuitem'] > ul[role='menu'] {
+  left: 100%;
+  top: -2px;
+}
+
+/* ------------------------------------------------------------------
+ * 4. 菜单项本体
+ * ------------------------------------------------------------------ */
+
+/* all: unset 用来清掉 98.css 给 <button> 加的一身行头
+   （color: transparent / text-shadow / min-width: 75px / min-height: 23px /
+   凸起 box-shadow）和给 <a> 加的 --link-blue，然后重建成一行。
+   98.css 的 button 是纯 box-shadow 实现，不像 7.css 用 ::before/::after
+   做光泽，所以这里不需要额外的 content: none 去抵消伪元素。
+   position: relative 必须重新声明 —— all: unset 把第 1 节设的值冲掉了。 */
+ul[role='menu'] > [role='menuitem'] > a,
+ul[role='menu'] > [role='menuitem'] > button,
+ul[role='menu'] > [role='menuitem'] > label,
+ul[role='menu'] > [role='menuitem'][aria-haspopup='true'] {
+  all: unset;
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--menu-arrow-gutter);
+  width: 100%;
+  padding: 3px var(--menu-arrow-gutter) 3px var(--menu-gutter);
+  white-space: nowrap;
+}
+
+/* 高亮态：Win98 标志性的深蓝条。
+   color 一并转白，于是子菜单箭头（currentColor）、<span> 快捷键文字和
+   radio 圆点会自动跟着变白，不用单独写规则。 */
+ul[role='menu'] > [role='menuitem'] > a:hover,
+ul[role='menu'] > [role='menuitem'] > a:focus-visible,
+ul[role='menu'] > [role='menuitem'] > button:hover,
+ul[role='menu'] > [role='menuitem'] > button:focus-visible,
+ul[role='menu'] > [role='menuitem'] > label:hover,
+ul[role='menu'] > [role='menuitem'] > input[type]:focus-visible + label,
+ul[role='menu'] > [role='menuitem'][aria-haspopup='true']:hover,
+ul[role='menu'] > [role='menuitem'][aria-haspopup='true']:focus,
+ul[role='menu'] > [role='menuitem'][aria-haspopup='true']:focus-within {
+  background: var(--menu-highlight-bg);
+  color: var(--menu-highlight-text);
+  /* 覆盖 98.css 的 a:focus / button:focus 虚线框，高亮条本身就是焦点指示 */
+  outline: none;
+}
+
+/* 子菜单箭头：实心黑三角，用 border trick 画。
+   刻意用 ::before —— ::after 留给 .has-divider。7.css 让这两者
+   抢同一个 ::after，于是同时带 aria-haspopup 和 has-divider 的项，
+   两套属性会在同一伪元素上混合（箭头的 border 与分隔线的
+   box-shadow/height 叠加），箭头会变形。 */
+ul[role='menu'] > [role='menuitem'][aria-haspopup='true']::before {
+  content: '';
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 4px solid transparent;
+  border-right-width: 0;
+  border-left-color: currentColor;
+}
+
+/* ------------------------------------------------------------------
+ * 5. 分隔线
+ * ------------------------------------------------------------------ */
+
+/* Win98 经典 etched line：上 1px 阴影色 + 下 1px 高光色。
+   关键点：用 margin-bottom 撑开 li 之外的空隙，把线画在这段空隙里
+   （bottom 负值），这样高亮条（设在 li 或内层 a 上的 background）
+   永远不会覆盖到它 —— 与 Win98 一致：蓝条只包住文字行，不吃掉分隔线。
+   间距要算准：线占 li 底边下方 3~5px，下一项从 7px 开始，
+   上下各留空隙，避免下一项高亮时蓝条压到高光那 1px。
+   同时用 position: absolute，使它在 li 是 flex 容器（aria-haspopup 的情况）
+   时不会变成 flex item 把布局挤歪。 */
+ul [role='menuitem'].has-divider {
+  margin-bottom: 7px;
+}
+
+ul [role='menuitem'].has-divider::after {
+  content: '';
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  bottom: -5px;
+  height: 2px;
+  box-shadow:
+    inset 0 1px var(--button-shadow),
+    inset 0 -1px var(--button-highlight);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------
+ * 6. 禁用项
+ * ------------------------------------------------------------------ */
+
+/* Win98 的禁用文字是灰字 + 右下白色浮雕，而不是 7.css 的 opacity: .5 */
+ul [role='menuitem'][aria-disabled] {
+  pointer-events: none;
+}
+
+ul [role='menuitem'][aria-disabled] > a,
+ul [role='menuitem'][aria-disabled] > button,
+ul [role='menuitem'][aria-disabled] > label,
+ul [role='menuitem'][aria-disabled][aria-haspopup='true'] {
+  color: var(--button-shadow);
+  text-shadow: 1px 1px 0 var(--button-highlight);
+}
+
+/* ------------------------------------------------------------------
+ * 7. 图标与勾选标记
+ * ------------------------------------------------------------------ */
+
+ul [role='menuitem'] > img {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Win98 菜单里的勾选项：左侧一个黑色勾号 / 圆点，
+   没有方框，也没有 7.css 那个 22×22 高亮方块。 */
+ul [role='menuitem'] > input[type] {
+  display: none;
+}
+
+/* 抹掉 98.css 给 input + label 加的方框与左缩进。
+   display 保持 flex 与其它菜单项一致，让 <span> 快捷键仍能靠右。 */
+ul [role='menuitem'] > input[type] + label {
+  display: flex;
+  position: relative;
+  margin-left: 0;
+}
+
+ul [role='menuitem'] > input[type] + label::before {
+  content: none;
+}
+
+ul [role='menuitem'] > input[type='checkbox']:checked + label::after {
+  content: '\2714';
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: auto;
+  height: auto;
+  background: none;
+  font-size: 11px;
+  line-height: 1;
+}
+
+ul [role='menuitem'] > input[type='radio']:checked + label::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  /* currentColor 让圆点在高亮时自动变白 */
+  background: currentColor;
+}
+
+/* ------------------------------------------------------------------
+ * 8. 开合机制（零 JavaScript，全部照搬 7.css）
+ * ------------------------------------------------------------------ */
+
+/* 打开：自己被聚焦（tabindex 让 li 可聚焦），或者后代被聚焦。
+   :focus-within 会一路冒泡到所有祖先 li，所以多级嵌套自动成立。 */
+ul [role='menuitem']:focus > ul[role='menu'],
+ul [role='menuitem']:focus-within > ul[role='menu'] {
+  display: block;
+}
+
+/* 根 ul 加 .can-hover 后额外启用悬停触发 */
+ul.can-hover [role='menuitem']:hover > ul[role='menu'] {
+  display: block;
+}
+
+/* 消解 :focus 粘滞 —— 点开 File 后焦点一直留在 File 上，
+   鼠标移到 Edit 时两个弹层会同时展开。规则：只要有兄弟正被 hover，
+   被 focus 的那个就交出高亮并收起子菜单。
+   兄弟选择器 ~ 只能向后选，所以必须双向各写一条。
+   两条都限定在 .can-hover 下 —— 非 can-hover 模式只有 focus 能展开，
+   单一焦点天然无冲突；此时若不限定，鼠标掠过兄弟项会把已打开的菜单
+   意外关掉，而那个兄弟又不会展开（7.css 就有这个副作用）。 */
+ul.can-hover [role='menuitem']:focus:has(~ [role='menuitem']:hover),
+ul.can-hover [role='menuitem']:focus-within:has(~ [role='menuitem']:hover),
+ul.can-hover [role='menuitem']:hover ~ [role='menuitem']:focus,
+ul.can-hover [role='menuitem']:hover ~ [role='menuitem']:focus-within {
+  background: transparent;
+  color: inherit;
+}
+
+ul.can-hover
+  [role='menuitem']:focus:has(~ [role='menuitem']:hover)
+  > ul[role='menu'],
+ul.can-hover
+  [role='menuitem']:focus-within:has(~ [role='menuitem']:hover)
+  > ul[role='menu'],
+ul.can-hover [role='menuitem']:hover ~ [role='menuitem']:focus > ul[role='menu'],
+ul.can-hover
+  [role='menuitem']:hover
+  ~ [role='menuitem']:focus-within
+  > ul[role='menu'] {
+  display: none;
+}
+

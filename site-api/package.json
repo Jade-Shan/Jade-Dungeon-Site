@@ -1,0 +1,43 @@
+{
+  "name": "jade-dungeon-api",
+  "version": "1.0.0",
+  "description": "Jade Dungeon API - Express + TypeScript 后端服务",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "APP_ENV=dev tsx watch src/main/ts/index.ts",
+    "dev:fat": "APP_ENV=fat tsx watch src/main/ts/index.ts",
+    "dev:prd": "APP_ENV=prd tsx watch src/main/ts/index.ts",
+    "build": "node node_modules/typescript/bin/tsc && node node_modules/tsc-alias/dist/bin/index.js",
+    "start": "node dist/index.js",
+    "lint": "eslint src/main/ts"
+  },
+  "dependencies": {
+    "arg": "^5.0.2",
+    "better-sqlite3": "^13.0.3",
+    "body-parser": "^2.2.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.11.0",
+    "lodash": "^4.18.1",
+    "multer": "^2.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/body-parser": "^1.19.6",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/lodash": "^4.17.24",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^22.13.0",
+    "eslint": "^10.4.1",
+    "tsc-alias": "^1.9.10",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.60.0"
+  }
+}

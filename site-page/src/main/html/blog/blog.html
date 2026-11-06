@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+@@include('./src/main/html/parts/head.html', {
+	      "author" : "Jade Shan",
+	   "page-title": "Jade Dungeon", 
+	     "keywords": "jade-dungeon, Journal",
+	 "description": "jade-dungeon, Journal"
+})
+</head>
+<body>
+
+<nav id="topnav" class="navbar navbar-inverse  navbar-fixed-top" role="navigation"> </nav>
+
+<!-- .container start -->
+<main role="main" class="container">
+	<!-- .row start -->
+	<div class="row">		
+
+		<!-- ctx-main start -->
+		<div class="col-xs-12 col-sm-12 col-md-8 col-lg-9 ctx-main"> 
+			@@include('./src/main/html/parts/blog-main.html', { })
+		</div>
+		<!-- ctx-main end -->
+
+		<!-- /.blog-sidebar start-->
+		<aside class="hidden-xs hidden-sm col-md-4 col-lg-3 blog-sidebar container">
+			<div class="row">
+				<div class="side-blank-block hidden-xs hidden-sm col-md-12 col-lg-12"></div>
+				@@include('./src/main/html/parts/side-blog-index.html', { })
+			</div>
+		</aside>
+		<!-- /.blog-sidebar -->
+
+	</div><!-- .row end -->
+</main><!-- .container end -->
+
+<!-- photo frame -->
+<div id="photo-frame" class="modal fade photo-frame" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true"></div>
+<!-- photo frame -->
+
+</body>
+<!--
+<script type="text/javascript" src="../scripts/ts/basic.js"         ></script>
+<script type="text/javascript" src="../scripts/ts/dataStructure.js" ></script>
+<script type="text/javascript" src="../scripts/ts/web.js"           ></script>
+<script type="text/javascript" src="../scripts/ts/webHtmlPage.js"   ></script>
+<script type="text/javascript" src="../scripts/ts/3rdLibTool.js"    ></script>
+<script type="text/javascript" src="../scripts/ts/wiki.js" ></script>
+-->
+<script type="module">
+		import { WebUtil  } from "@jade-dungeon/jade-utils/web";
+		import { BlogPage } from "@jade-dungeon/site-page/blog";
+
+		let currPage = 1;
+		let currUser = WebUtil.loadCookieValue('data.currUser');
+		let urlParams = new URLSearchParams(window.location.search);
+		if (currUser && currUser.length > 0) {
+			// do nothging
+		} else {
+			currUser = 'teo';
+		}
+		let urlUser = urlParams.get('currUser')
+		if (urlUser && urlUser.length > 0) {
+			currUser = urlUser;
+		}		
+		let pmPage = urlParams.get('currPage')
+		if (pmPage && pmPage.length > 0) {
+			currPage = pmPage;
+		}
+
+		await BlogPage.initBlogPage('@@apiRoot', '温其如玉', currUser, currPage);
+
+</script> 
+</html>

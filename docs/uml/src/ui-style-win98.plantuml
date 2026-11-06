@@ -1,0 +1,120 @@
+@startuml
+title window 桌面环境 —— 窗口状态流转时序图
+
+skinparam sequenceMessageAlign center
+
+skinparam defaultFontName "Noto Serif CJK SC"
+
+skinparam sequenceTitleFontName "Noto Sans CJK SC"
+skinparam sequenceTitleFontStyle bold
+
+skinparam sequenceParticipantFontName "Noto Sans CJK SC"
+skinparam sequenceParticipantFontStyle bold
+
+skinparam sequenceActorFontName "Noto Sans CJK SC"
+skinparam sequenceActorFontStyle bold
+
+skinparam sequenceDividerFontName "Noto Sans CJK SC"
+skinparam sequenceDividerFontStyle bold
+
+actor "用户\n(鼠标事件)" as User
+participant "UIDesktop\n桌面" as Desktop
+participant "UIObj\n窗口" as Win
+participant "DockBar\n任务栏" as Dock
+
+== ① 创建窗口 ==
+User -> Win : new + renderIn()\n(构造时仅建 win/titleBar/windowBody 空 div)
+Win -> Desktop : renderWindowTplt(win, body, statusBar)\n拼装标题栏图标/按钮/状态栏
+Win -> Win : bindWinOptActive/Close/Max/Min\nbindWindowDragSelect/ScaleSelect
+Desktop -> Win : getNewWindowPosition(w, h)
+Desktop -> Desktop : addWindow(win)\nallWindows.put + windowZIndex.push
+Desktop -> Dock : addIcon(win)
+Dock -> Win : bindWinOptMin(win, icon)\n(图标即最小化按钮)
+
+== ② 激活 / 置顶 ==
+User -> Win : mousedown (窗口任意位置)
+Win -> Desktop : optWinActive(win)
+Desktop -> Desktop : reorderWindows(win.id)\n其余窗口降层、重分配 z-index
+Desktop -> Win : activeWindow(true)  → isTop = true, 移除 inactive
+Desktop -> Win : setZIndex(2000 + n)
+
+== ③ 拖动窗口 ==
+User -> Win : titleBar mousedown (选中)
+Win -> Desktop : setCurrDragging({ win })\ndragging.win 就位
+User -> Desktop : desktopDiv mousedown (冒泡, setTimeout 10ms)
+Desktop -> Desktop : 记录 moveStart / winStart
+User -> Desktop : mousemove (全局)
+Desktop -> Win : style.left/top = winStart + (dx, dy)
+User -> Desktop : mouseup / mouseleave
+Desktop -> Desktop : cleanDragging()\n清空 dragging、恢复光标
+
+== ④ 缩放窗口 ==
+User -> Win : winDiv mousedown (边缘 7px 内)
+Win -> Desktop : setCurrScaling({ win, direction: 1-9 })\n设 resize 光标
+User -> Desktop : desktopDiv mousedown
+Desktop -> Desktop : 记录 moveStart / winStart
+User -> Desktop : mousemove
+Desktop -> Win : 按方向码增减 left/top/width/height\n重算 windowBody 尺寸
+User -> Desktop : mouseup / mouseleave
+Desktop -> Desktop : cleanScaling()
+
+== ⑤ 最大化 / 还原 ==
+User -> Win : btnMax mousedown
+alt isMax = false (未最大化)
+  Win -> Win : isMax = true\nlastPos/lastSize = 当前坐标尺寸
+  Win -> Desktop : showWinMaxMinAnima(当前 → 全屏)
+  Win -> Win : setTimeout(350ms) 写全屏样式
+else isMax = true (已最大化)
+  Win -> Win : isMax = false\nend = lastPos/lastSize
+  Win -> Desktop : showWinMaxMinAnima(全屏 → 原样)
+  Win -> Win : setTimeout(350ms) 恢复样式
+end
+
+== ⑥ 最小化 / 恢复 ==
+User -> Win : btnMin / Dock 图标 mousedown
+alt isMin = true
+  Win -> Desktop : showWinMaxMinAnima(min → 原样)
+  Win -> Win : isMin = false, visibility = visible
+  Win -> Desktop : optWinActive(win) (恢复为顶层)
+else isTop = true
+  Win -> Win : isMin = true, visibility = hidden
+  Win -> Desktop : showWinMaxMinAnima(原样 → 桌面底部)
+else isTop = false
+  Win -> Desktop : optWinActive(win) (仅唤起置顶)
+end
+
+== ⑦ 关闭窗口 ==
+User -> Win : btnClose mouseup
+Win -> Desktop : optWinClose(win)
+Desktop -> Desktop : allWindows.remove\nreorderWindows 排除自己
+Desktop -> Win : removeChild(win.ui.win) (删除 DOM)
+Desktop -> Win : 新末尾窗口 activeWindow(true)
+Desktop -> Dock : removeIcon(win)
+
+@enduml
+```
+
+---
+
+## 五、关键设计模式总结
+
+| 模式 | 体现 | 作用 |
+|------|------|------|
+| **接口 + 抽象类 + 子类** | `UIObj` → `UIWindowAdapter` → `TestWindow01` | 骨架复用，内容子类定制 |
+| **策略对象** | `defaultWinOption` 实现 `IBindWinOpt`，可整体替换 | 事件行为可插拔 |
+| **两段式交互** | 拖动/缩放 = 「子元素 select 写状态」+「父容器 moving 读状态」 | 防止快速移动丢事件 |
+| **中央状态容器** | `UIDesktop.currWin.{top,dragging,scaling}` | 把交互中间态从 DOM 里抽出来 |
+| **手动尺寸同步** | 每次改动都重算 `windowBody` 尺寸 | 不用 flex，靠 JS 精确控制 |
+| **幽灵遮罩动画** | `showWinMaxMinAnima` | 用临时元素 + CSS transition 模拟窗口过渡 |
+
+### 一句话概括
+
+**HTML 只提供空容器 → JS 动态拼 DOM 并在拼装时同步绑事件 → 事件通过修改 `currWin`/`WinStatus` 状态驱动 DOM 样式变化 → z-index 数组维护层级 → 拖动/缩放用「子选中 + 父移动」两段式保证流畅。**
+
+---
+
+## 相关文件
+
+- `src/scripts/ts/ui/UIWindow.ts` —— 桌面环境、窗口、Dock 栏、默认事件绑定、动画
+- `src/scripts/ts/ui/testJadeUI.ts` —— 测试窗口子类与桌面初始化
+- `src/html/test-jade-window-ui.html` —— 测试页面入口

@@ -1,0 +1,150 @@
+// 内容主题的变量默认值
+//
+// `structure.less` 引用 87 个变量却不定义任何值，所以它不能独立编译。
+// 这个文件给每个变量一个默认值，于是：
+//
+//   - 主题只需要覆盖**自己关心的**那几个，不用再凑齐全部 87 个
+//   - `structure.less` + 本文件就是一套能跑的完整主题
+//
+// 默认值取的是 hobbit 的值 —— 它是页面上的默认主题
+// （`rel="stylesheet"`，另两套是 `rel="alternate stylesheet"`）。
+//
+// **加载顺序由各主题的 `index.less` 用显式 `@import` 写死**，
+// 不再依赖 gulp concat 的文件名排序。顺序必须是：
+//
+//   variables（默认值）→ 主题的 part.1.less（覆盖）→ structure（应用）
+//
+// Less 是「最后赋值生效」，所以默认值必须排在覆盖之前。
+// 这一条就是 2.4 节记的那个坑：concat 时顺序是主题在前、comm 在后，
+// 一旦 comm 开始定义默认值就会反过来盖掉主题的值。
+
+// ── 资源根路径 ──
+//
+// 主题里的图片引用全部走这个变量。原来是写死的相对路径
+// `url(../images/bg.jpg)`，隐含假设「CSS 产物在 themes/<name>/styles/、
+// 图片在 themes/<name>/images/」—— 换成 CDN 或别的目录布局就全断。
+//
+// 默认值保持原来的相对路径，所以现有构建的产物一字不变。
+// 想换 CDN 就在主题的 part.1.less 里覆盖：
+//
+//   @asset-root: "//cdn.example.com/jadeutils.v3/themes/blog/hobbit/images";
+//
+// 三种写法对应三种产出，**改的时候要保形**（Less 会保留源码的引号风格）：
+//
+//   url(~"@{asset-root}/x")   → url(../images/x)      不带引号
+//   url('@{asset-root}/x')    → url('../images/x')    单引号
+//   url("@{asset-root}/x")    → url("../images/x")    双引号
+@asset-root:               "../images";
+
+// background
+@page-bg-img:              url(~"@{asset-root}/bg.jpg");
+@main-bg-img:              url(~"@{asset-root}/bg-m.png");
+@main-bordr-shadow:        #000000;
+@main-bordr-img:           url(~"@{asset-root}/bg-border.png");
+
+// head banner
+@banner-title-fg:          #FFC;
+@banner-desc-fg:           #FFF;
+@banner-img:               url(~"@{asset-root}/banner.png");
+
+// foot
+@foot-txt-fg:              #666;
+@foot-href-fg:             #666;
+@foot-href-hv-fg:          #333;
+@foot-href-right-fg:       #ACAF9B;
+@foot-bg-img:              url(~"@{asset-root}/bgfooter.gif");
+
+// widget
+@widget-splt-fg:           #6D3D1B;
+@widget-border-color:      #803530;
+@widget-inner-shadow-color: rgba(0,0,0,0.2);
+@widget-out-shadow-color:  rgba(0,0,0,0.4);
+
+// toc
+@toc-bg-color:             rgba(218, 165, 32, 0.35);
+@toc-bg-img:               url('@{asset-root}/toc-bg.jpg');
+@toc-color-li:             #000000;
+@toc-color-a:              #000000;
+@toc-tog-color-fg:         #000000;
+@toc-tog-color-bg:         #8B4513;
+@toc-itm-open-img:         url('@{asset-root}/close.gif');
+@toc-itm-clos-img:         url('@{asset-root}/open.gif');
+
+// titles
+@title-big-font-family:    "汉仪寒冰曲", "Crimson Text", Georgia, Times, "Times New Roman", serif;
+@title-shadow-color:       rgba(255,255,255,0);
+@h1-pd-before:             5.25rem;
+@h1-pd-after:              3.25rem;
+@h1-up-down-img:           url("@{asset-root}/ornate-border.svg");
+@title-color-fg-h1:        #4a4a49;
+@title-color-bg-h1:        rgba(218, 165, 32, 0);
+@title-color-bd-h1:        rgba(0, 0, 0, 0);
+@h2-pd-after:              3.25rem;
+@h2-up-down-img:           url("@{asset-root}/ornate-border.svg");
+@title-color-fg-h2:        #4a4a49;
+@title-color-bg-h2:        rgba(218, 165, 32, 0);
+@title-color-fg-h3:        #4a4a49;
+@title-color-bg-h3:        rgba(218, 165, 32, 0);
+@title-color-fg-h4:        #4a4a49;
+@title-color-bd-h4:        rgba(218, 165, 32, 0.65);
+@title-color-fg-h5:        #4a4a49;
+@title-color-fg-h6:        #4a4a49;
+
+// article
+@atc-title-fg:             #445044;
+@atc-meta-fg:              #666;
+@atc-img-dash:             #8A6;
+@content-bg-img:           url(~"@{asset-root}/bgcontent.gif");
+@divider-img:              url(~"@{asset-root}/divider.gif");
+
+// text
+@img-color-bd:             #fff;
+@text-color-main:          #333;
+@text-color-href:          #36C;
+@text-color-href-hv:       #06F;
+@text-font-family-nomal:   -apple-system,BlinkMacSystemFont,SF UI Text,Helvetica Neue,Helvetica,Arial,PingFang SC,Hiragino Sans GB,Source Han Sans SC,Source Han Sans HK,Noto Sans CJK SC,Microsoft YaHei,WenQuanYi Micro Hei,sans-serif;
+@text-font-family-quote:   'Lucida Calligraphy','Lucida Handwriting',KaiTi,STKaiti,cursive;
+@text-quote-fg:            #555;
+@text-quote-bg:            url(~"@{asset-root}/quote.gif");
+@text-ptn-bg:              #334127;
+@text-ptn-bg-img:          url(~"@{asset-root}/pattern.gif");
+
+// todo
+@todo-lst-st-0:            url('@{asset-root}/icon-ballot_box_empty.png');
+@todo-lst-st-1:            url('@{asset-root}/icon-ballot_box_cross.png');
+@todo-lst-st-2:            url('@{asset-root}/icon-ballot_box_doing.png');
+@todo-lst-st-3:            url('@{asset-root}/icon-ballot_box_doing.png');
+@todo-lst-st-4:            url('@{asset-root}/icon-ballot_box_ok.png');
+
+// table
+@table-color-bd:           #C2DFC2;
+@table-color-th-bg:        #349C49;
+@table-color-th-fg:        #FFFFFF;
+@table-color-td-bg:        #F0F7F1;
+@table-color-td-fg:        #000000;
+@table-color-odd-td-fg:    #000000;
+@table-color-odd-td-bg:    #FFFFFF;
+@table-color-td-fghv:      #000000;
+@table-color-td-bghv:      #BCC7D4;
+
+// paging
+@paging-color-fb-dsb:      #666;
+@paging-link-color-fb-dsb: #777;
+@paging-color-fb-act:      #333;
+@paging-link-color-fb-act: #337ab7;
+@paging-color-bg:          #fff;
+@paging-color-bd:          #ddd;
+
+// code
+@code-color-fg:            #4A4A49;
+@code-color-bg:            rgba(74, 74, 74, 0.3);
+@code-color-bd:            #4A4A49;
+@code-color-shadow:        rgba(255,255,255,0.7);
+@code-size-inline:         0.9em;
+@code-margin-inline:       1px 2px 1px 2px;
+@code-paddin-inline:       0px 1px 1px 1px;
+@code-position-top:        -2px;
+
+// math-jax
+@mathJax-bg-color:         #F0F0F0;
+@mathJax-fg-color:         #000000;

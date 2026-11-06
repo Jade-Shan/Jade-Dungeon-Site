@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		@@include('./src/main/html/parts/meta-charset.html', { })
+		@@include('./src/main/html/parts/importmap.html', { })
+		<title>test canvas</title>
+		@@include('./src/main/html/parts/favicon.html', { })
+		@@include('./src/main/html/parts/theme-workout.html', { })
+	</head>
+	<body>
+
+		<div id="test-workout-images"></div>
+
+
+	</body>
+	<script type="module">
+		import { TestWorkout } from "@jade-dungeon/site-page/test-workout";
+		window.onload = function () { TestWorkout.testShowWorkoutItem(); }
+	</script> 
+
+</html>
+

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		@@include('./src/main/html/parts/meta-charset.html', { })
+		@@include('./src/main/html/parts/importmap.html', { })
+		<title>test-trpg</title>
+		@@include('./src/main/html/parts/favicon.html', { })
+
+		@@include('./src/main/html/parts/vendor-98css.html', { })
+		@@include('./src/main/html/parts/theme-window-ui.html', { })
+		<!--
+			因为网页上的元素都是html和body的子元素，
+			所以要设置整个html和body的高度都是100%,
+			光设置内部元素的高度是没有用的
+			--->
+		<style>
+html,body {width:99%; height: 99%; overflow: auto;}
+		</style>
+	</head>
+	<body>
+<div id="test-desktop-01" class="desktop dock-content"></div>
+	</body>
+	<script type="module">
+		import { TestJadeTRPG } from "@jade-dungeon/site-page/test-jade-trpg";
+		window.onload = function() {
+			TestJadeTRPG.testTrpgUI({ apiRoot: '@@apiRoot', themeRoot: '@@staticRoot/themes' });
+		}
+	</script> 
+
+
+</html>
+

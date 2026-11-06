@@ -1,0 +1,44 @@
+{
+	"name": "jadeutils-workspace",
+	"version": "3.0.0",
+	"description": "jadeutils.v3 的 workspaces 根。不发布 —— 发布的是 common-utils/（@jade-dungeon/jade-utils）",
+	"license": "GPL-3.0-or-later",
+	"author": "Jade Shan",
+	"private": true,
+	"workspaces": [
+		"common-utils",
+		"site-page"
+	],
+	"scripts": {
+		"build": "npm run build -w common-utils && npm run build -w site-page",
+		"build:pkg": "npm run build:pkg -w common-utils",
+		"test": "npm run test -w common-utils && npm run test -w site-page && npm run test:arch",
+		"test:arch": "tsc -p tsconfig.arch.json && node --test \".arch-build/test/**/*.test.js\""
+	},
+	"devDependencies": {
+		"@types/jquery": "^3.5.32",
+		"@types/jsdom": "^30.0.0",
+		"@types/node": "^22.20.5",
+		"7.css": "^0.21.1",
+		"98.css": "^0.1.21",
+		"gulp": "^4.0.2",
+		"gulp-clean": "^0.4.0",
+		"gulp-cli": "^2.3.0",
+		"gulp-concat": "^2.6.1",
+		"gulp-file-include": "^2.3.0",
+		"gulp-less": "^5.0.0",
+		"gulp-minify-css": "^1.2.4",
+		"gulp-processhtml": "^1.2.0",
+		"gulp-rename": "^2.0.0",
+		"gulp-sourcemaps": "^3.0.0",
+		"gulp-typescript": "^6.0.0-alpha.1",
+		"gulp-uglify-es": "^3.0.0",
+		"jsdom": "^30.1.3",
+		"typescript": "^5.8.3"
+	},
+	"overrides": {
+		"gulp-processhtml": {
+			"through2": "^4.0.2"
+		}
+	}
+}

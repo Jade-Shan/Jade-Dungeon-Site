@@ -1,0 +1,22 @@
+// lo-fi 主题的入口：绿色 CRT 终端复古
+//
+// **加载顺序写在这里，不再依赖 gulp concat 的文件名排序。**
+// Less 是「最后赋值生效」，所以必须是：
+//
+//   1. theme-core/variables.less  —— 87 个变量的默认值
+//   2. 本主题的 part.1.less       —— 覆盖想改的
+//   3. theme-core/structure.less  —— 应用结构规则
+//
+// 顺序一反主题色就全失效。改这个文件前先看 2.4 节和第 19 节。
+//
+// 注意 green-code.less 排在 part.1.less **之前** —— 这是照搬
+// 切分前 concat 的顺序（文件名字典序 g < p）。它只定义
+// .syntaxhighlighter 的规则、不碰变量，所以位置其实无关紧要，
+// 但保持原样能让产物与改造前逐字节一致，便于验证。
+
+@import "../../theme-core/variables.less";
+
+@import "./green-code.less";
+@import "./part.1.less";
+
+@import "../../theme-core/structure.less";

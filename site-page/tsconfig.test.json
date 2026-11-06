@@ -1,0 +1,19 @@
+// site-page 项目的单元测试配置
+//
+// 和库侧同构：src/ 和 test/ 一起编到 .test-build/，由 node --test 跑产物。
+// `paths` 从 tsconfig.json 继承，所以测试里也能用包名 import 库。
+//
+// 用法：npm test -w site-page
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"outDir": ".test-build",
+		// rootDir 要盖住 src 和 test 两棵树
+		"rootDir": ".",
+		"declaration": false,
+		"sourceMap": true,
+		"inlineSources": true,
+		"types": ["node"]
+	},
+	"include": ["src/main/ts", "src/test/ts"]
+}

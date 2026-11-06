@@ -1,0 +1,20 @@
+// 库的单元测试配置
+//
+// 测的是编译产物而不是源码（见 docs/refactor-20261101.md 12.2 节），
+// 所以把 src/ 和 test/ 一起编到 .test-build/ 再由 node --test 跑产物。
+//
+// 用法：npm test -w common-utils
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"outDir": ".test-build",
+		// rootDir 要盖住 src 和 test 两棵树，否则 tsc 会抱怨文件在 rootDir 之外
+		"rootDir": ".",
+		"declaration": false,
+		"sourceMap": true,
+		"inlineSources": true,
+		// 只有测试需要 Node 的类型（node:test / node:assert）
+		"types": ["node"]
+	},
+	"include": ["src/main/ts", "src/test/ts"]
+}

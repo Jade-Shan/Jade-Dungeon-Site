@@ -1,0 +1,18 @@
+// 库的 npm 打包配置
+//
+// 与 CDN 构建的区别：输出 dist/、不带 sourcemap。
+// 切分之后库侧已经没有 test*.ts 了（两个 demo 脚本归了 site-page，见第 18 节决定 8），
+// 所以不再需要 exclude —— 留一条空的 exclude 当文档用，说明这件事。
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"outDir": "dist",
+		"rootDir": "src/main/ts",
+		"declaration": true,
+		"sourceMap": false,
+		"inlineSources": false
+	},
+	"include": ["src/main/ts"],
+	// 库侧没有 test*.ts，这条是空操作。保留是为了记住「曾经要排除它们」
+	"exclude": ["src/main/ts/**/test*.ts"]
+}

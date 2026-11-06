@@ -1,0 +1,474 @@
+// 内容主题的结构样式
+//
+// 原来叫 `comm.less`，在 `themes/blog/comm.less`。阶段 3 拆成了
+// `theme-core/variables.less`（87 个变量的默认值）+ 本文件（结构规则），
+// **本文件的内容一字未改**，只加了这段文件头。
+//
+// 本文件只引用变量、不定义值，所以不能独立编译 ——
+// 必须先 `@import` variables.less。顺序由各主题的 `index.less` 写死。
+//
+/* ==========================================
+ * body
+ * ========================================== */
+body { 
+	color: @text-color-main;
+	background:@page-bg-img ;
+	background-attachment:fixed;
+	font-family: normal @text-font-family-nomal;
+}
+/* ==========================================
+ * banner pic
+ * ========================================== */
+.vestibule { 
+	color:@banner-title-fg;
+	background-image:@banner-img ;
+	background-repeat:no-repeat; background-size:100% 100%;
+	padding-top:20px; padding-bottom:33%; margin:0;
+} 
+.vestibule>h1 { font:bold 2.5em @title-big-font-family; margin:8px; } 
+.vestibule>p  { color:@banner-desc-fg; font-size:1.7em; float:left; padding:8px 0 8px 10px; } 
+/* ==========================================
+ * content
+ * ========================================== */
+.ctx-main { 
+	border:solid transparent;
+	box-shadow: 0px 0px 8px 8px @main-bordr-shadow;
+	border-image:@main-bordr-img 0 15 0 15 round;
+	background:  @main-bg-img repeat-y center top;
+	background-repeat:repeat;
+	background-size:100%;
+	border-width:0 15px;
+	padding:50px 0px 0px;
+} 
+img.left { margin:0 18px 6px 0; } 
+img.atc-img, p > img { 
+	max-width: 95%; height: auto; 
+	border: 5px solid @img-color-bd; 
+}
+a { color:@text-color-href; } 
+a:hover { color:@text-color-href-hv; } 
+p,blockquote,ul { margin-bottom:1.2em; } 
+blockquote { 
+	color:@text-quote-fg;
+	background:@text-quote-bg  no-repeat;
+	font-family: @text-font-family-quote;
+	//font:normal 1em serif; 
+	padding-left:22px; border:0;
+} 
+blockquote p { padding:6px; } 
+ul { margin-left:0em; padding-left: 1.8em; } 
+.clearer { clear:both; display:block; font-size:0; line-height:0; height:0; } 
+.pattern { 
+	background:@text-ptn-bg @text-ptn-bg-img repeat-x;
+	clear:both; height:12px;
+} 
+/* ==========================================
+ * title
+ * ========================================== */
+/* 以下两条选择器原来写成 `.content h1, h2, h3, h4, h5, h6`。
+ * CSS 逗号列表里每个选择器都是独立的，只有 h1 被 .content 限定，
+ * h2~h6 泄漏成了全局规则，页面上所有标题都会中招。
+ * 实际后果：bootstrap 弹窗的 h4.modal-title 被加上 position: relative，
+ * 而同级的 button.close 是 float 的非定位元素，绘制层级在定位元素之下，
+ * 于是撑满整行宽的标题盖住了关闭按钮，命中测试同序 —— 按钮点不动。
+ * 这里给每个选择器都补全 .content 限定。 */
+.content h1 p, .content h2 p, .content h3 p,
+.content h4 p, .content h5 p, .content h6 p { margin-top: 0; }
+.content h1, .content h2, .content h3,
+.content h4, .content h5, .content h6 {
+	margin: 20px 0 10px; padding: 0; position: relative; 
+	cursor: text; font-weight: bold; 
+	text-shadow: @title-shadow-color 0 0.0625rem; 
+}
+.content h1 {
+	line-height: 1.3em; margin: 0em auto 1.2em auto; padding: 4px; border-radius: 5px; 
+	text-align: center; clear: both; 
+	text-shadow: 2px 2px 2px @title-shadow-color; 
+	background-color: @title-color-bg-h1; color: @title-color-fg-h1; 
+	box-shadow: 6px 6px 10px @title-shadow-color; 
+	border-bottom: 1px solid @title-color-bd-h1; 
+	font-size: 36px; font-family: @title-big-font-family;
+}
+
+.content h1::before {
+	background: @h1-up-down-img center top no-repeat;
+	transform: rotate(180deg);
+	content: '';
+	display: block;
+	padding-bottom: @h1-pd-before;
+	height: 0;
+	width: 100%;
+}
+.content h1::after {
+	background: @h1-up-down-img center top no-repeat;
+	content: '';
+	display: block;
+	padding-bottom: @h1-pd-after;
+	height: 0;
+	width: 100%;
+}
+.content h2 {
+	line-height: 1.3em; margin: 20px auto; padding: 4px; 
+	text-align: center; clear: both; 
+	text-shadow: 2px 2px 2px @title-shadow-color; 
+	background-color: @title-color-bg-h2; color: @title-color-fg-h2;
+	border-radius: 5px;
+	box-shadow: 3px 3px 5px @title-shadow-color; 
+	font-size: 30px; font-family: @title-big-font-family;
+}
+.content h2::after {
+	background: @h2-up-down-img  center top no-repeat;
+	content: '';
+	display: block;
+	padding-bottom: @h2-pd-after;
+	height: 0;
+	width: 100%;
+}
+.content h3 {
+	text-align: center; clear: both; 
+	text-shadow: 2px 2px 2px @title-shadow-color; 
+	background-color: @title-color-bg-h3; color: @title-color-fg-h3; 
+	/*
+	line-height: 1.3em; border-radius: 5px; padding: 4px; 
+	box-shadow: 0px 12px 8px -12px  @title-shadow-color; 
+	*/
+	border-bottom: 1px solid @title-color-fg-h3; 
+	font-size: 24px; font-family: @title-big-font-family;
+}
+.content h4 {
+	/*
+	*/
+	border-bottom: 1px solid @title-color-bd-h4; 
+	color: @title-color-fg-h4; font-size: 22px; 
+	font-family: @title-big-font-family;
+}
+.content h5 { color: @title-color-fg-h5; font-size: 18px; }
+.content h6 { color: @title-color-fg-h6; font-size: 16px; }
+/* ==========================================
+ * 分隔线
+ * ========================================== */
+.content { 
+	background:@content-bg-img no-repeat;
+	background-size:100%;
+	clear:both;
+	font-size:1.2em;
+	padding:0 5px 12px;
+} 
+.content .spacer { height:42px; } 
+.divider { 
+	background:@divider-img  no-repeat;
+	background-size:100%;
+	height:20px;
+	margin:24px 0;
+} 
+.item,.item .body { clear:both; }
+.item img { border:1px dashed @atc-img-dash; } 
+.item .title { color:@atc-title-fg; font-family: @title-big-font-family; font-size:2em; } 
+.item .title:first-letter { display:block; float:left; font-size:2.4em; } 
+.item .metadata { color:@atc-meta-fg; font-size:.9em; float:left; padding:0 0 6px 4px; } 
+/* ==========================================
+ *  foot
+ * ========================================== */
+.footer { 
+	color:@foot-txt-fg; text-align:center;
+	background:@foot-bg-img no-repeat;
+	background-size:100%; font-size:1.1em; line-height:41px; margin:0 auto;
+} 
+.footer .left { padding-left:40px; } 
+.footer .right { padding-right:40px; } 
+.footer a { color:@foot-href-fg; text-decoration:none; } 
+.footer a:hover,.footer .right a:hover { color:@foot-href-hv-fg; text-decoration:underline; } 
+.footer .right,.footer .right a { color:@foot-href-right-fg; } 
+/* ==========================================
+ * widgit
+ * ========================================== */
+.widget { margin: auto; }
+
+.widget h2 {
+	margin: auto;
+	padding: 5px 10px 5px 10px;
+	/* 侧栏标题在 .content 之外，原来是靠上面那条泄漏的全局 h2 规则拿到
+	 * text-shadow 的。那条规则补上 .content 限定后这里会丢掉阴影，
+	 * 所以显式声明同样的值，保持改动前后视觉一致。
+	 * （margin / font-weight 本来就是自己定义的，特异性更高，不受影响） */
+	text-shadow: @title-shadow-color 0 0.0625rem;
+	color: @toc-tog-color-fg;
+	background: @toc-tog-color-bg;
+	border: 1px solid @widget-border-color;
+	box-shadow: inset 0px 0px 10px @widget-inner-shadow-color, 10px  0px 5px @widget-out-shadow-color;
+	text-align: center;
+	text-transform: uppercase;
+	font-size: 1.3em;
+	line-height: 1.5em;
+	font-weight: 200;
+	letter-spacing: 0.01em;
+}
+
+.widget-content	{
+	background: @toc-bg-img repeat scroll 0 0 ; transition: 1s; 
+	overflow: hidden;
+	margin-bottom: 15px;
+	padding: 10px 20px 20px 20px;
+	border: 1px solid @widget-border-color;
+	color: @text-color-main;
+	box-shadow: inset 0px 0px 10px @widget-inner-shadow-color, 10px 10px 5px @widget-out-shadow-color;
+	font-weight: 200;
+	font-size: 1em;
+	font-smooth: always;
+	line-height: 1.2em;
+	letter-spacing: 0.02em;
+}
+
+.widget-item-control {
+	float: right;
+	height: 20px;
+	margin-top: -20px;
+	position: relative;
+	z-index: 10;
+}
+
+.img-text-lst {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	vertical-align: baseline;
+	outline: none;
+}
+
+.img-text-lst li {
+	border-bottom: 1px dashed @widget-splt-fg;
+	padding: .7em 0;
+	margin: 0;
+	vertical-align: baseline;
+	outline: none;
+}
+
+.img-text-lst div {
+	padding: 0;
+	padding-bottom: 0px;
+	vertical-align: baseline;
+	outline: none;
+}
+
+.img-text-itm {
+	margin: 0;
+	padding: 0;
+	vertical-align: baseline;
+	outline: none;
+}
+
+.item-thumbnail {
+	float: left;
+	margin: 0 5px 5px 0;
+	height: 72px;
+	padding: 5px;
+	outline: none;
+}
+
+.item-thumbnail img {
+	padding: 0px;
+	margin-right: 8px;
+	border-radius: 5px;
+	-moz-transition: all 0.2s ease-in-out;
+	-webkit-transition: all 0.2s ease-in-out;
+	-o-transition: all 0.2s ease-in-out;
+	transition: all 0.2s ease-in-out;
+	box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.1);
+}
+
+.item-thumbnail img.img-hov {
+	-webkit-filter: saturate(0.0);
+	-moz-filter: saturate(0.0);
+}
+
+.item-thumbnail img.img-hov:hover {
+	-webkit-filter: saturate(1.1);
+	-moz-filter: saturate(1.1);
+}
+.img-text-lst .item-title {
+	padding-bottom: .2em;
+}
+.img-text-lst .item-title a {
+	-webkit-transition: all 0.5s ease-in-out;
+	-moz-transition: all 0.5s ease-in-out;
+	color: @text-color-main;
+	margin: 0;
+	padding: 0;
+	padding-bottom: 0px;
+	vertical-align: baseline;
+	outline: none;
+}
+.img-text-lst .item-title a:visited {
+	color: @text-color-main;
+}
+.img-text-lst .item-title a:hover {
+	color: @text-color-main;
+	-webkit-transition: all 0.1s ease-in-out;
+	-moz-transition: all 0.1s ease-in-out;
+}
+
+
+/* ==========================================
+ * 目录
+ * ========================================== */
+
+.sideTocWrapper {
+	position: fixed; 
+	top: 60px; 
+	width: 300px;
+}
+.sideToc {
+	overflow: scroll;
+	background:@toc-bg-img repeat scroll 0 0 @toc-bg-color;
+	color: @toc-tog-color-fg; cursor: pointer; font-size: 1em; font-weight: 450;
+}
+.tocWrap { position: fixed; right: 10px; top: 60px; width: 300px; z-index: 100; opacity:0.3; }
+.tocWrap:hover { opacity:0.8; }
+.toggler {
+	position: relative; z-index: 101; 
+	border: 1px solid @widget-border-color; border-radius: 5px 5px 0 0; 
+	background: none repeat scroll 0 0 @toc-tog-color-bg; 
+	color: @toc-tog-color-fg; cursor: pointer; font-size: 1em; text-align: center; 
+}
+/* 目录展开与收起状态 */
+.tocIdx { 
+	overflow-x: hidden; overflow-y: auto; 
+	border: 1px solid @widget-border-color; 
+	border-radius: 0 0 5px 5px; 
+	background:@toc-bg-img repeat scroll 0 0 @toc-bg-color; transition: 1s; 
+}
+.tocIdx ul { margin: 0; padding-left: 30px; }
+.tocIdx ol { margin: 0; padding-left: 30px; }
+.tocIdx li { color: @toc-color-li; }
+.tocIdx a  { color: @toc-color-a ; }
+/* 目录层级收起/打开 */
+.tocIdx>ul ul   { overflow: hidden; }
+.toc-icon-open  { list-style-image:@toc-itm-open-img  }
+.toc-icon-close { list-style-image:@toc-itm-clos-img }
+.toc-sub-open   { width: auto; height: auto; transition: 1s width, 1s 1s height; }
+.toc-sub-close  { width: 0px; height: 0px; transition: 1s width, 1s 1s height; overflow: hidden; }
+/* ==========================================
+ * todo-list
+ * ========================================== */
+li.done0  { list-style-image:@todo-lst-st-0 }
+li.done1  { list-style-image:@todo-lst-st-1 }
+li.done2  { list-style-image:@todo-lst-st-2 }
+li.done3  { list-style-image:@todo-lst-st-3 }
+li.done4  { list-style-image:@todo-lst-st-4 }
+/* ==========================================
+ * 表格
+ * ========================================== */
+table { /* font-size: 12px; */ border-collapse: collapse; }
+th { padding: 8px; color: @table-color-th-fg; background: @table-color-th-bg; border: 1px solid @table-color-bd; font-weight: normal;}
+td { padding: 8px; color: @table-color-td-fg; background: @table-color-td-bg; border: 1px solid @table-color-bd; }
+tbody tr.odd   td { padding: 8px; color: @table-color-odd-td-fg; background: @table-color-odd-td-bg; }
+tbody tr:hover td { /* font-weight:bold; */ color: @table-color-td-fghv; background: @table-color-td-bghv; transition: 0.5s }
+/* DataTable插件的配色 */
+table.dataTable tbody tr { background-color: @table-color-td-bg; };
+.dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter, 
+.dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_processing, 
+.dataTables_wrapper .dataTables_paginate { color: @table-color-td-fg; }
+.dataTables_wrapper .dataTables_filter input { background-color: @table-color-td-bg; border: @code-color-bd; color: @code-color-fg; }
+.dataTables_wrapper .dataTables_length select { background-color: @table-color-td-bg; border: @code-color-bd; color: @code-color-fg; }
+.dataTables_wrapper .dataTables_paginate .paginate_button { padding: 0; margin-left: 0; }
+// disable
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled, .dataTables_wrapper 
+.dataTables_paginate .paginate_button.disabled:hover, .dataTables_wrapper .dataTables_paginate 
+.paginate_button.disabled:active {
+    color: @paging-color-fb-dsb !important;
+};
+.pagination > .disabled > a, .pagination > .disabled > a:focus, .pagination > .disabled > a:hover, 
+.pagination > .disabled > span, .pagination > .disabled > span:focus, 
+.pagination > .disabled > span:hover {
+    color: @paging-link-color-fb-dsb;
+    background-color: @paging-color-bg;
+    border-color: @paging-color-bd;
+};
+// enable
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    color: @paging-color-fb-act !important;
+};
+.pagination > li > a, .pagination > li > span {
+    color: @paging-link-color-fb-act;
+    background-color: @paging-color-bg;
+    border: 1px solid @paging-color-bd;
+};
+// current
+.pagination > .active > a, .pagination > .active > a:focus, .pagination > .active > a:hover, 
+.pagination > .active > span, .pagination > .active > span:focus, 
+.pagination > .active > span:hover {
+    color: @paging-color-bg;
+    background-color: @paging-link-color-fb-act;
+    border-color: @paging-link-color-fb-act;
+};
+/* ==========================================
+ * 代码高亮调整
+ * ========================================== */
+/* 高亮代码与bootstrap冲突，会错开一行。修改display回到block */
+.btn-group-vertical>.btn-group:after,.btn-group-vertical>.btn-group:before,.btn-toolbar:after,.btn-toolbar:before,
+.clearfix:after,.clearfix:before,.container-fluid:after,.container-fluid:before,.container:after,.container:before,
+.dl-horizontal dd:after,.dl-horizontal dd:before,.form-horizontal .form-group:after,.form-horizontal .form-group:before,
+.modal-footer:after,.modal-footer:before,.modal-header:after,.modal-header:before,.nav:after,.nav:before,
+.navbar-collapse:after,.navbar-collapse:before,.navbar-header:after,.navbar-header:before,.navbar:after,.navbar:before,
+.pager:after,.pager:before,.panel-body:after,.panel-body:before,.row:after,.row:before {
+/* block bad work with syntexhighlight 
+	display: table;
+*/
+	display: block;
+	content: " "
+}
+
+/* 行内代码 */
+.content h1>code, .content h2>code, .content h3>code, 
+.content h4>code, .content h5>code, .content h6>code,
+li>code, li>a>code, p>code, td>code { 
+	position: relative; top: @code-position-top;
+	margin: @code-margin-inline; padding: @code-paddin-inline; white-space: nowrap; 
+	border: 1px solid @code-color-bd; border-radius: 3px; font-size: @code-size-inline;
+	background-color: @code-color-bg; 
+	text-shadow: @code-color-shadow 0 0.0625rem;
+	color: @code-color-fg;}
+th>code { color: @table-color-th-fg; background: @table-color-th-bg; 
+	border: 1px solid @table-color-th-fg; 
+}
+/* 非syntaxhighlighter的代码块 */
+pre {color: @code-color-fg; background-color: @code-color-bg; border: 1px solid @code-color-bd; 
+	font-size: 15px; line-height: 19px; overflow: auto; 
+	padding: 6px 10px; border-radius: 3px; 
+}
+pre code { margin: 0; padding: 0; white-space: pre; border: none; background: transparent; }
+/*
+.highlight pre { background-color: #f8f8f8; border: 1px solid #cccccc; font-size: 13px; line-height: 19px; overflow: auto; padding: 6px 10px; border-radius: 3px; }
+*/
+/* 去掉syntaxhighlighter上的小问号 */
+.syntaxhighlighter .toolbar { display: none; }
+/* ==========================================
+ * 数学公式调整
+ * ========================================== */
+/*  .MathJax_Display { background-color: #FFFFFF; }  */
+/*
+span.MathJax{padding: 0 5px 0 5px;background-color: #CCCC99 }
+span.math{padding: 0 5px 0 5px;background-color: #CCCC99 }
+*/
+/* .MathJax_Display>.MathJax{padding:0px;background-color:rgba(255,255,255,0)} */
+.MathJax {color: @mathJax-fg-color;}
+.MathJax_Display{padding:0 5px 0 5px;background-color: @mathJax-bg-color; color: @mathJax-fg-color;}
+.content h1 .MathJax { background-color: @title-color-bg-h1; color: @title-color-fg-h1; }
+.content h2 .MathJax { background-color: @title-color-bg-h2; color: @title-color-fg-h2; }
+th .MathJax { color: @table-color-th-fg; background: @table-color-th-bg; }
+/* ==========================================
+ *  side-bar
+ * ========================================== */
+.side-blank-block { height: 60px; }
+/* ==========================================
+ *  pop-image
+ * ========================================== */
+#photo-frame>.modal-dialog{width:95%}
+/* 兜底规则，配合文件开头 title 区块的选择器修正一起看。
+ * .close 是 float 的非定位元素，绘制层级低于任何定位元素；同级的
+ * h4.modal-title 撑满整行宽，一旦它被加上 position 就会盖住关闭按钮，
+ * 命中测试同序，按钮直接点不动（曾由全局 h2~h6 规则泄漏引发）。
+ * 这里显式定位并抬高层级，之后再有类似的样式泄漏也不会复发。
+ * 用 .modal-header>.close 而非 #photo-frame 下的后代选择器，
+ * 让所有 bootstrap 弹窗都受保护，不限于图片查看框。 */
+.modal-header>.close{position:relative;z-index:1}

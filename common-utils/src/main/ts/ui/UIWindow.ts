@@ -683,6 +683,8 @@ export let defaultWinOption = {
 interface WinCfg {
 	// 可选：没传图标、注册表里也没有时为 undefined，此时图标位留空交给 CSS
 	icons?: IconGroup,
+	// 标题栏图标尺寸，默认 16
+	iconSize: (16|24|32|48),
 	bindWinOpt: IBindWinOpt, // 绑定窗口的操作
 	scalable: boolean, // 是否可以调整大小
 	body: {
@@ -784,6 +786,7 @@ export abstract class UIWindowAdapter implements UIObj {
 	cfg: WinCfg = {
 		// 向注册表要默认图标。没注册 provider 时是 undefined，窗口就没图标
 		icons: getIconGroup(),
+		iconSize: 16,
 		bindWinOpt: defaultWinOption,
 		scalable: true,
 		body: { overflow: "auto", initSize: {width: 800, height: 600} }
@@ -1107,16 +1110,29 @@ export namespace JadeWindowUI {
 	/** 生成窗口标题文本 ID */
 	export function genWinTitleTextId(id: string): string { return `titText-${id}`; }
 
+	/**
+	 * 标题栏图标像素尺寸 → `IconSize` 枚举。
+	 * `WinCfg.iconSize` 存的是像素值（16/24/32/48），`pickIconSize` 按
+	 * `IconSize` 枚举取图，这里做桥接。
+	 */
+	const PX_TO_ICON_SIZE: Record<16 | 24 | 32 | 48, IconSize> = {
+		16: IconSize.x16,
+		24: IconSize.x24,
+		32: IconSize.x32,
+		48: IconSize.x48,
+	};
+
 	let renderTitleBarIcon = (win: UIObj): HTMLDivElement => {
 		let titleBarIcon = document.createElement("div");
 		titleBarIcon.id = genWinTitleIconId(win.id);
 		titleBarIcon.classList.add("title-bar-icon", "cannot-select");
-		titleBarIcon.style.width  = '12px';
-		titleBarIcon.style.height = '12px';
-		// 没图标时加 .no-icon，CSS 把这 12px 收掉，标题文字不会凭空缩进
-		const icon12 = pickIconSize(win.cfg.icons, IconSize.x12);
-		if (icon12) {
-			titleBarIcon.style.backgroundImage = WebUtil.transBase64ImgURL(icon12);
+		titleBarIcon.style.width  = `${win.cfg.iconSize}px`;
+		titleBarIcon.style.height = `${win.cfg.iconSize}px`;
+		// 跟随 cfg.iconSize 取对应尺寸的图标；没图标时加 .no-icon，
+		// CSS 把图标位收掉，标题文字不会凭空缩进
+		const icon = pickIconSize(win.cfg.icons, PX_TO_ICON_SIZE[win.cfg.iconSize]);
+		if (icon) {
+			titleBarIcon.style.backgroundImage = WebUtil.transBase64ImgURL(icon);
 		} else {
 			titleBarIcon.classList.add("no-icon");
 		}

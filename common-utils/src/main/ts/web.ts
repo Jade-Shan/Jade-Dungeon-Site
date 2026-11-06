@@ -13,7 +13,7 @@ export type IEscapeUnicode = HTMLElement;
 /**
  * 规范可以使用的图标大小
  */
-export enum IconSize { x12, x16, x24, x32, x48 };
+export enum IconSize { x16, x24, x32, x48 };
 /**
  * Base64图片的类型
  */

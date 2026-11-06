@@ -16,12 +16,12 @@ import {
 	registerDefaultUIResource, JadeUIResource, DefaultIconGroup,
 } from '../../main/ts/resource.js';
 
-/** 造一个图标组，五种尺寸的 data 用尺寸名标记，便于断言取对了哪一张 */
+/** 造一个图标组，四种尺寸的 data 用尺寸名标记，便于断言取对了哪一张 */
 function fakeIconGroup(tag: string): IconGroup {
 	const img = (size: string): IBase64Img =>
 		({ format: Base64ImgType.BASE64_PNG, data: `${tag}-${size}` });
 	return {
-		x12: img('x12'), x16: img('x16'), x24: img('x24'),
+		x16: img('x16'), x24: img('x24'),
 		x32: img('x32'), x48: img('x48'),
 	};
 }
@@ -62,7 +62,7 @@ describe('注册 provider 之后', () => {
 
 	test('省略 name 时取 provider 的默认图标', () => {
 		registerUIResourceProvider(fakeProvider);
-		assert.equal(getIconGroup()?.x12.data, 'default-x12');
+		assert.equal(getIconGroup()?.x16.data, 'default-x16');
 	});
 
 	test('按名字取到对应图标组', () => {
@@ -86,7 +86,7 @@ describe('注册 provider 之后', () => {
 			getIconGroup: () => fakeIconGroup('second'),
 			getDesktopBackground: () => undefined,
 		});
-		assert.equal(getIconGroup()?.x12.data, 'second-x12');
+		assert.equal(getIconGroup()?.x16.data, 'second-x16');
 		assert.equal(getDesktopBackground(), undefined);
 	});
 
@@ -114,8 +114,8 @@ describe('registerDefaultUIResource（内置资源的 opt-in 注册）', () => {
 		for (const name of ['ELEC_FACE', 'ELEC_BUG', 'CAMERA']) {
 			const grp = getIconGroup(name);
 			assert.ok(grp, `${name} 应存在`);
-			// 五种尺寸都得有真实数据
-			for (const size of [IconSize.x12, IconSize.x16, IconSize.x24,
+			// 四种尺寸都得有真实数据
+			for (const size of [IconSize.x16, IconSize.x24,
 				IconSize.x32, IconSize.x48]) {
 				assert.ok(pickIconSize(grp, size)!.data.length > 0,
 					`${name} 的 ${IconSize[size]} 应有数据`);
@@ -152,12 +152,11 @@ describe('registerDefaultUIResource（内置资源的 opt-in 注册）', () => {
 
 describe('pickIconSize', () => {
 
-	test('五种尺寸各取对一张', () => {
+	test('四种尺寸各取对一张', () => {
 		const grp = fakeIconGroup('t');
 		const cases: Array<[IconSize, string]> = [
-			[IconSize.x12, 't-x12'], [IconSize.x16, 't-x16'],
-			[IconSize.x24, 't-x24'], [IconSize.x32, 't-x32'],
-			[IconSize.x48, 't-x48'],
+			[IconSize.x16, 't-x16'], [IconSize.x24, 't-x24'],
+			[IconSize.x32, 't-x32'], [IconSize.x48, 't-x48'],
 		];
 		for (const [size, want] of cases) {
 			assert.equal(pickIconSize(grp, size)?.data, want);
@@ -165,7 +164,7 @@ describe('pickIconSize', () => {
 	});
 
 	test('图标组是 undefined 时返回 undefined，不抛错', () => {
-		assert.equal(pickIconSize(undefined, IconSize.x12), undefined);
+		assert.equal(pickIconSize(undefined, IconSize.x16), undefined);
 	});
 
 });

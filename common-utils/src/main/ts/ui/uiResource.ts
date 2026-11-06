@@ -19,15 +19,14 @@
  */
 import { IBase64Img, IconSize } from '../web.js';
 
-/** 图标组：同一个图标的五种尺寸 */
+/** 图标组：同一个图标的四种尺寸 */
 export type IconGroup = {
-	x12: IBase64Img, x16: IBase64Img, x24: IBase64Img,
+	x16: IBase64Img, x24: IBase64Img,
 	x32: IBase64Img, x48: IBase64Img
 };
 
 /** `IconSize` 枚举到 `IconGroup` 字段名的映射 */
 const SIZE_KEY: Record<number, keyof IconGroup> = {
-	[IconSize.x12]: "x12",
 	[IconSize.x16]: "x16",
 	[IconSize.x24]: "x24",
 	[IconSize.x32]: "x32",

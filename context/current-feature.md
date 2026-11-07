@@ -22,6 +22,20 @@
 
 ## 历史记录
 
+- **`sandbox/index.html` 拆成选场景页 + 登录页**（2026-11-07）
+  - 原来 `index.html` 一个窗口里上半是「身份」表单、下半是「场景」表单
+    （迁移时照搬老应用 `sandtable-index.html` 的单页结构），拆成 `login.html`
+    （登录 / 注册）和 `index.html`（选场景 + 登录态 + 「以其他身份登录」）
+  - `sandboxLogin.ts` 拆成两个窗口类 + 两个页面类 + 两个入口：
+    `initSandboxLogin`（登录页，配 `apiRoot`）+ `initSandboxIndex`（选场景页，不发请求）
+  - 场景三级定位（campaignId/placeId/sceneId）始终走 URL 参数在两页间传递：
+    index「以其他身份登录」带着三级定位跳 login，登录成功（或放弃返回）原样带回，
+    用户不用重填
+  - 新增 `html/sandbox/login.html`；`index.html` 标题改「沙盘 - 选场景」、
+    脚本改 `initSandboxIndex` 并去掉 `apiRoot`
+  - 测试拆成 `sandbox.login.test.ts`（13 条）+ `sandbox.index.test.ts`（13 条），
+    `npm test -w site-page` 全绿
+  - **未做浏览器手工验证** —— 登录跳转、场景参数往返、换身份按钮都要在浏览器里看
 - **editor 元素列表：补回「资源文件」分类**（2026-11-06）
   - 老系统的元素列表有 6 个标签（team / creater / furnishing / door / wall /
     image），迁移时漏了 `image`（对应数据源 `imgResources`）。`sandboxScene.ts`

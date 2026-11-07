@@ -687,10 +687,11 @@ site-page/src/main/ts/sandbox/
 ├── sandboxView.ts     玩家视图：视野渲染 + 拖拽申请移动 + 掷骰
 ├── sandboxEditor.ts   GM 编辑器：Token 增删改 + 保存发布 + 阈值
 ├── sandboxWindows.ts  5 个窗口类（继承 UIWindowAdapter）
-└── sandboxLogin.ts    登录 / 注册
+└── sandboxLogin.ts    登录 / 注册 + 选场景（两个入口：initSandboxLogin / initSandboxIndex）
 
 site-page/src/main/html/sandbox/
-├── index.html         登录 + 选场景
+├── index.html         选场景（登录态 + 换身份）
+├── login.html         登录 / 注册
 ├── view.html          玩家视图
 └── editor.html        GM 编辑器
                        （没有 readme.html —— 见 4.4 节，文档改成 Markdown）
@@ -1012,6 +1013,13 @@ Canvas 渲染与窗口布局**测不了** —— jsdom 的 `getContext('2d')` �
   留这个口子是因为 jsdom 的 `window.location` 不可重定义
   （实测 `Cannot redefine property`），没有它就测不了「URL 拼得对不对」，
   而那正是容易错的地方（战役名里一个 `&` 没编码就把后面的参数截断）
+
+> **2026-11-07 拆成两页**：原来 `index.html` 一个窗口里上半是「身份」表单、
+> 下半是「场景」表单（迁移时照搬老应用 `sandtable-index.html` 的单页结构），
+> 现拆成 `login.html`（登录 / 注册）和 `index.html`（选场景 + 登录态 +
+> 「以其他身份登录」）。场景三级定位始终走 URL 参数在两页间传递，
+> 登录成功（或放弃返回）原样带回，用户不用重填。
+> 对应测试也拆成 `sandbox.login.test.ts`（13 条）+ `sandbox.index.test.ts`（13 条）。
 
 #### 测试：18 条单元测试 + 29 项冒烟验证
 

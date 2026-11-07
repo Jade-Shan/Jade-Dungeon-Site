@@ -22,6 +22,23 @@
 
 ## 历史记录
 
+- **`site-api` 增加禁用 HTTP 注册的开关 + CLI 注册入口**（2026-11-07）
+  - `config.properties` 新增 `AUTH_DISABLE_REGIST`：为 `true` 时 `/api/auth/regist`
+    一律返回 `{ status: 'err', msg: 'http regist disabled' }`，防止对公网开放时
+    被脚本批量刷注册；默认关闭（不配 = 关）。本地 `config.properties` 已启用
+    （前端登录页已无注册入口）
+  - `types.ts` 的 `IGlobalCfg.auth` 加 `disableRegist: boolean`；`config.ts` 读
+    `AUTH_DISABLE_REGIST` 填入；`routes/auth.ts` 的 regist 路由在参数校验**之前**
+    就拦下禁用场景
+  - 新增 `src/main/ts/userRegCli.ts`：命令行注册入口
+    `node dist/userRegCli.js -u <username> -p <password>`，复用 `initGlobalCfg`
+    （读同一个 `SQLITE_PATH`）+ `registUser()`，所以 CLI 建的用户和 HTTP 注册等价；
+    注册完显式 `closeSqlite()` 再退出（否则 9 个 worker 线程让进程挂着不退）
+  - `config.sample.properties` 加注释模板；`site-api/CLAUDE.md` 补目录结构、
+    架构概览、路由表、环境变量清单 + 一节「禁用 HTTP 注册」
+  - 验证：`tsc --noEmit` + `eslint` 通过；`npm run build` 产物 `dist/userRegCli.js`
+    别名正确改写为相对路径；用临时库实测 CLI 注册成功、重复注册返回
+    `username exists`、缺参数退出码 1
 - **登录页「注册」换成「修改密码」，新增 changePassword 页 + 后端接口**（2026-11-07）
   - 登录页 `SandboxLoginSelectors.registBtn` → `changePasswordBtn`（`#btn-change-password`），
     文本「修改密码」，点击带着用户名（URL 参数 `username`）跳 `changePassword.html`

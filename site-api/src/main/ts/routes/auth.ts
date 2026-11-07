@@ -29,6 +29,13 @@ export const handler: ICustomHandler[] = [
 		urlPtn: '/api/auth/regist',
 		method: HTTP_POST,
 		bindFunc: async (context: IRequestContext, data: IRequestData) => {
+			// 禁用 HTTP 注册时直接拒绝（见 config.ts 的 AUTH_DISABLE_REGIST）。
+			// 放在参数校验之前，即使带了合法参数也一律拦下，注册只能走 CLI。
+			if (context.globalCfg.auth?.disableRegist) {
+				sendJson(context, 200, { status: 'err', msg: 'http regist disabled' });
+				return;
+			}
+
 			const username = data.params.username;
 			const password = data.params.password;
 

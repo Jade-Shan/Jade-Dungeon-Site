@@ -144,6 +144,7 @@ TypeScript 源码在 **`src/main/ts/`** 下（2026-11-03 从 `src/` 迁入）：
 ```
 src/main/ts/          ← rootDir，所有 .ts 源码
 ├── index.ts          → dist/index.js
+├── userRegCli.ts     → dist/userRegCli.js
 ├── config.ts         → dist/config.js
 ├── types.ts          → dist/types.js
 ├── common/           → dist/common/
@@ -169,6 +170,7 @@ dist/                 ← 编译产物，结构扁平
 ```
 
 - **`src/main/ts/index.ts`** — 入口。用 `arg` 解析 CLI 参数（`--host`、`--port`、`--uploadPath`），调用 `initGlobalCfg(args)` 构建全局配置，连接 Redis，创建 Express 实例并调用 `initApp()` 挂载所有中间件和路由，最后监听端口。注册了 `SIGTERM`/`SIGINT` 优雅退出处理器。
+- **`src/main/ts/userRegCli.ts`** — 命令行注册用户的独立入口。`node dist/userRegCli.js -u <username> -p <password>` 在服务器本地建号，配合 `AUTH_DISABLE_REGIST`（关掉 HTTP 注册后）使用。复用 `initGlobalCfg` 读同一个 `SQLITE_PATH`、复用 `registUser()`，所以 CLI 注册的用户和 HTTP 注册完全等价。
 - **`src/main/ts/config.ts`** — 全局配置工厂。模块加载时自动执行 `dotenv.config({ path: 'config.properties' })` 读入配置（单文件，不再按环境分文件）。导出 `initGlobalCfg(args)` 函数，合并 CLI 参数、环境变量和硬编码默认值，返回 `IGlobalCfg` 对象（含 server、Redis、静态文件、上传等配置）。
 - **`src/main/ts/middleware/simpleHTTPServer.ts`** — Express 应用装配中心。导出 `initApp()` 和 `bindHandler()` 两个函数。`initApp()` 按顺序挂载：`helmet` → `cors` → `json/urlencoded` 解析 → `cookie-parser` → `multer` 上传 → 静态文件绑定 → 全局错误处理 → 自动发现并绑定路由。模块内的 `discoverHandlers()` 负责递归扫描路由目录、展开数组导出、校验与查重。`bindHandler()` 接收 `ICustomHandler[]` 数组，根据 `method` 位掩码分派到 GET/POST 绑定——两个 `if` 独立判断，所以 `HTTP_GET | HTTP_POST` 会同时绑上两个方法（2026-11-03 修复：原先是 `if / else if`，组合掩码时 POST 会被静默丢弃）。
 - **`src/main/ts/types.ts`** — 全局类型定义。包含 `IGlobalCfg`（server/redis/path/upload 四段结构）、`IRequestContext`、`IRequestData`、`ICustomHandler`、`IWeatherRec` 以及 `HTTP_GET`/`HTTP_POST` 常量。
@@ -194,7 +196,7 @@ dist/                 ← 编译产物，结构扁平
 |------|------|------|------|
 | `/` | `src/main/ts/routes/index.ts` | GET | 欢迎页，返回 JSON `{ message, version }` |
 | `/api/weather/forecast` | `src/main/ts/routes/weather.ts` | GET | 天气预报，支持 `conky`（文本）和 `json` 两种输出格式 |
-| `/api/auth/regist` | `src/main/ts/routes/auth.ts` | **POST** | 注册。数据存 SQLite，密码 scrypt 加盐哈希 |
+| `/api/auth/regist` | `src/main/ts/routes/auth.ts` | **POST** | 注册。数据存 SQLite，密码 scrypt 加盐哈希。`AUTH_DISABLE_REGIST=true` 时一律返回 `http regist disabled`，新用户改走 CLI（`userRegCli.ts`） |
 | `/api/auth/login` | `src/main/ts/routes/auth.ts` | **POST** | 登录。支持用户名+密码、或凭 token 续期（续期会签发新 token 并作废旧的） |
 | `/api/auth/change-password` | `src/main/ts/routes/auth.ts` | **POST** | 修改密码。靠旧密码验证身份，新密码强度（≥8 位且含数字/字母/特殊字符）校验，成功后作废该用户所有 token |
 | `/api/sandtable/load-map` | `routes/sandtable/map.ts` | GET+POST | 读场景数据 |
@@ -506,6 +508,7 @@ grep -rn "response\.end" src/main/ts/
 | `REDIS_HOST` | `127.0.0.1` | Redis 地址，应用于全部三个命名连接 |
 | `REDIS_PORT` | `6379` | Redis 端口，应用于全部三个命名连接 |
 | `REDIS_NAME` | `jade-dungeon` | 连接标签，见下 |
+| `AUTH_DISABLE_REGIST` | `false` | 为 `true` 时禁用 HTTP 注册（`/api/auth/regist` 一律报错），新用户只能走 CLI（`userRegCli.ts`） |
 
 另外两个变量不在配置文件里，但代码会读：`HOST`、`UPLOAD_PATH`（都可用 CLI 参数覆盖）。
 
@@ -536,6 +539,23 @@ grep -rn "response\.end" src/main/ts/
 ### 优先级
 
 CLI 参数（`--port` / `--host` / `--uploadPath`）> 配置文件 > 代码里的硬编码默认值。
+
+### 禁用 HTTP 注册（`AUTH_DISABLE_REGIST`）
+
+前端登录页已经没有注册入口（`注册` 按钮 2026-11-07 换成 `修改密码`），
+而 `/api/auth/regist` 对公网开放时会被脚本批量刷注册。
+`AUTH_DISABLE_REGIST=true` 会让它一律返回 `{ status: 'err', msg: 'http regist disabled' }`。
+
+默认关闭（不配 = 关）。关掉 HTTP 注册后，管理员在服务器本地用 CLI 建号：
+
+```bash
+npm run build
+node dist/userRegCli.js -u <username> -p <password>
+```
+
+CLI 与 HTTP 注册共用 `registUser()`、读同一个 `SQLITE_PATH`，注册出的用户完全等价。
+密码若含 shell 特殊字符（`!` `$` `` ` `` 等）要用单引号包起来。
+密码强度校验与 HTTP 注册一致：**不做**强度检查，只查非空。
 
 ### SQLite 配置
 

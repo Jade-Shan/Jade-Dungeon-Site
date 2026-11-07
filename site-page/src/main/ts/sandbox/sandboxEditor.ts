@@ -48,6 +48,8 @@ export interface SandboxEditorConfig {
 	loginToken: string;
 	/** 窗口 URL 图标的基地址（如 `…/3rd/SE98`），各窗口构造 IconRec 时填入 */
 	iconBaseUrl: string;
+	/** 骰子窗口 URL 图标的基地址（如 `…/3rd/jade-trpg`），独立于其他窗口的图标 CDN */
+	diceIconBaseUrl: string;
 }
 
 /**
@@ -184,7 +186,7 @@ export class SandboxEditor {
 		});
 
 		this.sceneWin = new SandboxSceneWindow(desktop, 'sandbox-scene',
-			`编辑场景：${this.cfg.scene.campaignId} / ${this.cfg.scene.sceneId}`,
+			`编辑场景：${this.cfg.scene.campaignId} / ${this.cfg.scene.placeId} / ${this.cfg.scene.sceneId}`,
 			{
 				icons: this.icon('mimes', 'application-gpx.png'),
 				body: { initSize: { width: 800, height: 560 }, overflow: 'scroll' },
@@ -207,7 +209,8 @@ export class SandboxEditor {
 
 		this.diceWin = new SandboxDiceWindow(desktop, 'sandbox-dice', '检定',
 			{
-				icons: this.icon('apps', 'config-users.png'),
+				// supportSizes 62 = 16|24|32|48|64；标题栏取 16、Dock 取 48
+				icons: { supportSizes: 62, baseUrl: this.cfg.diceIconBaseUrl, category: 'dice', name: 'd20.png' },
 				body: { initSize: { width: 340, height: 300 }, overflow: 'auto' },
 			});
 		this.diceWin.renderIn();

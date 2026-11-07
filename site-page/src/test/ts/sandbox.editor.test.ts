@@ -29,6 +29,7 @@ const cfg: SandboxEditorConfig = {
 	assetRoot: '//cdn.x/themes/trpg/images',
 	desktopId: 'desktop',
 	iconBaseUrl: '//cdn.x/3rd/SE98',
+	diceIconBaseUrl: '//cdn.x/3rd/jade-trpg',
 	scene: { campaignId: 'c1', placeId: 'p1', sceneId: 's1' },
 	username: 'gm',
 	loginToken: 'tk',

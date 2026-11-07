@@ -1,7 +1,5 @@
 import { IconRec, WebUtil } from '@jade-dungeon/jade-utils/web';
-import {
-	JadeUIResource, DefaultIconGroup, registerDefaultUIResource,
-} from '@jade-dungeon/jade-utils/resource';
+import { registerDefaultUIResource } from '@jade-dungeon/jade-utils/resource';
 import { UIDesktop } from '@jade-dungeon/jade-utils/ui-window';
 import { IToken2D, SandTable } from '../trpg/sandtable.js';
 import { renderRollResults, SandboxApi, SceneId } from './sandboxApi.js';
@@ -48,6 +46,8 @@ export interface SandboxViewConfig {
 	loginToken?: string;
 	/** 窗口 URL 图标的基地址（如 `…/3rd/SE98`），各窗口构造 IconRec 时填入 */
 	iconBaseUrl: string;
+	/** 骰子窗口 URL 图标的基地址（如 `…/3rd/jade-trpg`），独立于其他窗口的图标 CDN */
+	diceIconBaseUrl: string;
 }
 
 /** 视野范围（像素）。老代码写死 500，这里保持一致 */
@@ -120,15 +120,16 @@ export class SandboxView {
 		const desktop = new UIDesktop(host, { dockBar: { range: 300, maxScale: 1.8 } });
 
 		this.sceneWin = new SandboxSceneWindow(desktop, 'sandbox-scene',
-			`${this.cfg.scene.campaignId} / ${this.cfg.scene.sceneId}`,
+			`${this.cfg.scene.campaignId} / ${this.cfg.scene.placeId} / ${this.cfg.scene.sceneId}`,
 			{ 
 				icons: this.icon('mimes', 'application-gpx.png'),
 				body: { initSize: { width: 800, height: 600 }, overflow: 'scroll' } });
 		this.sceneWin.renderIn();
 
 		this.diceWin = new SandboxDiceWindow(desktop, 'sandbox-dice', '检定',
-			{ 
-				icons: this.icon('apps', 'config-users.png'),
+			{
+				// supportSizes 62 = 16|24|32|48|64；标题栏取 16、Dock 取 48
+				icons: { supportSizes: 62, baseUrl: this.cfg.diceIconBaseUrl, category: 'dice', name: 'd20.png' },
 				body: { initSize: { width: 360, height: 300 }, overflow: 'auto' } });
 		this.diceWin.renderIn();
 
@@ -384,6 +385,8 @@ export class SandboxView {
  *   apiRoot: '@@apiRoot',
  *   assetRoot: '@@staticRoot/themes/trpg/images',
  *   desktopId: 'sandbox-desktop',
+ *   iconBaseUrl: '@@cdn3rd/SE98',
+ *   diceIconBaseUrl: '@@cdn3rd/jade-trpg',
  *   scene: {campaignId, placeId, sceneId},
  *   username: WebUtil.loadCookieValue('username'),
  *   loginToken: WebUtil.loadCookieValue('loginToken'),

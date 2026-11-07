@@ -176,13 +176,13 @@ dist/                 ← 编译产物，结构扁平
 - **`src/main/ts/types.ts`** — 全局类型定义。包含 `IGlobalCfg`（server/redis/path/upload 四段结构）、`IRequestContext`、`IRequestData`、`ICustomHandler`、`IWeatherRec` 以及 `HTTP_GET`/`HTTP_POST` 常量。
 - **`src/main/ts/routes/`** — 业务路由 handler。每个文件 export `handler`，可以是单个 `ICustomHandler` 或 `ICustomHandler[]`，由 `simpleHTTPServer.ts` 在启动时递归扫描并自动注册（支持子目录分组）。新增路由只需在此目录下新建文件并 export `handler`，无需修改其他代码。
 - **`src/main/ts/service/`** — 服务层。封装第三方 API 调用与业务逻辑，供 routes 调用。当前包含天气数据聚合服务。
-- **`src/main/ts/db/`** — SQLite 数据层。`SqlitePool.ts` 是基于 `worker_threads` 的读写分离连接池（8 读 worker + 1 写 worker，读写各自独立连接，WAL 模式）；`worker.ts` 在独立线程里持有 `better-sqlite3` 连接并缓存 prepared statement；`index.ts` 提供连接池单例、建表与启动时清理过期 token。**仅 auth 模块使用**，其他模块仍走 Redis。
+- **`src/main/ts/db/`** — SQLite 数据层。`SqlitePool.ts` 是基于 `worker_threads` 的读写分离连接池（8 读 worker + 1 写 worker，读写各自独立连接，WAL 模式）；`worker.ts` 在独立线程里持有 `better-sqlite3` 连接并缓存 prepared statement；`index.ts` 提供连接池单例、建表与启动时清理过期 token。auth / blog / gallery 都走这里；sandtable 只有战役归属（owner）走这里，场景/移动/骰子仍在 Redis。
 - **`src/main/ts/service/blogService.ts`** — 博客与相册。数据存 SQLite。负责分页归一化（`normalizePaging` / `calcPageCount`，旧实现的页数公式 `parseInt((n+1)/pageSize)` 算错了，36 条会算出 3 页）、表字段与响应字段的映射、以及相册写入的事务。内含 `withTransaction` 串行锁——写池只有 1 个 worker 共用连接，并发 `BEGIN` 会撞「cannot start a transaction within a transaction」。
 - **`src/main/ts/scripts/`** — 手动执行的脚本，不参与服务启动。`migrateBlogRedisToSqlite.ts` 把 blog/gallery 从 Redis 搬到 SQLite（默认演练，需 `--write`）；`backfillExcerpt.ts` 回填文章摘要（加 `--all` 可重算全部）；`backupBlogData.ts` 备份数据与图片，取代旧后端的 `backup.js`。三个脚本都是**默认演练、需显式 `--write`** 才写数据。
 - **`src/main/ts/service/diceService.ts`** — 骰子检定。`parseRollCmd()` 解析 `3d6+3-2` 这类表达式（**先整体校验形状再按符号切分**，旧实现用正则扫描导致运算符丢失）、`rollDice()` 掷骰、以及检定状态的 Redis Hash 读写。`msg` 的输出格式沿用旧实现，前端直接显示它。
-- **`src/main/ts/service/sandtableService.ts`** — TRPG 沙盘的数据访问与权限校验。集中管理 `jadedungeon::sandtable::*` 的 key 生成（**`scence` 是拼写错误但保持原样** —— 理由不再是「怕旧后端读不到」，而是 Redis 里已经存着用这个拼写的数据，改名要连带迁移 key）、场景读写、移动请求的 Hash 操作，以及 `authorizeSceneWrite()`——身份从 token 推导而非信客户端传的 username。
+- **`src/main/ts/service/sandtableService.ts`** — TRPG 沙盘的数据访问与权限校验。战役归属（owner）存在 SQLite 的 `sandtable_campaign`，场景读写、移动请求的 Hash 操作仍在 Redis（key 前缀 `jadedungeon::sandtable::*`，其中 **`scence` 是拼写错误但保持原样** —— 理由不再是「怕旧后端读不到」，而是 Redis 里已经存着用这个拼写的数据，改名要连带迁移 key）。`authorizeSceneWrite()` 的身份从 token 推导而非信客户端传的 username。
 - **`src/main/ts/service/authService.ts`** — 认证业务逻辑。scrypt 加盐哈希（`timingSafeEqual` 比较）、token 签发/解析/校验、注册与登录（密码登录 + token 续期两条路径）。token 用 `crypto.randomUUID()` 生成，**不要用 `common/jadeutils.ts` 的 `uuid()`**——后者基于 `Math.random()`，不是密码学安全的随机源。
-- **`src/main/ts/lib/redis.ts`** — Redis 多连接管理（基于 `ioredis`）。用 `Map<string, Redis>` 管理多个命名连接（当前为 `trpg`、`blog`、`auth`），每个连接指向 `127.0.0.1:6379`。导出 `initRedis()`、`closeRedis()`、`closeAllRedis()`。连接失败不阻塞服务启动（`lazyConnect: true`），最多重试 3 次。
+- **`src/main/ts/lib/redis.ts`** — Redis 多连接管理（基于 `ioredis`）。用 `Map<string, Redis>` 管理命名连接（当前只有 `trpg`，blog / gallery / auth 已迁 SQLite），指向 `127.0.0.1:6379`。导出 `initRedis()`、`closeRedis()`、`closeAllRedis()`。连接失败不阻塞服务启动（`lazyConnect: true`），最多重试 3 次。
 - **`src/main/ts/common/jadeutils.ts`** — 通用工具函数。当前提供 `uuid()` 生成 UUID v4 格式字符串。
 - **`eslint.config.mjs`** — ESLint 配置文件。
 - **`static/`** — 静态文件根目录，通过 `/static` 路径映射对外暴露。含 `html/` 和 `image/` 子目录。
@@ -505,8 +505,8 @@ grep -rn "response\.end" src/main/ts/
 |------|--------|------|
 | `PORT` | `3000` | 监听端口。配置文件里是 8089 |
 | `NODE_ENV` | `development` | 为 `development` 时错误响应带异常细节，否则只返回通用提示 |
-| `REDIS_HOST` | `127.0.0.1` | Redis 地址，应用于全部三个命名连接 |
-| `REDIS_PORT` | `6379` | Redis 端口，应用于全部三个命名连接 |
+| `REDIS_HOST` | `127.0.0.1` | Redis 地址，应用于 sandtable 命名连接 |
+| `REDIS_PORT` | `6379` | Redis 端口，应用于 sandtable 命名连接 |
 | `REDIS_NAME` | `jade-dungeon` | 连接标签，见下 |
 | `AUTH_DISABLE_REGIST` | `false` | 为 `true` 时禁用 HTTP 注册（`/api/auth/regist` 一律报错），新用户只能走 CLI（`userRegCli.ts`） |
 
@@ -518,7 +518,7 @@ grep -rn "response\.end" src/main/ts/
 
 ```
 ✅ Redis 已连接: 127.0.0.1:6379 (trpg as jade-dungeon-dev:trpg)
-# Redis 侧 CLIENT LIST 可见：jade-dungeon-dev:trpg / :blog / :auth
+# Redis 侧 CLIENT LIST 可见：jade-dungeon-dev:trpg
 ```
 
 它**不参与 Redis key 的拼接**，所以改它不影响数据读写
@@ -571,9 +571,9 @@ CLI 与 HTTP 注册共用 `registUser()`、读同一个 `SQLITE_PATH`，注册�
 | auth | SQLite | `auth_user`、`auth_token` |
 | blog | SQLite | `blog_article` |
 | gallery | SQLite | `gallery_album`、`gallery_photo` |
-| sandtable | **Redis** | `jadedungeon::sandtable::*` |
+| sandtable | SQLite + Redis | 战役归属在 `sandtable_campaign`，场景/移动/骰子在 Redis |
 
-sandtable 留在 Redis 是有意的——场景数据是整块 JSON，key-value 形态更合适。
+sandtable 的场景数据留在 Redis 是有意的——整块 JSON，key-value 形态更合适。
 
 ### ⚠️ 改表结构要走 `COLUMN_MIGRATIONS`
 
@@ -596,16 +596,14 @@ sandtable 留在 Redis 是有意的——场景数据是整块 JSON，key-value 
 
 ### Redis 配置
 
-`initGlobalCfg()` 注册三个命名连接，地址与端口都取自 `config.properties`
-（2026-11-04 前是硬编码的）：
+`initGlobalCfg()` 注册一个命名连接，地址与端口都取自 `config.properties`
+（2026-11-04 前是硬编码的；blog / auth 连接 2026-11-08 随数据迁 SQLite 一并移除）：
 
 | Key | 用途 | connectionName |
 |-----|------|---------------|
-| `trpg` | TRPG 业务数据 | `<REDIS_NAME>:trpg` |
-| `blog` | 博客数据 | `<REDIS_NAME>:blog` |
-| `auth` | 认证数据 | `<REDIS_NAME>:auth` |
+| `trpg` | sandtable 场景/移动/骰子 | `<REDIS_NAME>:trpg` |
 
-三者**共用同一个 Redis 实例**，靠 key 前缀（`jadedungeon::<模块>::...`）隔离数据，
+连接只指向同一个 Redis 实例，靠 key 前缀（`jadedungeon::<模块>::...`）隔离数据，
 所以 `REDIS_HOST` / `REDIS_PORT` 只需配一组。
 
 连接失败不阻塞服务启动（`lib/redis.ts` 里 catch 住了），只打 `⚠️` 告警。

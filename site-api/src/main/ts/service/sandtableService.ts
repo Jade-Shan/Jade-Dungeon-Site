@@ -1,10 +1,12 @@
 import { getRedis } from '@/lib/redis';
+import { getSqlite } from '@/db';
 import { verifyToken } from '@/service/authService';
 
 /**
  * TRPG 沙盘的数据访问与权限校验。
  *
- * 数据仍存 Redis，只有 auth 迁到了 SQLite。
+ * 场景数据 / 移动请求 / 骰子结果仍存 Redis，战役归属（owner）迁到了 SQLite
+ * 的 `sandtable_campaign` 表（`campaign_id` 即用户手填的战役名）。
  *
  * key 前缀 `jadedungeon::sandtable::*` **格式不能动** —— 旧后端已停用，
  * 所以理由不再是「两代互通」，而是 **Redis 里已经存着用这些 key 的数据**。
@@ -18,9 +20,6 @@ const REDIS_KEY = 'trpg';
 
 export const genSceneKey = (campaignId: string, placeId: string, sceneId: string): string =>
 	`jadedungeon::sandtable::scence::${campaignId}::${placeId}::${sceneId}`;
-
-export const genOwnerKey = (campaignId: string): string =>
-	`jadedungeon::sandtable::campaignOwner::${campaignId}`;
 
 export const genMoveReqKey = (campaignId: string, placeId: string, sceneId: string): string =>
 	`jadedungeon::sandtable::moveReq::${campaignId}::${placeId}::${sceneId}`;
@@ -37,11 +36,14 @@ export const saveScene = async (campaignId: string, placeId: string, sceneId: st
 
 // ───────────────────────── 战役归属 ─────────────────────────
 
-export const getCampaignOwner = async (campaignId: string): Promise<string | null> =>
-	getRedis(REDIS_KEY).get(genOwnerKey(campaignId));
-
-export const setCampaignOwner = async (campaignId: string, owner: string): Promise<void> => {
-	await getRedis(REDIS_KEY).set(genOwnerKey(campaignId), owner);
+/**
+ * 读战役归属。数据在 SQLite 的 `sandtable_campaign` 表，
+ * `campaignId` 即 `campaign_id` 列（用户手填的战役名）。
+ */
+export const getCampaignOwner = async (campaignId: string): Promise<string | null> => {
+	const row = await getSqlite().queryOne<{ owner: string }>(
+		'SELECT owner FROM sandtable_campaign WHERE campaign_id = ?', [campaignId]);
+	return row?.owner ?? null;
 };
 
 // ───────────────────────── 移动请求 ─────────────────────────
@@ -102,16 +104,22 @@ export const authorizeSceneWrite = async (campaignId: string, token?: string): P
 		return { ok: false, msg: 'not login' };
 	}
 
-	const owner = await getCampaignOwner(campaignId);
-	if (!owner || owner.length < 1) {
-		// 战役尚无归属，首个写入者占有它
-		await setCampaignOwner(campaignId, username);
-		console.log(`🎲 ${username} 创建了战役 ${campaignId}`);
-		return { ok: true, username, msg: 'campaign created' };
-	}
+	// 占有或校验归属。INSERT OR IGNORE 撞主键冲突时静默跳过（changes=0），
+	// 再查出真正的 owner 比对，把原来的 get-then-set 两步合成一次原子判断，
+	// 避免并发首次写入同名战役时后到者也误判成「创建成功」。
+	const now = Date.now();
+	const inserted = await getSqlite().run(
+		`INSERT OR IGNORE INTO sandtable_campaign (campaign_id, owner, detail_info, create_time, update_time)
+		 VALUES (?, ?, '', ?, ?)`,
+		[campaignId, username, now, now]);
 
+	const owner = await getCampaignOwner(campaignId);
 	if (owner !== username) {
 		return { ok: false, msg: 'not owner' };
+	}
+	if (inserted.changes > 0) {
+		console.log(`🎲 ${username} 创建了战役 ${campaignId}`);
+		return { ok: true, username, msg: 'campaign created' };
 	}
 	return { ok: true, username, msg: 'ok' };
 };

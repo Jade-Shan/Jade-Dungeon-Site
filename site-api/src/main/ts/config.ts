@@ -20,8 +20,8 @@ export const initGlobalCfg = (args: ICliArgs): IGlobalCfg => {
 	const uploadPath = args['--uploadPath'] || process.env.UPLOAD_PATH || '/tmp/';
 
 	// Redis 连接参数来自 config.properties，不再硬编码。
-	// 三个命名连接（trpg / blog / auth）沿用旧后端的划分，共用同一个实例，
-	// 靠 key 前缀隔离数据，所以 host / port 对三者相同。
+	// 现在只剩 sandtable（场景/移动/骰子）还在用 Redis，blog / gallery / auth
+	// 都已迁到 SQLite，所以只保留 trpg 一个命名连接。
 	const redisHost = process.env.REDIS_HOST || '127.0.0.1';
 	const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
 	// REDIS_NAME 只做连接标签（ioredis 的 connectionName），用于在 Redis 的
@@ -73,8 +73,6 @@ export const initGlobalCfg = (args: ICliArgs): IGlobalCfg => {
 		crosSite: crosSite,
 		redis: [
 			{ key: 'trpg', host: redisHost, port: redisPort, name: `${redisName}:trpg` },
-			{ key: 'blog', host: redisHost, port: redisPort, name: `${redisName}:blog` },
-			{ key: 'auth', host: redisHost, port: redisPort, name: `${redisName}:auth` },
 		],
 		path: {
 			appRootDir: path.resolve(__dirname),

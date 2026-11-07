@@ -1,6 +1,4 @@
-import {
-	JadeUIResource, DefaultIconGroup, registerDefaultUIResource,
-} from '@jade-dungeon/jade-utils/resource';
+import { registerDefaultUIResource } from '@jade-dungeon/jade-utils/resource';
 import { JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam } from '@jade-dungeon/jade-utils/ui-window';
 import { WebUtil } from '@jade-dungeon/jade-utils/web';
 import { SandboxApi } from './sandboxApi.js';
@@ -83,6 +81,8 @@ export interface SandboxLoginConfig {
 	editorUrl?: string;
 	/** 桌面容器的 id，默认 `sandbox-desktop` */
 	desktopId?: string;
+	/** 窗口 URL 图标的基地址（如 `…/3rd/SE98`），统一传给桌面的所有窗口 */
+	iconBaseUrl: string;
 	/** 页面选择器，缺省项走默认 */
 	selectors?: SandboxLoginSelectors;
 	/**
@@ -268,11 +268,16 @@ export class SandboxLogin {
 		if (!host) {
 			throw new Error(`找不到桌面容器 #${desktopId}`);
 		}
-		const desktop = new UIDesktop(host, { dockBar: { range: 300, maxScale: 1.8 } });
-		const icons = JadeUIResource.getDefaultIcon(DefaultIconGroup.ELEC_FACE);
+		const desktop = new UIDesktop(host, {
+			iconBaseUrl: this.cfg.iconBaseUrl,
+			dockBar: { range: 300, maxScale: 1.8 },
+		});
 
 		this.win = new SandboxLoginWindow(desktop, 'sandbox-login', 'Jade Dungeon 沙盘',
-			{ icons, body: { initSize: { width: 360, height: 430 }, overflow: 'auto' } },
+			{
+				icons: { supportSizes: 30, baseUrl: "", category: "actions", name: "blueman-pair.png" },
+				body: { initSize: { width: 360, height: 430 }, overflow: 'auto' },
+			},
 			this.fieldIds());
 		this.win.renderIn();
 

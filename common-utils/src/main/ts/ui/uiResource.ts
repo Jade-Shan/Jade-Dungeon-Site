@@ -17,13 +17,38 @@
  * `resource.ts` 会成为独立的可选包 `@jade-dungeon/window-ui-icons`，
  * 本文件留在 `window-ui` 包里。
  */
-import { IBase64Img, IconSize } from '../web.js';
+import { IBase64Img, IconRec, IconSize, WebUtil } from '../web.js';
 
 /** 图标组：同一个图标的四种尺寸 */
 export type IconGroup = {
 	x16: IBase64Img, x24: IBase64Img,
 	x32: IBase64Img, x48: IBase64Img
 };
+
+/**
+ * 窗口图标：兼容两种图片来源
+ *
+ * - `IconGroup` —— base64 图片组（`resource.ts` 里内置的那套），
+ *   按 {@link pickIconSize} 取尺寸
+ * - `IconRec` —— URL 图片记录（见 `web.ts`），按 {@link WebUtil.transIcon2url}
+ *   拼出「基地址/分类/尺寸/文件名」的 http 地址
+ *
+ * win98 风格的窗口标题栏与 Dock 栏都收这个类型，由 {@link resolveIconURL}
+ * 统一转成 CSS 的 `background-image` URL。
+ */
+export type WindowIcon = IconGroup | IconRec;
+
+/**
+ * 判断图标是不是 URL 记录（`IconRec`）
+ *
+ * `IconRec` 必有 `baseUrl` 字段，`IconGroup` 没有，据此判别。
+ *
+ * @param icon - 窗口图标
+ * @returns {boolean} 是 `IconRec` 则 true
+ */
+export function isIconRec(icon: WindowIcon): icon is IconRec {
+	return 'baseUrl' in icon;
+}
 
 /** `IconSize` 枚举到 `IconGroup` 字段名的映射 */
 const SIZE_KEY: Record<number, keyof IconGroup> = {
@@ -46,6 +71,39 @@ export function pickIconSize(grp: IconGroup | undefined,
 	if (!grp) { return undefined; }
 	const key = SIZE_KEY[size];
 	return key ? grp[key] : undefined;
+}
+
+/** 像素尺寸 → `IconSize` 枚举。`IconGroup` 只具备 16/24/32/48 四种 */
+const PX_TO_ICON_SIZE: Record<number, IconSize> = {
+	16: IconSize.x16,
+	24: IconSize.x24,
+	32: IconSize.x32,
+	48: IconSize.x48,
+};
+
+/**
+ * 把窗口图标转成 CSS `background-image` 的 URL
+ *
+ * 两种来源各走一条路：
+ * - `IconRec` → {@link WebUtil.transIcon2url} 拼出 http 地址，再包成 `url('…')`
+ * - `IconGroup` → {@link pickIconSize} 取对应尺寸，再转 `url('data:…')`
+ *
+ * @param icon - 窗口图标，`undefined` 时返回 `undefined`
+ * @param px - 想要的像素尺寸（16/24/32/48）
+ * @param baseUrl - `IconRec` 的基地址，**统一注入点**。传了就覆盖
+ *                  `IconRec.baseUrl`，不传则用记录里自己写的值
+ * @returns {string | undefined} 可直接赋给 `style.backgroundImage` 的 URL
+ */
+export function resolveIconURL(icon: WindowIcon | undefined, px: number,
+	baseUrl?: string): string | undefined //
+{
+	if (!icon) { return undefined; }
+	if (isIconRec(icon)) {
+		return `url('${WebUtil.transIcon2url(icon, px, baseUrl)}')`;
+	}
+	const size = PX_TO_ICON_SIZE[px];
+	const img = size ? pickIconSize(icon, size) : undefined;
+	return img ? WebUtil.transBase64ImgURL(img) : undefined;
 }
 
 /**

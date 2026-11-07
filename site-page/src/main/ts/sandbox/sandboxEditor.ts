@@ -1,6 +1,4 @@
-import {
-	JadeUIResource, DefaultIconGroup, registerDefaultUIResource,
-} from '@jade-dungeon/jade-utils/resource';
+import { registerDefaultUIResource } from '@jade-dungeon/jade-utils/resource';
 import { UIDesktop, UIWindowAdapter } from '@jade-dungeon/jade-utils/ui-window';
 import { WebUtil } from '@jade-dungeon/jade-utils/web';
 import {
@@ -48,6 +46,8 @@ export interface SandboxEditorConfig {
 	username: string;
 	/** GM 的登录 token。保存时塞进 jsonStr，后端靠它鉴权 */
 	loginToken: string;
+	/** 窗口 URL 图标的基地址（如 `…/3rd/SE98`），统一传给桌面的所有窗口 */
+	iconBaseUrl: string;
 }
 
 /**
@@ -164,28 +164,45 @@ export class SandboxEditor {
 		if (!host) {
 			throw new Error(`找不到桌面容器 #${this.cfg.desktopId}`);
 		}
-		const desktop = new UIDesktop(host, { dockBar: { range: 300, maxScale: 1.8 } });
-		const icons = JadeUIResource.getDefaultIcon(DefaultIconGroup.ELEC_FACE);
+		const desktop = new UIDesktop(host, {
+			iconBaseUrl: this.cfg.iconBaseUrl,
+			dockBar: { range: 300, maxScale: 1.8 },
+		});
 
 		this.mapWin = new SandboxMapWindow(desktop, 'sandbox-map',
 			`编辑：${this.cfg.scene.campaignId} / ${this.cfg.scene.sceneId}`,
-			{ icons, body: { initSize: { width: 800, height: 560 }, overflow: 'scroll' } });
+			{
+				icons: { supportSizes: 30, baseUrl: "", category: "mimes", name: "application-gpx.png" },
+				body: { initSize: { width: 800, height: 560 }, overflow: 'scroll' },
+			});
 		this.mapWin.renderIn();
 
 		this.listWin = new SandboxTokenListWindow(desktop, 'sandbox-tokens', '元素列表',
-			{ icons, body: { initSize: { width: 330, height: 320 }, overflow: 'auto' } });
+			{
+				icons: { supportSizes: 30, baseUrl: "", category: "actions", name: "fm-compact.png" },
+				body: { initSize: { width: 330, height: 320 }, overflow: 'auto' },
+			});
 		this.listWin.renderIn();
 
 		this.propsWin = new SandboxPropsWindow(desktop, 'sandbox-props', '属性',
-			{ icons, body: { initSize: { width: 320, height: 420 }, overflow: 'auto' } });
+			{
+				icons: { supportSizes: 30, baseUrl: "", category: "actions", name: "application-menu.png" },
+				body: { initSize: { width: 320, height: 420 }, overflow: 'auto' },
+			});
 		this.propsWin.renderIn();
 
 		this.sceneWin = new SandboxSceneWindow(desktop, 'sandbox-scene', '场景',
-			{ icons, body: { initSize: { width: 300, height: 140 }, overflow: 'auto' } });
+			{
+				icons: { supportSizes: 30, baseUrl: "", category: "actions", name: "download.png" },
+				body: { initSize: { width: 300, height: 140 }, overflow: 'auto' },
+			});
 		this.sceneWin.renderIn();
 
 		this.diceWin = new SandboxDiceWindow(desktop, 'sandbox-dice', '检定',
-			{ icons, body: { initSize: { width: 340, height: 300 }, overflow: 'auto' } });
+			{
+				icons: { supportSizes: 30, baseUrl: "", category: "apps", name: "config-users.png" },
+				body: { initSize: { width: 340, height: 300 }, overflow: 'auto' },
+			});
 		this.diceWin.renderIn();
 
 		this.tileWindows();

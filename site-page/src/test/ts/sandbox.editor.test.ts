@@ -28,6 +28,7 @@ const cfg: SandboxEditorConfig = {
 	apiRoot: '//localhost:8089',
 	assetRoot: '//cdn.x/themes/trpg/images',
 	desktopId: 'desktop',
+	iconBaseUrl: '//cdn.x/3rd/SE98',
 	scene: { campaignId: 'c1', placeId: 'p1', sceneId: 's1' },
 	username: 'gm',
 	loginToken: 'tk',

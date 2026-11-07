@@ -293,16 +293,16 @@ const imgDesktopBg: IBase64Img = {
 };
 
 const WIN98_ICON_GROP:Array<IconRec> = [
-	{ supportSizes: 30, baseUrl: "", category: "actions", name: "blueman-pair.png" }, // 钥匙形状，适用加密登录
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "blueman-pair.png"     }, // 钥匙形状，适用加密登录
 	{ supportSizes: 30, baseUrl: "", category: "actions", name: "application-menu.png" }, // 适用详细编辑
-	{ supportSizes: 30, baseUrl: "", category: "actions", name: "fm-compact.png" }, // 文件列表图标，适用列表
-	{ supportSizes: 30, baseUrl: "", category: "actions", name: "document-save.png" }, // 软盘图标，适用保存
-	{ supportSizes: 30, baseUrl: "", category: "actions", name: "download.png" }, // 网络下载图标
-	{ supportSizes: 30, baseUrl: "", category: "actions", name: "config-users.png" }, // 双人图标
-	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "tag-new.png" }, // 笔记录图标，适用编辑
-	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "cs-region.png" }, // 地球图标
-	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "devhelp.png" }, // 记事本图标
-	{ supportSizes: 30, baseUrl: "", category: "mimes"  , name: "application-gpx.png" }, // 地图图标
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "fm-compact.png"       }, // 文件列表图标，适用列表
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "document-save.png"    }, // 软盘图标，适用保存
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "download.png"         }, // 网络下载图标
+	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "config-users.png"     }, // 双人图标
+	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "tag-new.png"          }, // 笔记录图标，适用编辑
+	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "cs-region.png"        }, // 地球图标
+	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "devhelp.png"          }, // 记事本图标
+	{ supportSizes: 30, baseUrl: "", category: "mimes"  , name: "application-gpx.png"  }, // 地图图标
 ];
 
 /**

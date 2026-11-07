@@ -4,9 +4,8 @@ import { IPoint2D } from "./geo2d.js";
 // 那个文件有 310 行 base64，只想用窗口管理器的人不该被迫下载。
 // 要用内置的那套图标，调用 resource.ts 的 registerDefaultUIResource()
 import {
-	IconGroup, getDesktopBackground, getIconGroup, pickIconSize,
+	WindowIcon, resolveIconURL, getDesktopBackground, getIconGroup,
 } from "./uiResource.js";
-import { IconSize } from "../web.js";
 import { WebUtil } from "../web.js";
 
 /* ──────────────────────────────────────────────────────────────
@@ -60,7 +59,15 @@ interface IDesktopConfig {
 		height: string
 	},
 	/** Dock 任务栏配置 */
-	dockBar?: DockBarParam
+	dockBar?: DockBarParam,
+	/**
+	 * URL 图标（`IconRec`）的基地址
+	 *
+	 * 站点把图标的基地址（如 `…/3rd/SE98`）统一从这里传入，
+	 * 各窗口的标题栏与 Dock 图标按它拼出完整 http 地址。
+	 * 不传时退回 `IconRec` 记录里自己写的 `baseUrl`。
+	 */
+	iconBaseUrl?: string
 }
 
 /**
@@ -106,6 +113,7 @@ interface CurrentWindow {
  */
 export class UIDesktop {
 	readonly desktopDiv: HTMLElement; // 窗口在上一级HTML元素
+	readonly iconBaseUrl?: string; // URL 图标的基地址（见 IDesktopConfig.iconBaseUrl）
 	private allWindows: SimpleMap<string, UIObj> = new SimpleMap(); // 全部窗口的索引
 	private windowZIndex: Array<UIObj> = []; // 窗口的z-index序列
 	private dockBar?: DockBar; // 程序栏
@@ -149,6 +157,7 @@ export class UIDesktop {
 	 */
 	constructor(desktopDiv: HTMLElement, cfg?: IDesktopConfig) {
 		this.desktopDiv = desktopDiv;
+		this.iconBaseUrl = cfg?.iconBaseUrl;
 		desktopDiv.style.height = cfg?.desktop?.height ? cfg.desktop.height : "100%";
 		desktopDiv.style.width  = cfg?.desktop?.width  ? cfg.desktop.width  : "100%";
 		// 没传背景图时问注册表要。注册表也没有就一行都不写，
@@ -682,7 +691,7 @@ export let defaultWinOption = {
  */
 interface WinCfg {
 	// 可选：没传图标、注册表里也没有时为 undefined，此时图标位留空交给 CSS
-	icons?: IconGroup,
+	icons?: WindowIcon,
 	// 标题栏图标尺寸，默认 16
 	iconSize: (16|24|32|48),
 	bindWinOpt: IBindWinOpt, // 绑定窗口的操作
@@ -697,8 +706,8 @@ interface WinCfg {
  * 窗口构造参数（可选配置）
  */
 export interface WinParam {
-	/** 窗口的图标组 */
-	icons?: IconGroup,
+	/** 窗口图标（base64 组或 URL 记录） */
+	icons?: WindowIcon,
 	/** 绑定窗口的操作（关闭/最大化/最小化/拖动/缩放） */
 	bindWinOpt?: IBindWinOpt,
 	/** 是否可以调整大小 */
@@ -1048,9 +1057,11 @@ export class DockBar {
 		let icon = document.createElement('div');
 		icon.id = this.genAppIconId(win.id);
 		icon.classList.add('menu-item');
-		// 没图标时不写 backgroundImage，留给 CSS 的 .menu-item 决定外观
-		if (win.cfg.icons) {
-			icon.style.backgroundImage = WebUtil.transBase64ImgURL(win.cfg.icons.x32);
+		// Dock 图标固定用 48x48。没图标时不写 backgroundImage，留给 CSS
+		// 的 .menu-item 决定外观
+		const iconUrl = resolveIconURL(win.cfg.icons, 48, win.desktop.iconBaseUrl);
+		if (iconUrl) {
+			icon.style.backgroundImage = iconUrl;
 		} else {
 			icon.classList.add('no-icon');
 		}
@@ -1110,29 +1121,18 @@ export namespace JadeWindowUI {
 	/** 生成窗口标题文本 ID */
 	export function genWinTitleTextId(id: string): string { return `titText-${id}`; }
 
-	/**
-	 * 标题栏图标像素尺寸 → `IconSize` 枚举。
-	 * `WinCfg.iconSize` 存的是像素值（16/24/32/48），`pickIconSize` 按
-	 * `IconSize` 枚举取图，这里做桥接。
-	 */
-	const PX_TO_ICON_SIZE: Record<16 | 24 | 32 | 48, IconSize> = {
-		16: IconSize.x16,
-		24: IconSize.x24,
-		32: IconSize.x32,
-		48: IconSize.x48,
-	};
-
 	let renderTitleBarIcon = (win: UIObj): HTMLDivElement => {
 		let titleBarIcon = document.createElement("div");
 		titleBarIcon.id = genWinTitleIconId(win.id);
 		titleBarIcon.classList.add("title-bar-icon", "cannot-select");
 		titleBarIcon.style.width  = `${win.cfg.iconSize}px`;
 		titleBarIcon.style.height = `${win.cfg.iconSize}px`;
-		// 跟随 cfg.iconSize 取对应尺寸的图标；没图标时加 .no-icon，
-		// CSS 把图标位收掉，标题文字不会凭空缩进
-		const icon = pickIconSize(win.cfg.icons, PX_TO_ICON_SIZE[win.cfg.iconSize]);
-		if (icon) {
-			titleBarIcon.style.backgroundImage = WebUtil.transBase64ImgURL(icon);
+		// 标题栏默认 16x16（WinCfg.iconSize 默认 16），跟随 cfg.iconSize
+		// 取对应尺寸；没图标时加 .no-icon，CSS 把图标位收掉，标题文字
+		// 不会凭空缩进
+		const iconUrl = resolveIconURL(win.cfg.icons, win.cfg.iconSize, win.desktop.iconBaseUrl);
+		if (iconUrl) {
+			titleBarIcon.style.backgroundImage = iconUrl;
 		} else {
 			titleBarIcon.classList.add("no-icon");
 		}

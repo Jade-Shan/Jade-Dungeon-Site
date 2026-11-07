@@ -196,6 +196,7 @@ dist/                 ← 编译产物，结构扁平
 | `/api/weather/forecast` | `src/main/ts/routes/weather.ts` | GET | 天气预报，支持 `conky`（文本）和 `json` 两种输出格式 |
 | `/api/auth/regist` | `src/main/ts/routes/auth.ts` | **POST** | 注册。数据存 SQLite，密码 scrypt 加盐哈希 |
 | `/api/auth/login` | `src/main/ts/routes/auth.ts` | **POST** | 登录。支持用户名+密码、或凭 token 续期（续期会签发新 token 并作废旧的） |
+| `/api/auth/change-password` | `src/main/ts/routes/auth.ts` | **POST** | 修改密码。靠旧密码验证身份，新密码强度（≥8 位且含数字/字母/特殊字符）校验，成功后作废该用户所有 token |
 | `/api/sandtable/load-map` | `routes/sandtable/map.ts` | GET+POST | 读场景数据 |
 | `/api/sandtable/save-map` | `routes/sandtable/map.ts` | **POST** | 写场景。**强制校验 token**，owner 身份从 token 取 |
 | `/api/sandtable/map-owner` | `routes/sandtable/map.ts` | GET+POST | 查战役归属 |

@@ -4,19 +4,20 @@ import { WebUtil } from '@jade-dungeon/jade-utils/web';
 import { SandboxApi } from './sandboxApi.js';
 
 /**
- * 沙盘的入口页：登录页（login.html）+ 选场景页（index.html）
+ * 沙盘的入口页：登录页（login.html）+ 选场景页（index.html）+ 修改密码页（changePassword.html）
  *
  * 对应老应用的 `sandtable-index.html` + `sandtable-index.js`。
  * 老应用把「登录」和「选场景」塞在一个页面里；迁移时也照搬了
  *（`sandbox/index.html` 一个窗口里上半是「身份」表单、下半是「场景」表单）。
- * 2026-11-07 拆成两个页面：
+ * 2026-11-07 拆成两个页面，随后又把登录页的「注册」换成「修改密码」单开一页：
  *
  * | 页面 | 内容 |
  * |------|------|
- * | `login.html` | 登录 / 注册，成功后带着场景参数回到 `index.html` |
+ * | `login.html` | 登录，成功后带着场景参数回 `index.html`；「修改密码」跳 `changePassword.html` |
  * | `index.html` | 选场景 + 显示登录态；「以其他身份登录」跳 `login.html` |
+ * | `changePassword.html` | 旧密码 + 新密码×2，成功后回 `login.html` 重新登录 |
  *
- * 两个页面都是「桌面 + 一个窗口」的结构（和 view / editor 一致）：
+ * 三个页面都是「桌面 + 一个窗口」的结构（和 view / editor 一致）：
  * 挂在 `UIDesktop` 上、窗口继承 `UIWindowAdapter`，共用拖动 / 缩放 /
  * 最小化那一套。登录之后带着场景参数跳 view / editor。
  *
@@ -110,8 +111,8 @@ export interface SandboxLoginSelectors {
 	password?: string;
 	/** 登录按钮，默认 `#btn-login` */
 	loginBtn?: string;
-	/** 注册按钮，默认 `#btn-regist` */
-	registBtn?: string;
+	/** 修改密码按钮，默认 `#btn-change-password` */
+	changePasswordBtn?: string;
 	/** 返回选场景按钮，默认 `#btn-back` */
 	backBtn?: string;
 	/** 状态提示区，默认 `#login-status` */
@@ -123,7 +124,7 @@ const LOGIN_SELECTORS: Required<SandboxLoginSelectors> = {
 	username: '#username',
 	password: '#password',
 	loginBtn: '#btn-login',
-	registBtn: '#btn-regist',
+	changePasswordBtn: '#btn-change-password',
 	backBtn: '#btn-back',
 	status: '#login-status',
 };
@@ -134,6 +135,8 @@ export interface SandboxLoginConfig {
 	apiRoot: string;
 	/** 登录成功后跳转的地址，默认 `./index.html` */
 	indexUrl?: string;
+	/** 修改密码页的地址，默认 `./changePassword.html` */
+	changePasswordUrl?: string;
 	/** 桌面容器的 id，默认 `sandbox-desktop` */
 	desktopId?: string;
 	/** 窗口 URL 图标的基地址（如 `…/3rd/SE98`），构造窗口 IconRec 时填入 */
@@ -157,13 +160,13 @@ interface LoginFieldIds {
 	username: string;
 	password: string;
 	loginBtn: string;
-	registBtn: string;
+	changePasswordBtn: string;
 	backBtn: string;
 	status: string;
 }
 
 /**
- * 登录窗口：用户名 + 密码 + 登录/注册按钮 + 返回选场景
+ * 登录窗口：用户名 + 密码 + 登录/修改密码按钮 + 返回选场景
  *
  * 表单元素在构造时就创建好（带 id），`renderIn()` 只负责把它们按
  * 98.css 的 `fieldset` + `.field-row` 排版塞进窗体。这样 `SandboxLogin`
@@ -175,7 +178,7 @@ class SandboxLoginWindow extends UIWindowAdapter {
 	private readonly username: HTMLInputElement = document.createElement('input');
 	private readonly password: HTMLInputElement = document.createElement('input');
 	private readonly loginBtn: HTMLButtonElement = document.createElement('button');
-	private readonly registBtn: HTMLButtonElement = document.createElement('button');
+	private readonly changePasswordBtn: HTMLButtonElement = document.createElement('button');
 	private readonly backBtn: HTMLButtonElement = document.createElement('button');
 	private readonly statusEl: HTMLParagraphElement = document.createElement('p');
 
@@ -189,8 +192,8 @@ class SandboxLoginWindow extends UIWindowAdapter {
 		this.loginBtn.id = ids.loginBtn;
 		this.loginBtn.classList.add('default');
 		this.loginBtn.textContent = '登录';
-		this.registBtn.id = ids.registBtn;
-		this.registBtn.textContent = '注册';
+		this.changePasswordBtn.id = ids.changePasswordBtn;
+		this.changePasswordBtn.textContent = '修改密码';
 		this.backBtn.id = ids.backBtn;
 		this.backBtn.textContent = '返回选场景';
 		this.statusEl.id = ids.status;
@@ -216,7 +219,7 @@ class SandboxLoginWindow extends UIWindowAdapter {
 		JadeWindowUI.renderWindowTplt(this, undefined, renderBody, undefined);
 	}
 
-	/** 「身份」一栏：用户名 + 密码 + 登录/注册按钮 */
+	/** 「身份」一栏：用户名 + 密码 + 登录/修改密码按钮 */
 	private buildIdentityFieldset(): HTMLFieldSetElement {
 		const fs = document.createElement('fieldset');
 		const legend = document.createElement('legend');
@@ -227,7 +230,7 @@ class SandboxLoginWindow extends UIWindowAdapter {
 		const btns = document.createElement('div');
 		btns.classList.add('field-row');
 		btns.appendChild(this.loginBtn);
-		btns.appendChild(this.registBtn);
+		btns.appendChild(this.changePasswordBtn);
 		fs.appendChild(btns);
 		return fs;
 	}
@@ -280,7 +283,7 @@ export class SandboxLogin {
 		if (user) { writeValue(this.slt.username, user); }
 
 		this.onClick(this.slt.loginBtn, () => { void this.login(); });
-		this.onClick(this.slt.registBtn, () => { void this.regist(); });
+		this.onClick(this.slt.changePasswordBtn, () => { this.goChangePassword(); });
 		this.onClick(this.slt.backBtn, () => { this.back(); });
 	}
 
@@ -290,7 +293,7 @@ export class SandboxLogin {
 			username: idOf(this.slt.username),
 			password: idOf(this.slt.password),
 			loginBtn: idOf(this.slt.loginBtn),
-			registBtn: idOf(this.slt.registBtn),
+			changePasswordBtn: idOf(this.slt.changePasswordBtn),
 			backBtn: idOf(this.slt.backBtn),
 			status: idOf(this.slt.status),
 		};
@@ -344,22 +347,12 @@ export class SandboxLogin {
 	}
 
 	/**
-	 * 注册
-	 *
-	 * 注册**不自动登录** —— 老代码也是这样，注册完还要点一次登录。
-	 * 保持原行为，少一条隐式跳转。
-	 *
-	 * @returns {Promise<void>}
+	 * 带着用户名跳修改密码页
 	 */
-	private async regist(): Promise<void> {
+	private goChangePassword(): void {
 		const user = readValue(this.slt.username);
-		const pw = readValue(this.slt.password);
-		if (!user || !pw) { writeStatus(this.slt.status, '用户名和密码都要填'); return; }
-		writeStatus(this.slt.status, '注册中……');
-		const r = await this.api.regist(user, pw);
-		writeStatus(this.slt.status, r.ok
-			? `注册成功：${r.data} —— 现在可以登录了`
-			: `注册失败：${r.msg === 'username exists' ? '用户名已被占用' : (r.msg ?? '未知错误')}`);
+		const q = user ? `?username=${encodeURIComponent(user)}` : '';
+		this.go(`${this.cfg.changePasswordUrl ?? './changePassword.html'}${q}`);
 	}
 
 	/** 给按钮绑点击 */
@@ -657,6 +650,269 @@ export class SandboxIndex {
  */
 export function initSandboxIndex(cfg: SandboxIndexConfig): SandboxIndex {
 	const page = new SandboxIndex(cfg);
+	page.start();
+	return page;
+}
+
+// ── 修改密码页（changePassword.html） ────────────────────────────────
+
+/** 修改密码页的元素选择器，页面模板里要有这些 */
+export interface SandboxChangePasswordSelectors {
+	/** 旧密码输入框，默认 `#old-password` */
+	oldPassword?: string;
+	/** 新密码输入框，默认 `#new-password` */
+	newPassword?: string;
+	/** 确认新密码输入框，默认 `#confirm-password` */
+	confirmPassword?: string;
+	/** 提交按钮，默认 `#btn-submit-change` */
+	submitBtn?: string;
+	/** 返回登录按钮，默认 `#btn-back-login` */
+	backBtn?: string;
+	/** 状态提示区，默认 `#change-password-status` */
+	status?: string;
+}
+
+/** {@link SandboxChangePasswordSelectors} 的默认值 */
+const CHANGE_PASSWORD_SELECTORS: Required<SandboxChangePasswordSelectors> = {
+	oldPassword: '#old-password',
+	newPassword: '#new-password',
+	confirmPassword: '#confirm-password',
+	submitBtn: '#btn-submit-change',
+	backBtn: '#btn-back-login',
+	status: '#change-password-status',
+};
+
+/** 修改密码页配置 */
+export interface SandboxChangePasswordConfig {
+	/** 后端根路径 */
+	apiRoot: string;
+	/** 修改成功后跳转的地址，默认 `./login.html` */
+	loginUrl?: string;
+	/** 桌面容器的 id，默认 `sandbox-desktop` */
+	desktopId?: string;
+	/** 窗口 URL 图标的基地址（如 `…/3rd/SE98`），构造窗口 IconRec 时填入 */
+	iconBaseUrl: string;
+	/** 页面选择器，缺省项走默认 */
+	selectors?: SandboxChangePasswordSelectors;
+	/**
+	 * 跳转的实现，默认 `window.location.href = url`
+	 *（同 {@link SandboxLoginConfig.navigate}，给单元测试观察跳转目标用）
+	 */
+	navigate?: (url: string) => void;
+}
+
+/** 修改密码窗口里各元素的 id（不带 `#`，从 selectors 提出来） */
+interface ChangePasswordFieldIds {
+	oldPassword: string;
+	newPassword: string;
+	confirmPassword: string;
+	submitBtn: string;
+	backBtn: string;
+	status: string;
+}
+
+/**
+ * 新密码强度校验：至少 8 位，且同时包含数字、字母、特殊字符
+ *
+ * 与后端 `authService.checkPasswordStrength` 同一套规则。这里先在前端
+ * 拦一道给即时反馈（不等网络往返），后端再兜底（前端可被绕过）。
+ */
+function checkNewPassword(pw: string): { ok: boolean; msg: string } {
+	if (pw.length < 8) { return { ok: false, msg: '新密码长度至少 8 位' }; }
+	const hasDigit = /\d/.test(pw);
+	const hasLetter = /[a-zA-Z]/.test(pw);
+	const hasSpecial = /[^a-zA-Z0-9]/.test(pw);
+	if (!hasDigit || !hasLetter || !hasSpecial) {
+		return { ok: false, msg: '新密码需同时包含数字、字母、特殊字符' };
+	}
+	return { ok: true, msg: '' };
+}
+
+/**
+ * 修改密码窗口：旧密码 + 新密码 + 确认新密码 + 提交/返回
+ *
+ * 三个输入框都是 password 类型。用户名从 URL 参数带来（登录页跳转时带上），
+ * 窗口里只读展示、不另开输入框 —— 改谁由「从哪进来的」决定。
+ */
+class SandboxChangePasswordWindow extends UIWindowAdapter {
+
+	private readonly oldPassword: HTMLInputElement = document.createElement('input');
+	private readonly newPassword: HTMLInputElement = document.createElement('input');
+	private readonly confirmPassword: HTMLInputElement = document.createElement('input');
+	private readonly submitBtn: HTMLButtonElement = document.createElement('button');
+	private readonly backBtn: HTMLButtonElement = document.createElement('button');
+	private readonly statusEl: HTMLParagraphElement = document.createElement('p');
+	private readonly username: string;
+
+	constructor(desktop: UIDesktop, id: string, title: string, cfg: WinParam,
+		ids: ChangePasswordFieldIds, username: string) //
+	{
+		super(desktop, id, title, cfg);
+
+		this.username = username;
+		this.oldPassword.id = ids.oldPassword;
+		this.oldPassword.type = 'password';
+		this.newPassword.id = ids.newPassword;
+		this.newPassword.type = 'password';
+		this.confirmPassword.id = ids.confirmPassword;
+		this.confirmPassword.type = 'password';
+		this.submitBtn.id = ids.submitBtn;
+		this.submitBtn.classList.add('default');
+		this.submitBtn.textContent = '修改密码';
+		this.backBtn.id = ids.backBtn;
+		this.backBtn.textContent = '返回登录';
+		this.statusEl.id = ids.status;
+	}
+
+	renderIn(): void {
+		const renderBody = (): HTMLDivElement => {
+			const body = this.ui.windowBody;
+			body.style.overflow = 'auto';
+
+			const who = document.createElement('p');
+			who.textContent = this.username ? `用户名：${this.username}` : '用户名：未指定（请从登录页进入）';
+			body.appendChild(who);
+
+			body.appendChild(this.buildFieldset());
+			body.appendChild(this.statusEl);
+			return body;
+		};
+
+		JadeWindowUI.renderWindowTplt(this, undefined, renderBody, undefined);
+	}
+
+	/** 「修改密码」一栏：旧密码 + 新密码×2 + 提交/返回 */
+	private buildFieldset(): HTMLFieldSetElement {
+		const fs = document.createElement('fieldset');
+		const legend = document.createElement('legend');
+		legend.textContent = '修改密码';
+		fs.appendChild(legend);
+		fs.appendChild(fieldRow('旧密码', this.oldPassword));
+		fs.appendChild(fieldRow('新密码', this.newPassword));
+		fs.appendChild(fieldRow('确认新密码', this.confirmPassword));
+		const btns = document.createElement('div');
+		btns.classList.add('field-row');
+		btns.appendChild(this.submitBtn);
+		btns.appendChild(this.backBtn);
+		fs.appendChild(btns);
+		const note = document.createElement('p');
+		note.textContent = '新密码至少 8 位，且同时包含数字、字母、特殊字符。';
+		fs.appendChild(note);
+		return fs;
+	}
+
+}
+
+/**
+ * 修改密码页
+ */
+export class SandboxChangePassword {
+
+	private readonly api: SandboxApi;
+	private readonly cfg: SandboxChangePasswordConfig;
+	private readonly slt: Required<SandboxChangePasswordSelectors>;
+	/** 从 URL 参数带来的用户名（登录页跳转时带上） */
+	private readonly username: string;
+	private win?: SandboxChangePasswordWindow;
+
+	constructor(cfg: SandboxChangePasswordConfig) {
+		this.cfg = cfg;
+		this.api = new SandboxApi(cfg.apiRoot);
+		this.slt = { ...CHANGE_PASSWORD_SELECTORS, ...cfg.selectors };
+		this.username = new URLSearchParams(window.location.search).get('username') ?? '';
+	}
+
+	start(): void {
+		registerDefaultUIResource();
+		const desktopId = this.cfg.desktopId ?? 'sandbox-desktop';
+		const host = document.getElementById(desktopId);
+		if (!host) {
+			throw new Error(`找不到桌面容器 #${desktopId}`);
+		}
+		const desktop = new UIDesktop(host, {
+			dockBar: { range: 300, maxScale: 1.8 },
+		});
+
+		this.win = new SandboxChangePasswordWindow(desktop, 'sandbox-change-password', '修改密码',
+			{
+				icons: { supportSizes: 30, baseUrl: this.cfg.iconBaseUrl, category: "actions", name: "blueman-pair.png" },
+				body: { initSize: { width: 360, height: 360 }, overflow: 'auto' },
+			},
+			this.fieldIds(), this.username);
+		this.win.renderIn();
+
+		this.onClick(this.slt.submitBtn, () => { void this.submit(); });
+		this.onClick(this.slt.backBtn, () => { this.back(); });
+	}
+
+	private fieldIds(): ChangePasswordFieldIds {
+		return {
+			oldPassword: idOf(this.slt.oldPassword),
+			newPassword: idOf(this.slt.newPassword),
+			confirmPassword: idOf(this.slt.confirmPassword),
+			submitBtn: idOf(this.slt.submitBtn),
+			backBtn: idOf(this.slt.backBtn),
+			status: idOf(this.slt.status),
+		};
+	}
+
+	/** 跳转（同 {@link SandboxLogin.go}） */
+	private go(url: string): void {
+		const fn = this.cfg.navigate ?? ((u: string) => { window.location.href = u; });
+		fn(url);
+	}
+
+	/**
+	 * 提交修改密码：本地校验（非空、一致、强度）→ 请求后端 → 成功回登录页
+	 */
+	private async submit(): Promise<void> {
+		if (!this.username) {
+			writeStatus(this.slt.status, '缺少用户名，请从登录页进入');
+			return;
+		}
+		const oldPw = readValue(this.slt.oldPassword);
+		const newPw = readValue(this.slt.newPassword);
+		const confirmPw = readValue(this.slt.confirmPassword);
+		if (!oldPw || !newPw || !confirmPw) {
+			writeStatus(this.slt.status, '三个密码框都要填');
+			return;
+		}
+		if (newPw !== confirmPw) {
+			writeStatus(this.slt.status, '两次输入的新密码不一致');
+			return;
+		}
+		const strength = checkNewPassword(newPw);
+		if (!strength.ok) { writeStatus(this.slt.status, strength.msg); return; }
+
+		writeStatus(this.slt.status, '修改中……');
+		const r = await this.api.changePassword(this.username, oldPw, newPw);
+		if (!r.ok) {
+			writeStatus(this.slt.status, `修改失败：${r.msg ?? '未知错误'}`);
+			return;
+		}
+		// 改成功后回登录页，用新密码重新登录（旧 token 已被后端作废）
+		this.go(this.cfg.loginUrl ?? './login.html');
+	}
+
+	/** 返回登录页 */
+	private back(): void {
+		this.go(this.cfg.loginUrl ?? './login.html');
+	}
+
+	private onClick(slt: string, fn: () => void): void {
+		onClick(slt, fn);
+	}
+
+}
+
+/**
+ * 修改密码页的入口
+ *
+ * @param cfg - 页面注入的配置
+ * @returns {SandboxChangePassword} 已绑定好的实例
+ */
+export function initSandboxChangePassword(cfg: SandboxChangePasswordConfig): SandboxChangePassword {
+	const page = new SandboxChangePassword(cfg);
 	page.start();
 	return page;
 }

@@ -259,3 +259,66 @@ export const verifyToken = async (token?: string): Promise<string | undefined> =
 		'SELECT username FROM auth_token WHERE token = ? AND expire_at > ?', [token!, Date.now()]);
 	return row && row.username === parsed.username ? row.username : undefined;
 };
+
+// ───────────────────────── 修改密码 ─────────────────────────
+
+/**
+ * 新密码强度校验：至少 8 位，且同时包含数字、字母、特殊字符。
+ *
+ * 「不要求太高的密码强度」—— 只要求这三类字符都出现，不额外要求
+ * 大小写都含、不常见密码等。前端在发请求前也会做同样的校验给即时反馈，
+ * 这里是后端兜底（前端可被绕过）。
+ */
+export const checkPasswordStrength = (password: string): IRegistResult => {
+	if (password.length < 8) {
+		return { ok: false, msg: '密码长度至少 8 位' };
+	}
+	const hasDigit = /\d/.test(password);
+	const hasLetter = /[a-zA-Z]/.test(password);
+	const hasSpecial = /[^a-zA-Z0-9]/.test(password);
+	if (!hasDigit || !hasLetter || !hasSpecial) {
+		return { ok: false, msg: '密码需同时包含数字、字母、特殊字符' };
+	}
+	return { ok: true, msg: 'ok' };
+};
+
+/**
+ * 修改密码。
+ *
+ * **身份验证靠旧密码**（不是 token）—— 修改密码页从登录页进入，
+ * 可能还没登录，所以不能靠 cookie 里的 token。旧密码正确才放行。
+ *
+ * 改成功后**作废该用户所有 token**，强制重新登录 ——
+ * 否则改密码前已经登录的会话还拿着旧 token 继续有效。
+ *
+ * @param username - 用户名
+ * @param oldPassword - 旧密码
+ * @param newPassword - 新密码（强度见 {@link checkPasswordStrength}）
+ */
+export const changePassword = async (username: string, oldPassword: string,
+	newPassword: string): Promise<IRegistResult> => {
+	const user = await findUser(username);
+	if (!user) { return { ok: false, msg: '用户名或密码错误' }; }
+
+	// 免验证模式建的占位用户没有可用密码，不能改
+	if (user.hash_algo === BYPASS_HASH_ALGO) {
+		return { ok: false, msg: '用户名或密码错误' };
+	}
+
+	const matched = user.hash_algo === 'plain'
+		? user.password_hash === oldPassword          // 旧数据兼容分支，当前无此类数据
+		: await verifyPassword(oldPassword, user);
+	if (!matched) { return { ok: false, msg: '旧密码错误' }; }
+
+	const strength = checkPasswordStrength(newPassword);
+	if (!strength.ok) { return strength; }
+
+	const { hash, salt } = await hashPassword(newPassword);
+	await getSqlite().run(
+		`UPDATE auth_user SET password_hash = ?, salt = ?, hash_algo = 'scrypt', updated_at = ?
+		 WHERE username = ?`,
+		[hash, salt, Date.now(), username]);
+	await getSqlite().run('DELETE FROM auth_token WHERE username = ?', [username]);
+
+	return { ok: true, msg: '修改密码成功' };
+};

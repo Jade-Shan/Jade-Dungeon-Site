@@ -22,6 +22,21 @@
 
 ## 历史记录
 
+- **登录页「注册」换成「修改密码」，新增 changePassword 页 + 后端接口**（2026-11-07）
+  - 登录页 `SandboxLoginSelectors.registBtn` → `changePasswordBtn`（`#btn-change-password`），
+    文本「修改密码」，点击带着用户名（URL 参数 `username`）跳 `changePassword.html`
+  - `sandboxLogin.ts` 新增修改密码窗口 `SandboxChangePasswordWindow`（旧密码 + 新密码×2，
+    三个密码框都是 password 类型）+ `SandboxChangePassword` + `initSandboxChangePassword`
+  - 前端本地校验：用户名缺失、三个框有空、两次新密码不一致、强度
+    （`checkNewPassword`：≥8 位且同时含数字/字母/特殊字符）都在发请求前拦下；
+    后端 `authService.checkPasswordStrength` 同规则兜底
+  - 后端：`POST /api/auth/change-password`，靠旧密码验证身份（不走 token），
+    改成功后作废该用户所有 token 强制重新登录
+  - 新增 `html/sandbox/changePassword.html`（复用 `sandbox-login` export，无需新增 export）
+  - 测试：`sandbox.login.test.ts` 删注册 2 条、加修改密码跳转 3 条；新增
+    `sandbox.changePassword.test.ts`（13 条）；`npm test -w site-page` 224 条全绿；
+    site-api `tsc --noEmit` + `lint` 通过
+  - **未做浏览器手工验证** —— 跳转、三框校验、改密码成功后回登录页都要在浏览器里看
 - **`sandbox/index.html` 拆成选场景页 + 登录页**（2026-11-07）
   - 原来 `index.html` 一个窗口里上半是「身份」表单、下半是「场景」表单
     （迁移时照搬老应用 `sandtable-index.html` 的单页结构），拆成 `login.html`

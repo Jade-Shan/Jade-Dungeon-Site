@@ -687,11 +687,12 @@ site-page/src/main/ts/sandbox/
 ├── sandboxView.ts     玩家视图：视野渲染 + 拖拽申请移动 + 掷骰
 ├── sandboxEditor.ts   GM 编辑器：Token 增删改 + 保存发布 + 阈值
 ├── sandboxWindows.ts  5 个窗口类（继承 UIWindowAdapter）
-└── sandboxLogin.ts    登录 / 注册 + 选场景（两个入口：initSandboxLogin / initSandboxIndex）
+└── sandboxLogin.ts    登录 + 选场景 + 修改密码（三个入口：initSandboxLogin / initSandboxIndex / initSandboxChangePassword）
 
 site-page/src/main/html/sandbox/
 ├── index.html         选场景（登录态 + 换身份）
-├── login.html         登录 / 注册
+├── login.html         登录（「修改密码」跳 changePassword.html）
+├── changePassword.html 修改密码（旧密码 + 新密码×2）
 ├── view.html          玩家视图
 └── editor.html        GM 编辑器
                        （没有 readme.html —— 见 4.4 节，文档改成 Markdown）
@@ -1020,6 +1021,12 @@ Canvas 渲染与窗口布局**测不了** —— jsdom 的 `getContext('2d')` �
 > 「以其他身份登录」）。场景三级定位始终走 URL 参数在两页间传递，
 > 登录成功（或放弃返回）原样带回，用户不用重填。
 > 对应测试也拆成 `sandbox.login.test.ts`（13 条）+ `sandbox.index.test.ts`（13 条）。
+>
+> **2026-11-07 又加「修改密码」页**：登录页原来的「注册」按钮换成「修改密码」，
+> 点击带着用户名（URL 参数 `username`）跳 `changePassword.html`。修改密码窗口
+> 一个旧密码框 + 两个新密码框，前端先校验「两次一致」和强度
+> （≥8 位且含数字/字母/特殊字符），后端 `POST /api/auth/change-password`
+> 再兜底校验、改成功后作废旧 token。测试 `sandbox.changePassword.test.ts`（13 条）。
 
 #### 测试：18 条单元测试 + 29 项冒烟验证
 

@@ -1,15 +1,15 @@
 /**
- * 登录页：登录 / 注册 / 返回选场景
+ * 登录页：登录 / 修改密码跳转 / 返回选场景
  *
  * sandbox 模块迁移的期 5 产物。2026-11-07 把「登录」和「选场景」拆成两页之后，
- * 这里只测 `login.html` 的登录页（选场景页的跳转测在 `sandbox.index.test.ts`）。
- * 这一页不碰 Canvas，所以能测得比较全。
+ * 这里只测 `login.html` 的登录页（选场景页的跳转测在 `sandbox.index.test.ts`，
+ * 修改密码页测在 `sandbox.changePassword.test.ts`）。这一页不碰 Canvas，能测得比较全。
  *
  * 要盯住的：
  *
  * - **密码走 POST 不进 URL**：GET 会把密码留在 URL、浏览器历史和访问日志里
  * - **登录成功带着场景参数回 index.html**：用户在 index 填好的三级定位不丢
- * - **注册不自动登录**：老代码也是这样，注册完还要点一次登录
+ * - **「修改密码」带着用户名跳 changePassword.html**：用户名是改谁的依据
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -158,30 +158,34 @@ describe('登录', () => {
 
 });
 
-describe('注册', () => {
+describe('修改密码跳转', () => {
 
-	test('成功时提示可以登录了（不自动登录）', async () => {
-		await withDomAsync(PAGE, async () => {
-			stubXhr({ status: 'success', username: 'newbie' });
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
-			fill('username', 'newbie');
-			fill('password', 'pw');
-			click('btn-regist');
-			await new Promise(r => setTimeout(r, 10));
-			assert.ok(status().includes('注册成功'), `实际: ${status()}`);
-			assert.ok(!document.cookie.includes('loginToken'), '注册不该顺手登录');
+	test('点修改密码带着用户名跳 changePassword.html', () => {
+		withDom(PAGE, () => {
+			let jumped = '';
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
+			fill('username', 'teo');
+			click('btn-change-password');
+			assert.equal(jumped, './changePassword.html?username=teo');
 		});
 	});
 
-	test('用户名被占用时给中文提示', async () => {
-		await withDomAsync(PAGE, async () => {
-			stubXhr({ status: 'err', msg: 'username exists' });
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
-			fill('username', 'teo');
-			fill('password', 'pw');
-			click('btn-regist');
-			await new Promise(r => setTimeout(r, 10));
-			assert.ok(status().includes('已被占用'), `实际: ${status()}`);
+	test('用户名为空时只跳 changePassword.html 不带查询串', () => {
+		withDom(PAGE, () => {
+			let jumped = '';
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
+			click('btn-change-password');
+			assert.equal(jumped, './changePassword.html');
+		});
+	});
+
+	test('用户名里的特殊字符被 URL 编码', () => {
+		withDom(PAGE, () => {
+			let jumped = '';
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
+			fill('username', 'a&b c');
+			click('btn-change-password');
+			assert.equal(jumped, './changePassword.html?username=a%26b%20c');
 		});
 	});
 

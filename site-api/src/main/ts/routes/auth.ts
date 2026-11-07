@@ -1,5 +1,5 @@
 import { ICustomHandler, IRequestContext, IRequestData, HTTP_POST } from '@/types';
-import { loginBypass, loginByPassword, loginByToken, registUser } from '@/service/authService';
+import { loginBypass, loginByPassword, loginByToken, registUser, changePassword } from '@/service/authService';
 import { corsHeadersFor, sendOnce } from '@/middleware/simpleHTTPServer';
 
 /**
@@ -80,6 +80,31 @@ export const handler: ICustomHandler[] = [
 					: { status: 'err', msg: result.msg });
 			} catch (err) {
 				console.error('❌ 登录失败:', (err as Error).message);
+				sendJson(context, 500, { status: 'err', msg: 'internal error' });
+			}
+		}
+	},
+	{
+		urlPtn: '/api/auth/change-password',
+		method: HTTP_POST,
+		bindFunc: async (context: IRequestContext, data: IRequestData) => {
+			const username = data.params.username;
+			const oldPassword = data.params.oldPassword;
+			const newPassword = data.params.newPassword;
+
+			if (!username || !oldPassword || !newPassword
+				|| username.length === 0 || oldPassword.length === 0 || newPassword.length === 0) {
+				sendJson(context, 200, { status: 'err', msg: 'miss username or password' });
+				return;
+			}
+
+			try {
+				const result = await changePassword(username, oldPassword, newPassword);
+				sendJson(context, 200, result.ok
+					? { status: 'success', msg: result.msg }
+					: { status: 'err', msg: result.msg });
+			} catch (err) {
+				console.error('❌ 修改密码失败:', (err as Error).message);
 				sendJson(context, 500, { status: 'err', msg: 'internal error' });
 			}
 		}

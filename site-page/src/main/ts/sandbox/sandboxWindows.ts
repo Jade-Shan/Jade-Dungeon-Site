@@ -10,7 +10,7 @@ import {
  * 窗口自己管大小，这是换 UI 最大的收益。
  *
  * 窗口划分见 `docs/sandbox-refactor.md` 第 5.2 节：
- * 玩家开 Map + Dice 两个，GM 另外开 Tokens / Properties / Scene。
+ * 玩家开 Scene + Dice 两个，GM 另外开 Tokens / Properties / Status。
  *
  * ## 为什么每个窗口自带一个 `renderBody()`
  *
@@ -24,7 +24,7 @@ import {
 const DEFAULT_BODY = { width: 640, height: 480 };
 
 /**
- * 带双层 Canvas 的地图窗口
+ * 带双层 Canvas 的场景窗口
  *
  * **两张 Canvas 是渲染管线要求的**，不是冗余：
  *
@@ -36,7 +36,7 @@ const DEFAULT_BODY = { width: 640, height: 480 };
  * `SandTable.drawSceneWithUserView()` 要的就是这一对（`IScene.frame`）。
  * 缓冲那张**不进 DOM** —— 它只是个像素暂存区，塞进文档会被用户看到中间态。
  */
-export class SandboxMapWindow extends UIWindowAdapter {
+export class SandboxSceneWindow extends UIWindowAdapter {
 
 	/** 离屏缓冲画布，不加进 DOM */
 	readonly bufferCanvas: HTMLCanvasElement = document.createElement('canvas');
@@ -63,7 +63,7 @@ export class SandboxMapWindow extends UIWindowAdapter {
 	}
 
 	/**
-	 * 把地图画布放进窗体，底部加状态栏
+	 * 把场景画布放进窗体，底部加状态栏
 	 */
 	renderIn(): void {
 		const renderBody = (): HTMLDivElement => {
@@ -515,13 +515,13 @@ export class SandboxPropsWindow extends UIWindowAdapter {
 }
 
 /**
- * 场景操作窗口（GM 用）
+ * 状态操作窗口（GM 用）
  *
- * 装「保存并发布」「刷新请求」两个按钮、「定时刷新」开关和场景信息。
+ * 装「保存并发布」「刷新请求」两个按钮、「定时刷新」开关和状态信息。
  * 老界面这两个按钮在 `#optSaveBtns` 里，由 `listGroupTokens()` 顺手
  * 用 `innerHTML` 重建 —— 切一次分组就重建一遍，没必要。
  */
-export class SandboxSceneWindow extends UIWindowAdapter {
+export class SandboxStatusWindow extends UIWindowAdapter {
 
 	/** 保存并发布 */
 	readonly saveBtn: HTMLButtonElement = document.createElement('button');

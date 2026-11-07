@@ -1,16 +1,14 @@
-import {
-	JadeUIResource, DefaultIconGroup, registerDefaultUIResource,
-} from '@jade-dungeon/jade-utils/resource';
+import { registerDefaultUIResource } from '@jade-dungeon/jade-utils/resource';
 import { UIDesktop, UIWindowAdapter } from '@jade-dungeon/jade-utils/ui-window';
-import { WebUtil } from '@jade-dungeon/jade-utils/web';
+import { IconRec, WebUtil } from '@jade-dungeon/jade-utils/web';
 import {
 	CircleToken, ImageResource, IToken2D, LineToken, RectangleToken, SandTable,
 } from '../trpg/sandtable.js';
 import { renderRollResults, SandboxApi, SceneId } from './sandboxApi.js';
 import { SandboxScene, TokenGroup, TOKEN_GROUPS } from './sandboxScene.js';
 import {
-	SandboxDiceWindow, SandboxMapWindow, SandboxPropsWindow,
-	SandboxSceneWindow, SandboxTokenListWindow,
+	SandboxDiceWindow, SandboxSceneWindow, SandboxPropsWindow,
+	SandboxStatusWindow, SandboxTokenListWindow,
 } from './sandboxWindows.js';
 
 /**
@@ -26,7 +24,7 @@ import {
  * | Map | 地图画布，点选 Token、Ctrl 拖动、Alt 缩放 |
  * | Tokens | 分组切换 + Token 列表 + 创建按钮 |
  * | Properties | 选中 Token 的属性表单 + 图片裁剪预览 |
- * | Scene | 保存并发布、刷新移动请求 |
+ * | Status | 保存并发布、刷新移动请求 |
  * | Dice | 给玩家设阈值、看全场检定结果 |
  *
  * ## ⚠️ 改 Token 位置/尺寸要用返回值替换
@@ -48,6 +46,10 @@ export interface SandboxEditorConfig {
 	username: string;
 	/** GM 的登录 token。保存时塞进 jsonStr，后端靠它鉴权 */
 	loginToken: string;
+	/** 窗口 URL 图标的基地址（如 `…/3rd/SE98`），各窗口构造 IconRec 时填入 */
+	iconBaseUrl: string;
+	/** 骰子窗口 URL 图标的基地址（如 `…/3rd/jade-trpg`），独立于其他窗口的图标 CDN */
+	diceIconBaseUrl: string;
 }
 
 /**
@@ -101,10 +103,10 @@ export class SandboxEditor {
 	private readonly cfg: SandboxEditorConfig;
 	private readonly api: SandboxApi;
 	private readonly scene = new SandboxScene();
-	private mapWin!: SandboxMapWindow;
+	private sceneWin!: SandboxSceneWindow;
 	private listWin!: SandboxTokenListWindow;
 	private propsWin!: SandboxPropsWindow;
-	private sceneWin!: SandboxSceneWindow;
+	private statusWin!: SandboxStatusWindow;
 	private diceWin!: SandboxDiceWindow;
 
 	/** 当前查看的标签页 */
@@ -155,6 +157,21 @@ export class SandboxEditor {
 	}
 
 	/**
+	 * 构造一个带完整基地址的 URL 图标记录（`IconRec`）
+	 *
+	 * 窗口图标由每个窗口各自携带，`IconRec` 的 `baseUrl` 在构造时就填好
+	 * 完整地址 —— 本批图标都走 `cfg.iconBaseUrl` 那一个 CDN。将来不同图标
+	 * 换不同 CDN 时改这里或直接内联一条记录即可，库层不用动。
+	 *
+	 * @param category - 图标分类目录（如 `mimes` / `actions` / `apps`）
+	 * @param name - 图标文件名（如 `application-gpx.png`）
+	 * @returns {IconRec} 自带完整 `baseUrl` 的图标记录
+	 */
+	private icon(category: string, name: string): IconRec {
+		return { supportSizes: 30, baseUrl: this.cfg.iconBaseUrl, category, name };
+	}
+
+	/**
 	 * 启动编辑器
 	 * @returns {Promise<void>}
 	 */
@@ -164,35 +181,52 @@ export class SandboxEditor {
 		if (!host) {
 			throw new Error(`找不到桌面容器 #${this.cfg.desktopId}`);
 		}
-		const desktop = new UIDesktop(host, { dockBar: { range: 300, maxScale: 1.8 } });
-		const icons = JadeUIResource.getDefaultIcon(DefaultIconGroup.ELEC_FACE);
+		const desktop = new UIDesktop(host, {
+			dockBar: { range: 300, maxScale: 1.8 },
+		});
 
-		this.mapWin = new SandboxMapWindow(desktop, 'sandbox-map',
-			`编辑：${this.cfg.scene.campaignId} / ${this.cfg.scene.sceneId}`,
-			{ icons, body: { initSize: { width: 800, height: 560 }, overflow: 'scroll' } });
-		this.mapWin.renderIn();
+		this.sceneWin = new SandboxSceneWindow(desktop, 'sandbox-scene',
+			`编辑场景：${this.cfg.scene.campaignId} / ${this.cfg.scene.placeId} / ${this.cfg.scene.sceneId}`,
+			{
+				icons: this.icon('mimes', 'application-gpx.png'),
+				body: { initSize: { width: 800, height: 560 }, overflow: 'scroll' },
+			});
+		this.sceneWin.renderIn();
 
 		this.listWin = new SandboxTokenListWindow(desktop, 'sandbox-tokens', '元素列表',
-			{ icons, body: { initSize: { width: 330, height: 320 }, overflow: 'auto' } });
+			{
+				icons: this.icon('actions', 'fm-compact.png'),
+				body: { initSize: { width: 330, height: 320 }, overflow: 'auto' },
+			});
 		this.listWin.renderIn();
 
 		this.propsWin = new SandboxPropsWindow(desktop, 'sandbox-props', '属性',
-			{ icons, body: { initSize: { width: 320, height: 420 }, overflow: 'auto' } });
+			{
+				icons: this.icon('actions', 'application-menu.png'),
+				body: { initSize: { width: 320, height: 420 }, overflow: 'auto' },
+			});
 		this.propsWin.renderIn();
 
-		this.sceneWin = new SandboxSceneWindow(desktop, 'sandbox-scene', '场景',
-			{ icons, body: { initSize: { width: 300, height: 140 }, overflow: 'auto' } });
-		this.sceneWin.renderIn();
-
 		this.diceWin = new SandboxDiceWindow(desktop, 'sandbox-dice', '检定',
-			{ icons, body: { initSize: { width: 340, height: 300 }, overflow: 'auto' } });
+			{
+				// supportSizes 62 = 16|24|32|48|64；标题栏取 16、Dock 取 48
+				icons: { supportSizes: 62, baseUrl: this.cfg.diceIconBaseUrl, category: 'dice', name: 'd20.png' },
+				body: { initSize: { width: 340, height: 300 }, overflow: 'auto' },
+			});
 		this.diceWin.renderIn();
+
+		this.statusWin = new SandboxStatusWindow(desktop, 'sandbox-status', '状态',
+			{
+				icons: this.icon('actions', 'download.png'),
+				body: { initSize: { width: 300, height: 140 }, overflow: 'auto' },
+			});
+		this.statusWin.renderIn();
 
 		this.tileWindows();
 
 		await this.loadScene();
-		this.bindMapEvents();
 		this.bindSceneEvents();
+		this.bindStatusEvents();
 		this.bindDiceEvents();
 		this.bindPropsEvents();
 		this.renderGroupBar();
@@ -205,29 +239,29 @@ export class SandboxEditor {
 	 *
 	 * 在五个窗口都 `renderIn()` 完成、各自尺寸确定之后调用。窗口是
 	 * `position:absolute` 相对桌面定位，`renderWindowTplt` 只做了自动叠放，
-	 * 这里按需求重排：地图在左上角，场景+检定在下方贴底左右并排，
+	 * 这里按需求重排：地图在左上角，状态+检定在下方贴底左右并排，
 	 * 元素列表+属性在右方贴边上下并排，间距统一 20px。
 	 */
 	private tileWindows(): void {
 		const M = 20;
-		const desktop = this.mapWin.desktop.desktopDiv;
+		const desktop = this.sceneWin.desktop.desktopDiv;
 		const W = desktop.clientWidth;
 		const H = desktop.clientHeight;
 
-		// 只有定位相关的尺寸才需要读：场景宽（算检定横坐标）、场景/检定高
+		// 只有定位相关的尺寸才需要读：状态宽（算检定横坐标）、状态/检定高
 		// （贴底对齐）、元素列表宽高（算属性位置）、属性宽（贴右边对齐）。
-		const sceneW = this.sceneWin.ui.win.offsetWidth;
-		const sceneH = this.sceneWin.ui.win.offsetHeight;
+		const statusW = this.statusWin.ui.win.offsetWidth;
+		const statusH = this.statusWin.ui.win.offsetHeight;
 		const diceH = this.diceWin.ui.win.offsetHeight;
 		const listW = this.listWin.ui.win.offsetWidth;
 		const listH = this.listWin.ui.win.offsetHeight;
 		const propsW = this.propsWin.ui.win.offsetWidth;
 
 		// 地图：桌面左上角
-		this.placeWindow(this.mapWin, M, M);
-		// 场景 + 检定：地图下方，都贴桌面底部，左右并排
-		this.placeWindow(this.sceneWin, M, H - M - sceneH);
-		this.placeWindow(this.diceWin, M + sceneW + M, H - M - diceH);
+		this.placeWindow(this.sceneWin, M, M);
+		// 状态 + 检定：地图下方，都贴桌面底部，左右并排
+		this.placeWindow(this.statusWin, M, H - M - statusH);
+		this.placeWindow(this.diceWin, M + statusW + M, H - M - diceH);
 		// 元素列表 + 属性：地图右方，都贴桌面右边，上下并排
 		this.placeWindow(this.listWin, W - M - listW, M);
 		this.placeWindow(this.propsWin, W - M - propsW, M + listH + M);
@@ -256,20 +290,20 @@ export class SandboxEditor {
 	 * @returns {Promise<void>}
 	 */
 	private async loadScene(): Promise<void> {
-		this.mapWin.setStatus('载入场景……');
+		this.sceneWin.setStatus('载入场景……');
 		const owner = await this.api.mapOwner(this.cfg.scene.campaignId);
 		if (owner.ok && owner.data && owner.data !== this.cfg.username) {
-			this.sceneWin.setInfo(`⚠️ 本战役属于 ${owner.data}，你的改动存不上`);
+			this.statusWin.setInfo(`⚠️ 本战役属于 ${owner.data}，你的改动存不上`);
 		} else if (owner.ok && !owner.data) {
-			this.sceneWin.setInfo('这是无主战役 —— 你第一次保存后会成为它的拥有者');
+			this.statusWin.setInfo('这是无主战役 —— 你第一次保存后会成为它的拥有者');
 		} else {
-			this.sceneWin.setInfo(`拥有者：${this.cfg.username}`);
+			this.statusWin.setInfo(`拥有者：${this.cfg.username}`);
 		}
 
 		const r = await this.api.loadMap(this.cfg.scene);
 		if (!r.ok || !r.data) {
 			// 新建场景时后端回 empty，这是正常路径 —— 从空场景开始编辑
-			this.mapWin.setStatus(`新场景（${r.msg ?? '空'}）—— ` +
+			this.sceneWin.setStatus(`新场景（${r.msg ?? '空'}）—— ` +
 				`先在「图片资源」里加一张 id 为 map 的图`);
 			return;
 		}
@@ -286,12 +320,12 @@ export class SandboxEditor {
 				map: { imageUrl: mapImg.url, width: 0, height: 0, shadowStyle: SHADOW_STYLE },
 				frame: {
 					buff: {
-						cvs: this.mapWin.bufferCanvas,
-						ctx: this.mapWin.bufferCanvas.getContext('2d')!,
+						cvs: this.sceneWin.bufferCanvas,
+						ctx: this.sceneWin.bufferCanvas.getContext('2d')!,
 					},
 					show: {
-						cvs: this.mapWin.finalCanvas,
-						ctx: this.mapWin.finalCanvas.getContext('2d')!,
+						cvs: this.sceneWin.finalCanvas,
+						ctx: this.sceneWin.finalCanvas.getContext('2d')!,
 					},
 				},
 			});
@@ -300,7 +334,7 @@ export class SandboxEditor {
 		}
 
 		await this.redraw();
-		this.mapWin.setStatus('点选元素；Ctrl+拖动=移动，Alt+拖动=缩放');
+		this.sceneWin.setStatus('点选元素；Ctrl+拖动=移动，Alt+拖动=缩放');
 	}
 
 	/**
@@ -328,7 +362,7 @@ export class SandboxEditor {
 			};
 			await this.sandTable.drawSceneWithUserView(this.scene.allTokens(),
 				{ proxyUrl: this.api.imageProxyUrl });
-			const ctx = this.mapWin.finalCanvas.getContext('2d');
+			const ctx = this.sceneWin.finalCanvas.getContext('2d');
 			if (ctx) { this.highlightSelected(ctx); }
 		} else {
 			this.paintScene();
@@ -358,14 +392,14 @@ export class SandboxEditor {
 	 * @returns {boolean} 画成了没有。缺背景地图时返回 false 并把原因写进状态栏
 	 */
 	private paintScene(): boolean {
-		const cvs = this.mapWin.finalCanvas;
+		const cvs = this.sceneWin.finalCanvas;
 		const ctx = cvs.getContext('2d');
 		if (!ctx) { return false; }
 		let mapImg;
 		try {
 			mapImg = this.scene.requireMapImage();
 		} catch (e) {
-			this.mapWin.setStatus((e as Error).message);
+			this.sceneWin.setStatus((e as Error).message);
 			return false;
 		}
 		const img = mapImg.imgElem;
@@ -375,7 +409,7 @@ export class SandboxEditor {
 		if (img && img.width > 0 //
 			&& (cvs.width !== img.width || cvs.height !== img.height)) //
 		{
-			this.mapWin.resizeCanvas(img.width, img.height);
+			this.sceneWin.resizeCanvas(img.width, img.height);
 		}
 		ctx.clearRect(0, 0, cvs.width, cvs.height);
 		if (img) { ctx.drawImage(img, 0, 0); }
@@ -495,7 +529,7 @@ export class SandboxEditor {
 			btn.title = `新建${shape}，然后点地图落位`;
 			btn.addEventListener('click', () => {
 				this.pendingShape = { group, shape };
-				this.mapWin.setStatus(`点地图放下这个${SHAPE_ICON[shape]}`);
+				this.sceneWin.setStatus(`点地图放下这个${SHAPE_ICON[shape]}`);
 			});
 			bar.appendChild(btn);
 		}
@@ -577,7 +611,7 @@ export class SandboxEditor {
 		// 否则 checkbox 还勾着、画面却是全图，状态对不上
 		if (this.viewMode && !this.canPreviewView) {
 			this.viewMode = false;
-			this.sceneWin.autoView.checked = false;
+			this.statusWin.autoView.checked = false;
 		}
 		void this.redraw();
 	}
@@ -597,7 +631,7 @@ export class SandboxEditor {
 		this.selected = undefined;
 		if (this.viewMode) {
 			this.viewMode = false;
-			this.sceneWin.autoView.checked = false;
+			this.statusWin.autoView.checked = false;
 		}
 		this.renderImageProps();
 		this.renderImageList();
@@ -791,7 +825,7 @@ export class SandboxEditor {
 		this.renderImageList();
 		this.drawImagePreview();
 		await this.redraw();
-		this.mapWin.setStatus(newId === old.id
+		this.sceneWin.setStatus(newId === old.id
 			? `已更新资源 ${newId}`
 			: `资源已从 ${old.id} 改名为 ${newId}（引用它的棋子保存重载后才生效）`);
 	}
@@ -809,7 +843,7 @@ export class SandboxEditor {
 		this.selected = undefined;
 		this.renderImageProps();
 		this.renderImageList();
-		this.mapWin.setStatus(`已创建资源 ${id}，在属性窗口填地址`);
+		this.sceneWin.setStatus(`已创建资源 ${id}，在属性窗口填地址`);
 	}
 
 	/**
@@ -829,7 +863,7 @@ export class SandboxEditor {
 		}
 		this.renderImageList();
 		await this.redraw();
-		this.mapWin.setStatus(`已删除资源 ${id}（引用它的棋子保存重载后才生效）`);
+		this.sceneWin.setStatus(`已删除资源 ${id}（引用它的棋子保存重载后才生效）`);
 	}
 
 	/**
@@ -899,7 +933,7 @@ export class SandboxEditor {
 		}
 		this.renderTokenList();
 		await this.redraw();
-		this.mapWin.setStatus(`已删除 ${id}（还没发布，要按「保存并发布」才生效）`);
+		this.sceneWin.setStatus(`已删除 ${id}（还没发布，要按「保存并发布」才生效）`);
 	}
 
 	/**
@@ -938,15 +972,15 @@ export class SandboxEditor {
 		}
 		this.scene.replace(group, tk);
 		this.select(group, id);
-		this.mapWin.setStatus(`已创建 ${id}` +
+		this.sceneWin.setStatus(`已创建 ${id}` +
 			(group === 'teams' ? ' —— 玩家棋子的 ID 要改成玩家的用户名' : ''));
 	}
 
 	/**
 	 * 绑定地图交互：点选 / Ctrl 拖动 / Alt 缩放 / 落新元素
 	 */
-	private bindMapEvents(): void {
-		const cvs = this.mapWin.finalCanvas;
+	private bindSceneEvents(): void {
+		const cvs = this.sceneWin.finalCanvas;
 
 		document.addEventListener('keydown', e => {
 			if (e.key === 'Control') { this.ctrlDown = true; }
@@ -960,7 +994,7 @@ export class SandboxEditor {
 		});
 
 		cvs.addEventListener('mousedown', e => {
-			const p = this.mapWin.toCanvasPoint(e);
+			const p = this.sceneWin.toCanvasPoint(e);
 			if (this.pendingShape) { void this.createToken(p); return; }
 			const hit = this.scene.hitTest(p.x, p.y);
 			if (hit) {
@@ -985,7 +1019,7 @@ export class SandboxEditor {
 				}
 				return;
 			}
-			const p = this.mapWin.toCanvasPoint(e);
+			const p = this.sceneWin.toCanvasPoint(e);
 			const dx = p.x - this.dragFrom.x;
 			const dy = p.y - this.dragFrom.y;
 			// 先重画底，再把预览压在上面 —— 不重画的话上一帧的幽灵会留着，
@@ -1004,7 +1038,7 @@ export class SandboxEditor {
 		cvs.addEventListener('mouseup', e => {
 			this.previewing = false;
 			if (!this.dragFrom || !this.selected) { this.dragFrom = undefined; return; }
-			const p = this.mapWin.toCanvasPoint(e);
+			const p = this.sceneWin.toCanvasPoint(e);
 			const dx = p.x - this.dragFrom.x;
 			const dy = p.y - this.dragFrom.y;
 			this.dragFrom = undefined;
@@ -1016,7 +1050,7 @@ export class SandboxEditor {
 			if (this.ctrlDown) { next = token.moveTo(dx, dy); }
 			else if (this.altDown) { next = token.scaleTo(dx, dy); }
 			if (!next) {
-				this.mapWin.setStatus('按住 Ctrl 拖动=移动，按住 Alt 拖动=缩放');
+				this.sceneWin.setStatus('按住 Ctrl 拖动=移动，按住 Alt 拖动=缩放');
 				return;
 			}
 			this.scene.replace(group, next);
@@ -1029,7 +1063,7 @@ export class SandboxEditor {
 	/**
 	 * 绑定属性窗口裁剪预览的交互：Shift 框选 / Ctrl 移动 / Alt 缩放
 	 *
-	 * 三种修饰键和编辑窗口里拖元素的语义一致（见 bindMapEvents）：
+	 * 三种修饰键和编辑窗口里拖元素的语义一致（见 bindSceneEvents）：
 	 *
 	 * | 键 | 动作 |
 	 * |----|------|
@@ -1097,7 +1131,7 @@ export class SandboxEditor {
 	 * 把鼠标事件换算成裁剪预览画布上的坐标
 	 *
 	 * 画布位图尺寸 = 图片原始尺寸，但 CSS 显示尺寸可能被窗口宽度压缩，
-	 * 所以用 `getBoundingClientRect` 按比例换算（对齐 `SandboxMapWindow.toCanvasPoint`）。
+	 * 所以用 `getBoundingClientRect` 按比例换算（对齐 `SandboxSceneWindow.toCanvasPoint`）。
 	 */
 	private clipToCanvasPoint(e: MouseEvent): { x: number, y: number } {
 		const cvs = this.propsWin.clipCanvas;
@@ -1127,14 +1161,14 @@ export class SandboxEditor {
 	}
 
 	/**
-	 * 绑定场景窗口：保存并发布、刷新移动请求、定时刷新开关
+	 * 绑定状态窗口：保存并发布、刷新移动请求、定时刷新开关
 	 */
-	private bindSceneEvents(): void {
-		this.sceneWin.saveBtn.addEventListener('click', () => { void this.save(); });
-		this.sceneWin.refreshBtn.addEventListener('click', () => { void this.loadMoveRequests(); });
+	private bindStatusEvents(): void {
+		this.statusWin.saveBtn.addEventListener('click', () => { void this.save(); });
+		this.statusWin.refreshBtn.addEventListener('click', () => { void this.loadMoveRequests(); });
 		// 定时刷新：选中启动 3 秒一次的自动刷新，取消就停
-		this.sceneWin.autoRefresh.addEventListener('change', () => {
-			if (this.sceneWin.autoRefresh.checked) {
+		this.statusWin.autoRefresh.addEventListener('change', () => {
+			if (this.statusWin.autoRefresh.checked) {
 				this.autoRefreshTimer = window.setInterval(() => { void this.loadMoveRequests(); }, 3000);
 			} else if (this.autoRefreshTimer !== undefined) {
 				window.clearInterval(this.autoRefreshTimer);
@@ -1142,7 +1176,7 @@ export class SandboxEditor {
 			}
 		});
 		// 当前角色视野：以选中的玩家/生物为观察者预览视野与遮挡
-		this.sceneWin.autoView.addEventListener('change', () => { void this.toggleViewMode(); });
+		this.statusWin.autoView.addEventListener('change', () => { void this.toggleViewMode(); });
 	}
 
 	/**
@@ -1154,12 +1188,12 @@ export class SandboxEditor {
 	 * @returns {Promise<void>}
 	 */
 	private async toggleViewMode(): Promise<void> {
-		if (this.sceneWin.autoView.checked && !this.canPreviewView) {
+		if (this.statusWin.autoView.checked && !this.canPreviewView) {
 			// 没选中对象、或选中的不是玩家/生物：什么都不做，checkbox 弹回
-			this.sceneWin.autoView.checked = false;
+			this.statusWin.autoView.checked = false;
 			return;
 		}
-		this.viewMode = this.sceneWin.autoView.checked;
+		this.viewMode = this.statusWin.autoView.checked;
 		await this.redraw();
 	}
 
@@ -1172,14 +1206,14 @@ export class SandboxEditor {
 	 * @returns {Promise<void>}
 	 */
 	private async save(): Promise<void> {
-		this.sceneWin.setInfo('保存中……');
+		this.statusWin.setInfo('保存中……');
 		const json = this.scene.toJsonStr(this.cfg.username, this.cfg.loginToken);
 		const r = await this.api.saveMap(this.cfg.scene, json);
 		if (r.ok) {
-			this.sceneWin.setInfo(`已发布（${new Date().toLocaleTimeString()}）`);
+			this.statusWin.setInfo(`已发布（${new Date().toLocaleTimeString()}）`);
 		} else {
 			// 最常见的是 not owner
-			this.sceneWin.setInfo(`保存失败：${r.msg === 'not owner'
+			this.statusWin.setInfo(`保存失败：${r.msg === 'not owner'
 				? '你不是这个战役的拥有者' : (r.msg ?? '未知错误')}`);
 		}
 	}
@@ -1198,11 +1232,11 @@ export class SandboxEditor {
 		try {
 			const r = await this.api.loadMoveRequests(this.cfg.scene);
 			if (!r.ok) {
-				this.sceneWin.setInfo(`读取请求失败：${r.msg ?? '未知错误'}`);
+				this.statusWin.setInfo(`读取请求失败：${r.msg ?? '未知错误'}`);
 				return;
 			}
 			await this.redraw();
-			const ctx = this.mapWin.finalCanvas.getContext('2d');
+			const ctx = this.sceneWin.finalCanvas.getContext('2d');
 			const list = r.data ?? [];
 			if (ctx) {
 				for (const req of list) {
@@ -1214,7 +1248,7 @@ export class SandboxEditor {
 					drawable?.drawNextLocation?.(ctx, req.pos.x, req.pos.y);
 				}
 			}
-			this.sceneWin.setInfo(list.length > 0
+			this.statusWin.setInfo(list.length > 0
 				? `${list.length} 个移动请求（Ctrl+拖动棋子来裁定）`
 				: '没有待裁定的移动请求');
 		} finally {

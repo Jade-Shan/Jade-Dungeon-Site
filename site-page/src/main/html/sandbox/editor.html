@@ -38,12 +38,14 @@ html,body {width:99%; height: 99%; overflow: auto;}
 		} else {
 			window.onload = function() {
 				initSandboxEditor({
-					apiRoot   : '@@apiRoot',
-					assetRoot : '@@staticRoot/themes/trpg/images',
-					desktopId : 'sandbox-desktop',
-					scene     : { campaignId: campaignId, placeId: placeId, sceneId: sceneId },
-					username  : username,
-					loginToken: loginToken
+					apiRoot     : '@@apiRoot',
+					assetRoot   : '@@staticRoot/themes/trpg/images',
+					desktopId   : 'sandbox-desktop',
+					iconBaseUrl     : '@@cdn3rd/SE98',
+					diceIconBaseUrl : '@@cdn3rd/jade-trpg',
+					scene           : { campaignId: campaignId, placeId: placeId, sceneId: sceneId },
+					username    : username,
+					loginToken  : loginToken
 				}).catch(e => {
 					console.error('编辑器启动失败:', e);
 					document.getElementById('sandbox-desktop').innerHTML =

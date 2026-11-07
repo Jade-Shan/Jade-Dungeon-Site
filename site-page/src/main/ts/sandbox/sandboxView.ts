@@ -1,12 +1,10 @@
-import { WebUtil } from '@jade-dungeon/jade-utils/web';
-import {
-	JadeUIResource, DefaultIconGroup, registerDefaultUIResource,
-} from '@jade-dungeon/jade-utils/resource';
+import { IconRec, WebUtil } from '@jade-dungeon/jade-utils/web';
+import { registerDefaultUIResource } from '@jade-dungeon/jade-utils/resource';
 import { UIDesktop } from '@jade-dungeon/jade-utils/ui-window';
 import { IToken2D, SandTable } from '../trpg/sandtable.js';
 import { renderRollResults, SandboxApi, SceneId } from './sandboxApi.js';
 import { SandboxScene } from './sandboxScene.js';
-import { SandboxDiceWindow, SandboxMapWindow } from './sandboxWindows.js';
+import { SandboxDiceWindow, SandboxSceneWindow } from './sandboxWindows.js';
 
 /**
  * 沙盘的玩家视图
@@ -46,6 +44,10 @@ export interface SandboxViewConfig {
 	username: string;
 	/** 登录 token，提移动请求时带上 */
 	loginToken?: string;
+	/** 窗口 URL 图标的基地址（如 `…/3rd/SE98`），各窗口构造 IconRec 时填入 */
+	iconBaseUrl: string;
+	/** 骰子窗口 URL 图标的基地址（如 `…/3rd/jade-trpg`），独立于其他窗口的图标 CDN */
+	diceIconBaseUrl: string;
 }
 
 /** 视野范围（像素）。老代码写死 500，这里保持一致 */
@@ -64,7 +66,7 @@ export class SandboxView {
 	private readonly cfg: SandboxViewConfig;
 	private readonly api: SandboxApi;
 	private readonly scene = new SandboxScene();
-	private mapWin!: SandboxMapWindow;
+	private sceneWin!: SandboxSceneWindow;
 	private diceWin!: SandboxDiceWindow;
 	private sandTable!: SandTable;
 
@@ -88,6 +90,21 @@ export class SandboxView {
 	}
 
 	/**
+	 * 构造一个带完整基地址的 URL 图标记录（`IconRec`）
+	 *
+	 * 窗口图标由每个窗口各自携带，`IconRec` 的 `baseUrl` 在构造时就填好
+	 * 完整地址 —— 本批图标都走 `cfg.iconBaseUrl` 那一个 CDN。将来不同图标
+	 * 换不同 CDN 时改这里或直接内联一条记录即可，库层不用动。
+	 *
+	 * @param category - 图标分类目录（如 `mimes` / `actions` / `apps`）
+	 * @param name - 图标文件名（如 `application-gpx.png`）
+	 * @returns {IconRec} 自带完整 `baseUrl` 的图标记录
+	 */
+	private icon(category: string, name: string): IconRec {
+		return { supportSizes: 30, baseUrl: this.cfg.iconBaseUrl, category, name };
+	}
+
+	/**
 	 * 启动：建窗口 → 载场景 → 画一帧 → 绑交互
 	 *
 	 * @returns {Promise<void>}
@@ -102,18 +119,22 @@ export class SandboxView {
 		}
 		const desktop = new UIDesktop(host, { dockBar: { range: 300, maxScale: 1.8 } });
 
-		const icons = JadeUIResource.getDefaultIcon(DefaultIconGroup.ELEC_FACE);
-		this.mapWin = new SandboxMapWindow(desktop, 'sandbox-map',
-			`${this.cfg.scene.campaignId} / ${this.cfg.scene.sceneId}`,
-			{ icons: icons, body: { initSize: { width: 800, height: 600 }, overflow: 'scroll' } });
-		this.mapWin.renderIn();
+		this.sceneWin = new SandboxSceneWindow(desktop, 'sandbox-scene',
+			`${this.cfg.scene.campaignId} / ${this.cfg.scene.placeId} / ${this.cfg.scene.sceneId}`,
+			{ 
+				icons: this.icon('mimes', 'application-gpx.png'),
+				body: { initSize: { width: 800, height: 600 }, overflow: 'scroll' } });
+		this.sceneWin.renderIn();
 
 		this.diceWin = new SandboxDiceWindow(desktop, 'sandbox-dice', '检定',
-			{ icons: icons, body: { initSize: { width: 360, height: 300 }, overflow: 'auto' } });
+			{
+				// supportSizes 62 = 16|24|32|48|64；标题栏取 16、Dock 取 48
+				icons: { supportSizes: 62, baseUrl: this.cfg.diceIconBaseUrl, category: 'dice', name: 'd20.png' },
+				body: { initSize: { width: 360, height: 300 }, overflow: 'auto' } });
 		this.diceWin.renderIn();
 
 		await this.loadScene();
-		this.bindMapEvents();
+		this.bindSceneEvents();
 		this.bindDiceEvents();
 		await this.refreshRollResults();
 	}
@@ -124,11 +145,11 @@ export class SandboxView {
 	 * @returns {Promise<void>}
 	 */
 	private async loadScene(): Promise<void> {
-		this.mapWin.setStatus('载入场景……');
+		this.sceneWin.setStatus('载入场景……');
 		const r = await this.api.loadMap(this.cfg.scene);
 		if (!r.ok || !r.data) {
 			// 场景不存在时后端回 msg: 'empty'
-			this.mapWin.setStatus(`载入失败：${r.msg ?? '未知错误'}`);
+			this.sceneWin.setStatus(`载入失败：${r.msg ?? '未知错误'}`);
 			return;
 		}
 		// loadFrom 内部已经等图片加载完才建 Token —— 顺序反了棋子图片就不显示，
@@ -141,14 +162,14 @@ export class SandboxView {
 		this.myToken = this.scene.list('teams')
 			.find(t => t.id === this.cfg.username);
 
-		const bufCtx = this.mapWin.bufferCanvas.getContext('2d')!;
-		const shwCtx = this.mapWin.finalCanvas.getContext('2d')!;
+		const bufCtx = this.sceneWin.bufferCanvas.getContext('2d')!;
+		const shwCtx = this.sceneWin.finalCanvas.getContext('2d')!;
 		this.sandTable = new SandTable({
 			visibility: 'default',
 			map: { imageUrl: mapImg.url, width: 0, height: 0, shadowStyle: SHADOW_STYLE },
 			frame: {
-				buff: { cvs: this.mapWin.bufferCanvas, ctx: bufCtx },
-				show: { cvs: this.mapWin.finalCanvas, ctx: shwCtx },
+				buff: { cvs: this.sceneWin.bufferCanvas, ctx: bufCtx },
+				show: { cvs: this.sceneWin.finalCanvas, ctx: shwCtx },
 			},
 		});
 		// 观察者站在自己的棋子上。没有自己的棋子时用默认位置（旁观者）
@@ -162,7 +183,7 @@ export class SandboxView {
 			};
 		}
 		await this.redraw();
-		this.mapWin.setStatus(this.myToken
+		this.sceneWin.setStatus(this.myToken
 			? '按住 Ctrl 拖动自己的棋子可以申请移动'
 			: '没找到你的棋子（旁观模式）—— 棋子 ID 要和用户名一致');
 	}
@@ -190,15 +211,15 @@ export class SandboxView {
 
 		// 把合成结果存成图片，拖动预览时拿它当底
 		const snap = new Image();
-		await WebUtil.loadImageByProxy(snap, this.mapWin.finalCanvas.toDataURL());
+		await WebUtil.loadImageByProxy(snap, this.sceneWin.finalCanvas.toDataURL());
 		this.viewSnapshot = snap;
 	}
 
 	/**
 	 * 绑定地图上的交互：Ctrl + 拖动自己的棋子 → 提移动申请
 	 */
-	private bindMapEvents(): void {
-		const cvs = this.mapWin.finalCanvas;
+	private bindSceneEvents(): void {
+		const cvs = this.sceneWin.finalCanvas;
 		const ctx = cvs.getContext('2d')!;
 
 		// Ctrl 是「进入拖动模式」的开关，沿用老代码的操作习惯
@@ -210,7 +231,7 @@ export class SandboxView {
 		});
 
 		cvs.addEventListener('mousedown', e => {
-			const p = this.mapWin.toCanvasPoint(e);
+			const p = this.sceneWin.toCanvasPoint(e);
 			// 点在上一次的移动目标上 = 撤销请求
 			if (this.dragTo && this.myToken?.isHit(p.x, p.y) === false
 				&& this.hitDragTarget(p)) {
@@ -223,7 +244,7 @@ export class SandboxView {
 
 		cvs.addEventListener('mousemove', e => {
 			if (!this.dragFrom || !this.ctrlDown || !this.myToken) { return; }
-			const p = this.mapWin.toCanvasPoint(e);
+			const p = this.sceneWin.toCanvasPoint(e);
 			// ⚠️ **按位移量算，不是光标坐标。** 从棋子边缘抓住拖动时，
 			// 直接用光标坐标会把棋子中心瞬移到光标底下（半径 25 的棋子最多偏 25px），
 			// 而且**提交的坐标也跟着偏** —— 老代码是位移量语义，这里对齐它。
@@ -272,10 +293,10 @@ export class SandboxView {
 	 * @returns {Promise<void>}
 	 */
 	private async submitMove(to: { x: number, y: number }): Promise<void> {
-		this.mapWin.setStatus('提交移动申请……');
+		this.sceneWin.setStatus('提交移动申请……');
 		const r = await this.api.requestMove(this.cfg.scene, this.cfg.username,
 			to.x, to.y, this.cfg.loginToken);
-		this.mapWin.setStatus(r.ok
+		this.sceneWin.setStatus(r.ok
 			? `已申请移动到 (${to.x}, ${to.y})，等 GM 裁定。点目标圈可撤销`
 			: `申请失败：${r.msg ?? '未知错误'}`);
 	}
@@ -290,15 +311,15 @@ export class SandboxView {
 		if (r.ok) {
 			this.dragTo = undefined;
 			// 擦掉预览，回到纯视野画面
-			const ctx = this.mapWin.finalCanvas.getContext('2d')!;
+			const ctx = this.sceneWin.finalCanvas.getContext('2d')!;
 			if (this.viewSnapshot) {
-				ctx.clearRect(0, 0, this.mapWin.finalCanvas.width,
-					this.mapWin.finalCanvas.height);
+				ctx.clearRect(0, 0, this.sceneWin.finalCanvas.width,
+					this.sceneWin.finalCanvas.height);
 				ctx.drawImage(this.viewSnapshot, 0, 0);
 			}
-			this.mapWin.setStatus('已撤销移动申请');
+			this.sceneWin.setStatus('已撤销移动申请');
 		} else {
-			this.mapWin.setStatus(`撤销失败：${r.msg ?? '未知错误'}`);
+			this.sceneWin.setStatus(`撤销失败：${r.msg ?? '未知错误'}`);
 		}
 	}
 
@@ -364,6 +385,8 @@ export class SandboxView {
  *   apiRoot: '@@apiRoot',
  *   assetRoot: '@@staticRoot/themes/trpg/images',
  *   desktopId: 'sandbox-desktop',
+ *   iconBaseUrl: '@@cdn3rd/SE98',
+ *   diceIconBaseUrl: '@@cdn3rd/jade-trpg',
  *   scene: {campaignId, placeId, sceneId},
  *   username: WebUtil.loadCookieValue('username'),
  *   loginToken: WebUtil.loadCookieValue('loginToken'),

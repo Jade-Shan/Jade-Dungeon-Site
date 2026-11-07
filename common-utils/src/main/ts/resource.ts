@@ -14,7 +14,7 @@
  * 拆包之后本文件会成为独立的可选包 `@jade-dungeon/window-ui-icons`。
  */
 import { SimpleMap } from "./dataStructure.js";
-import { IconSize, IBase64Img, Base64ImgType } from "./web.js";
+import { IconSize, IBase64Img, Base64ImgType, IconRec } from "./web.js";
 import {
 	IconGroup, IUIResourceProvider, pickIconSize, registerUIResourceProvider,
 } from "./ui/uiResource.js";
@@ -28,15 +28,6 @@ export type { IconGroup };
 
 /** 默认图标组：ELEC_FACE（电子脸） */
 const iconDefault01: IconGroup = {
-	x12: {
-		format: Base64ImgType.BASE64_PNG, data:
-			"iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAA+ElEQVR4AYXBTWoacRwA0PfXCVgr" +
-			"uAlEm4CLGqg3aFaC21ygyxRym1yh0Fwi24LQM7RZuJiAqItCG79SIuVXOxCwk5C8lxC9j0m771mT" +
-			"IdefQ8VWu+9Fb/oKmR1fzsJegz+/Fao1NksGl8mDipJ6i2qNao16yyOZknorORwo/PzG7SjsypRM" +
-			"v4ZFnvyzHIeyzI7BZfK/pKxiazpEIBAIBAKBYDpUyJpdImge8/2TJ/XOmQxpdknvzlLcjni1z3rG" +
-			"eqZQrXHwXuH+F3c/aHap2FqNefuB10fM8zDPwyIPi5xFzjxnNVbIbJ1csFnSOaVzmjxlr8HNFX8B" +
-			"lm9P9V1lg8gAAAAASUVORK5CYII="
-	},
 	x16: {
 		format: Base64ImgType.BASE64_PNG, data:
 			"iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABP0lEQVR4AaXBsUsCYRjA4d8bn4tg" +
@@ -94,14 +85,6 @@ const iconDefault01: IconGroup = {
 };
 /** 默认图标组：ELEC_BUG（电子虫） */
 const iconDefault02: IconGroup = {
-	x12: {
-		format: Base64ImgType.BASE64_PNG, data:
-			"iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAA1klEQVR4AYXBQUoCUQAA0Df6RUGC" +
-			"ilm0mQiS6AhGV/AQs2gZreo8zgE6hpBHaKEgFLkZWikkTE44oExF+V6E0rin0p/YJ3jqMVqqZIk/" +
-			"xU0GM0FU2isvbAX9KVmikr4wTHiYkxd2ssRWQ12WkB7yeOovQd39nLMWt28ql21OWnQiPkobDXV5" +
-			"QfpK/slFm6uun4K6m2OKkoMmizXDd5X0yFawFTd5XjFaqtzF9NpMVuoilLKEvCAOdgI6DRZr8kLl" +
-			"uivYiJt+KbBY+yYqBRuDmX+Nz1X6U19vtjrO4KkkgAAAAABJRU5ErkJggg=="
-	},
 	x16: {
 		format: Base64ImgType.BASE64_PNG, data:
 			"iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABT0lEQVR4AZXBsUobYQAA4C/xB9Ne" +
@@ -161,16 +144,6 @@ const iconDefault02: IconGroup = {
 };
 /** 默认图标组：CAMERA（相机） */
 const iconDefault03: IconGroup = {
-	x12: {
-		format: Base64ImgType.BASE64_PNG, data:
-			"iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAABQUlEQVR4AX3BsWoTYQAA4O+Sn1MS" +
-			"C71KNG6BOjg6imRwzkMUpcUnaCczZhBapK6agPQRBH2CIOITOEjJ0CESmxNtgh5JT+6HrH5fgtJG" +
-			"t8njBs93RG/mfFoyXtioqWzXGbTZqbNGb0Jvwho7dQZttusqNZXDFiFhL2M3pSgpSnZT9jJCwmFL" +
-			"Jeg2+bKkkzKci540Ra9+iHpbTAq6TcHTjP1M9Pqe/xrlgv2MoykHGcOcRw0e3BB9/cvnJQcZw5zj" +
-			"tqDyp+T0UlRivBDdDlxdc3pJSFSCUc6LFlfXovsp46Wo2+DhTdGtGqNc8C7n/S86KR9/i7oN0bML" +
-			"UW+LScF8LRgvGLQJCS/bfF9xPBMdtbgb+FZwJ9CfqqmczFiVnOWcF6QJacJ5wVnOquRkphJUfq7p" +
-			"T+k2qeNDR/R2znxNf2rjHz/3ZoKr0MwfAAAAAElFTkSuQmCC"
-	},
 	x16: {
 		format: Base64ImgType.BASE64_PNG, data:
 			"iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACGElEQVR4AVXBMWhcBQAA0Pf//dR/" +
@@ -318,6 +291,19 @@ const imgDesktopBg: IBase64Img = {
 		'R90ExLtH+zg9D6D0FFFHQDDgTz7uRNzL8xBYfebr1J+v6CrWnA6ppmoSzNuaOCLHA5y4PPrygPPP6UUUAQyajNp6I0cjARxRzbD9x2J3fMvQ44xkZAA9BSarAun6tJbJuaKKVsbzuJw2zk/Qn3yT7Cii' +
 		'gCrIxaKJjksy8kn0JH8gP5dMCiiigD//2Q=='
 };
+
+const WIN98_ICON_GROP:Array<IconRec> = [
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "blueman-pair.png"     }, // 钥匙形状，适用加密登录
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "application-menu.png" }, // 适用详细编辑
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "fm-compact.png"       }, // 文件列表图标，适用列表
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "document-save.png"    }, // 软盘图标，适用保存
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "download.png"         }, // 网络下载图标
+	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "config-users.png"     }, // 双人图标
+	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "tag-new.png"          }, // 笔记录图标，适用编辑
+	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "cs-region.png"        }, // 地球图标
+	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "devhelp.png"          }, // 记事本图标
+	{ supportSizes: 30, baseUrl: "", category: "mimes"  , name: "application-gpx.png"  }, // 地图图标
+];
 
 /**
  * Jade UI 资源管理

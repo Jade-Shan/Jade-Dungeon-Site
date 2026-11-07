@@ -28,6 +28,8 @@ const cfg: SandboxEditorConfig = {
 	apiRoot: '//localhost:8089',
 	assetRoot: '//cdn.x/themes/trpg/images',
 	desktopId: 'desktop',
+	iconBaseUrl: '//cdn.x/3rd/SE98',
+	diceIconBaseUrl: '//cdn.x/3rd/jade-trpg',
 	scene: { campaignId: 'c1', placeId: 'p1', sceneId: 's1' },
 	username: 'gm',
 	loginToken: 'tk',
@@ -64,11 +66,11 @@ function makeEditor(): { editor: SandboxEditor, props: ReturnType<typeof mockPro
 		createBar: document.createElement('div'),
 		groupBar: document.createElement('ul'),
 	};
-	any.mapWin = {
+	any.sceneWin = {
 		finalCanvas: document.createElement('canvas'),
 		setStatus(_t: string): void { /* 状态栏提示不在这里断言 */ },
 	};
-	any.sceneWin = { autoView: { checked: false } };
+	any.statusWin = { autoView: { checked: false } };
 	return { editor, props };
 }
 

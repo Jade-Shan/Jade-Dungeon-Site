@@ -270,7 +270,11 @@ describe('幽灵的画法', () => {
 			// ⚠️ **线段把蓝色描上去，不是填上去的** —— 它没有面积，
 			// 「填充 + 描边」落到线段身上就是描两遍（见 LineToken.drawPreviewGhost）。
 			// 所以这里查「这个颜色出现过」，不查「出现在 fillStyle 还是 strokeStyle」
-			const used = new Set(ctx.calls.flatMap(c => [c.fill, c.stroke]));
+			const used = new Set<string>();
+			for (const c of ctx.calls) {
+				used.add(c.fill);
+				used.add(c.stroke);
+			}
 			assert.ok(used.has(GHOST_FILL), `${name}：没有用幽灵的蓝色`);
 			assert.ok(used.has(GHOST_STROKE), `${name}：没有用幽灵的绿色`);
 		}

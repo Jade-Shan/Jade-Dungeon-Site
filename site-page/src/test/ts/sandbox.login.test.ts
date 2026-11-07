@@ -65,7 +65,7 @@ describe('init 回填', () => {
 
 	test('URL 带场景参数时回填进输入框', () => {
 		withDom(PAGE, () => {
-			initSandboxLogin({ apiRoot: '/' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '/' });
 			assert.equal((document.getElementById('campaignId') as HTMLInputElement).value, 'c1');
 			assert.equal((document.getElementById('placeId') as HTMLInputElement).value, 'p1');
 			assert.equal((document.getElementById('sceneId') as HTMLInputElement).value, 's1');
@@ -74,7 +74,7 @@ describe('init 回填', () => {
 
 	test('没有 cookie 时提示请先登录', () => {
 		withDom(PAGE, () => {
-			initSandboxLogin({ apiRoot: '/' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '/' });
 			assert.ok(status().includes('请先登录'), `实际: ${status()}`);
 		});
 	});
@@ -83,7 +83,7 @@ describe('init 回填', () => {
 		withDom(PAGE, () => {
 			document.cookie = 'username=teo;path=/';
 			document.cookie = 'loginToken=teo|uuid|1;path=/';
-			initSandboxLogin({ apiRoot: '/' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '/' });
 			assert.equal((document.getElementById('username') as HTMLInputElement).value, 'teo');
 			assert.ok(status().includes('已登录'), `实际: ${status()}`);
 		});
@@ -96,7 +96,7 @@ describe('登录', () => {
 	test('成功后写 cookie 并显示身份', async () => {
 		await withDomAsync(PAGE, async () => {
 			stubXhr({ status: 'success', username: 'teo', token: 'teo|uuid|9' });
-			initSandboxLogin({ apiRoot: '//api' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
 			fill('username', 'teo');
 			fill('password', 'pw');
 			click('btn-login');
@@ -110,7 +110,7 @@ describe('登录', () => {
 	test('走 POST，密码不出现在 URL 里', async () => {
 		await withDomAsync(PAGE, async () => {
 			stubXhr({ status: 'success', username: 'teo', token: 't' });
-			initSandboxLogin({ apiRoot: '//api' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
 			fill('username', 'teo');
 			fill('password', 'secret-pw');
 			click('btn-login');
@@ -125,7 +125,7 @@ describe('登录', () => {
 	test('失败时显示后端给的原因，不写 cookie', async () => {
 		await withDomAsync(PAGE, async () => {
 			stubXhr({ status: 'err', msg: 'wrong password' });
-			initSandboxLogin({ apiRoot: '//api' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
 			fill('username', 'teo');
 			fill('password', 'bad');
 			click('btn-login');
@@ -138,7 +138,7 @@ describe('登录', () => {
 	test('用户名或密码为空时不发请求', async () => {
 		await withDomAsync(PAGE, async () => {
 			stubXhr({ status: 'success' });
-			initSandboxLogin({ apiRoot: '//api' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
 			fill('username', 'teo');
 			click('btn-login');
 			await new Promise(r => setTimeout(r, 10));
@@ -150,7 +150,7 @@ describe('登录', () => {
 	test('输入框的首尾空白被去掉', async () => {
 		await withDomAsync(PAGE, async () => {
 			stubXhr({ status: 'success', username: 'teo', token: 't' });
-			initSandboxLogin({ apiRoot: '//api' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
 			fill('username', '  teo  ');
 			fill('password', 'pw');
 			click('btn-login');
@@ -166,7 +166,7 @@ describe('注册', () => {
 	test('成功时提示可以登录了（不自动登录）', async () => {
 		await withDomAsync(PAGE, async () => {
 			stubXhr({ status: 'success', username: 'newbie' });
-			initSandboxLogin({ apiRoot: '//api' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
 			fill('username', 'newbie');
 			fill('password', 'pw');
 			click('btn-regist');
@@ -179,7 +179,7 @@ describe('注册', () => {
 	test('用户名被占用时给中文提示', async () => {
 		await withDomAsync(PAGE, async () => {
 			stubXhr({ status: 'err', msg: 'username exists' });
-			initSandboxLogin({ apiRoot: '//api' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
 			fill('username', 'teo');
 			fill('password', 'pw');
 			click('btn-regist');
@@ -194,7 +194,7 @@ describe('进入场景', () => {
 
 	test('没登录时不跳转，提示请先登录', () => {
 		withDom(PAGE, () => {
-			initSandboxLogin({ apiRoot: '//api' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
 			fill('campaignId', 'c1');
 			fill('placeId', 'p1');
 			fill('sceneId', 's1');
@@ -207,7 +207,7 @@ describe('进入场景', () => {
 		withDom(PAGE, () => {
 			document.cookie = 'username=teo;path=/';
 			document.cookie = 'loginToken=t;path=/';
-			initSandboxLogin({ apiRoot: '//api' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
 			fill('campaignId', 'c1');
 			fill('placeId', 'p1');
 			// 窗口里预填了 scene01（demo 便利），这里清空以测「缺一个」
@@ -223,7 +223,7 @@ describe('进入场景', () => {
 			document.cookie = 'loginToken=t;path=/';
 			// jsdom 的 window.location 不可重定义，所以用 navigate 这个口子观察
 			let jumped = '';
-			initSandboxLogin({ apiRoot: '//api', navigate: u => { jumped = u; } });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
 			fill('campaignId', 'c1');
 			fill('placeId', 'p1');
 			fill('sceneId', 's1');
@@ -240,7 +240,7 @@ describe('进入场景', () => {
 			document.cookie = 'username=teo;path=/';
 			document.cookie = 'loginToken=t;path=/';
 			let jumped = '';
-			initSandboxLogin({ apiRoot: '//api', navigate: u => { jumped = u; } });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
 			fill('campaignId', 'c1');
 			fill('placeId', 'p1');
 			fill('sceneId', 's1');
@@ -254,7 +254,7 @@ describe('进入场景', () => {
 			document.cookie = 'username=teo;path=/';
 			document.cookie = 'loginToken=t;path=/';
 			let jumped = '';
-			initSandboxLogin({ apiRoot: '//api', navigate: u => { jumped = u; } });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
 			fill('campaignId', '深水城 & 大冒险');
 			fill('placeId', 'p1');
 			fill('sceneId', 's1');
@@ -269,7 +269,7 @@ describe('进入场景', () => {
 			document.cookie = 'username=teo;path=/';
 			document.cookie = 'loginToken=t;path=/';
 			let jumped = '';
-			initSandboxLogin({ apiRoot: '//api', viewUrl: '/custom/v.html', navigate: u => { jumped = u; } });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', viewUrl: '/custom/v.html', navigate: u => { jumped = u; } });
 			fill('campaignId', 'c1');
 			fill('placeId', 'p1');
 			fill('sceneId', 's1');
@@ -286,7 +286,7 @@ describe('选择器可覆盖', () => {
 		await withDomAsync(PAGE, async () => {
 			stubXhr({ status: 'success', username: 'teo', token: 't' });
 			initSandboxLogin({
-				apiRoot: '//api',
+				iconBaseUrl: '//cdn/SE98', apiRoot: '//api',
 				selectors: {
 					username: '#my-user', password: '#my-pw',
 					loginBtn: '#my-login', status: '#my-status',
@@ -303,7 +303,7 @@ describe('选择器可覆盖', () => {
 
 	test('桌面容器缺失时抛可读的错', () => {
 		withDom('<div></div>', () => {
-			assert.throws(() => initSandboxLogin({ apiRoot: '//api' }), /桌面容器/);
+			assert.throws(() => initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' }), /桌面容器/);
 		});
 	});
 

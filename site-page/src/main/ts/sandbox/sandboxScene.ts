@@ -76,7 +76,8 @@ export class SandboxScene {
 	 * @returns {Array<IToken2D>}
 	 */
 	allTokens(): Array<IToken2D> {
-		return TOKEN_GROUPS.flatMap(g => this.list(g));
+		return TOKEN_GROUPS.reduce<Array<IToken2D>>(
+			(acc, g) => acc.concat(this.list(g)), []);
 	}
 
 	/**

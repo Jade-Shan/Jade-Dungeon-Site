@@ -4,9 +4,8 @@ import { IPoint2D } from "./geo2d.js";
 // 那个文件有 310 行 base64，只想用窗口管理器的人不该被迫下载。
 // 要用内置的那套图标，调用 resource.ts 的 registerDefaultUIResource()
 import {
-	IconGroup, getDesktopBackground, getIconGroup, pickIconSize,
+	WindowIcon, resolveIconURL, getDesktopBackground, getIconGroup,
 } from "./uiResource.js";
-import { IconSize } from "../web.js";
 import { WebUtil } from "../web.js";
 
 /* ──────────────────────────────────────────────────────────────
@@ -682,7 +681,9 @@ export let defaultWinOption = {
  */
 interface WinCfg {
 	// 可选：没传图标、注册表里也没有时为 undefined，此时图标位留空交给 CSS
-	icons?: IconGroup,
+	icons?: WindowIcon,
+	// 标题栏图标尺寸，默认 16
+	iconSize: (16|24|32|48),
 	bindWinOpt: IBindWinOpt, // 绑定窗口的操作
 	scalable: boolean, // 是否可以调整大小
 	body: {
@@ -695,8 +696,8 @@ interface WinCfg {
  * 窗口构造参数（可选配置）
  */
 export interface WinParam {
-	/** 窗口的图标组 */
-	icons?: IconGroup,
+	/** 窗口图标（base64 组或 URL 记录） */
+	icons?: WindowIcon,
 	/** 绑定窗口的操作（关闭/最大化/最小化/拖动/缩放） */
 	bindWinOpt?: IBindWinOpt,
 	/** 是否可以调整大小 */
@@ -784,6 +785,7 @@ export abstract class UIWindowAdapter implements UIObj {
 	cfg: WinCfg = {
 		// 向注册表要默认图标。没注册 provider 时是 undefined，窗口就没图标
 		icons: getIconGroup(),
+		iconSize: 16,
 		bindWinOpt: defaultWinOption,
 		scalable: true,
 		body: { overflow: "auto", initSize: {width: 800, height: 600} }
@@ -1045,9 +1047,11 @@ export class DockBar {
 		let icon = document.createElement('div');
 		icon.id = this.genAppIconId(win.id);
 		icon.classList.add('menu-item');
-		// 没图标时不写 backgroundImage，留给 CSS 的 .menu-item 决定外观
-		if (win.cfg.icons) {
-			icon.style.backgroundImage = WebUtil.transBase64ImgURL(win.cfg.icons.x32);
+		// Dock 图标固定用 48x48。没图标时不写 backgroundImage，留给 CSS
+		// 的 .menu-item 决定外观
+		const iconUrl = resolveIconURL(win.cfg.icons, 48);
+		if (iconUrl) {
+			icon.style.backgroundImage = iconUrl;
 		} else {
 			icon.classList.add('no-icon');
 		}
@@ -1111,12 +1115,14 @@ export namespace JadeWindowUI {
 		let titleBarIcon = document.createElement("div");
 		titleBarIcon.id = genWinTitleIconId(win.id);
 		titleBarIcon.classList.add("title-bar-icon", "cannot-select");
-		titleBarIcon.style.width  = '12px';
-		titleBarIcon.style.height = '12px';
-		// 没图标时加 .no-icon，CSS 把这 12px 收掉，标题文字不会凭空缩进
-		const icon12 = pickIconSize(win.cfg.icons, IconSize.x12);
-		if (icon12) {
-			titleBarIcon.style.backgroundImage = WebUtil.transBase64ImgURL(icon12);
+		titleBarIcon.style.width  = `${win.cfg.iconSize}px`;
+		titleBarIcon.style.height = `${win.cfg.iconSize}px`;
+		// 标题栏默认 16x16（WinCfg.iconSize 默认 16），跟随 cfg.iconSize
+		// 取对应尺寸；没图标时加 .no-icon，CSS 把图标位收掉，标题文字
+		// 不会凭空缩进
+		const iconUrl = resolveIconURL(win.cfg.icons, win.cfg.iconSize);
+		if (iconUrl) {
+			titleBarIcon.style.backgroundImage = iconUrl;
 		} else {
 			titleBarIcon.classList.add("no-icon");
 		}

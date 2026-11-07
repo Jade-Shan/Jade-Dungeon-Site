@@ -163,9 +163,9 @@ export namespace TestJadeUI {
 		}
 		//
 		let icon01 = JadeUIResource.getDefaultIcon(DefaultIconGroup.ELEC_FACE);
-		console.log(icon01.x12);
+		console.log(icon01.x16);
 		let icon02 = JadeUIResource.getDefaultIcon(DefaultIconGroup.ELEC_BUG);
-		console.log(icon02.x12);
+		console.log(icon02.x16);
 		//
 		let desktop01 = document.getElementById(`test-desktop-01`);
 		if (desktop01) {
@@ -228,9 +228,9 @@ export namespace TestJadeUI {
 		//
 		//
 		let icon01 = JadeUIResource.getDefaultIcon(DefaultIconGroup.ELEC_FACE);
-		console.log(icon01.x12);
+		console.log(icon01.x16);
 		let icon02 = JadeUIResource.getDefaultIcon(DefaultIconGroup.ELEC_BUG);
-		console.log(icon02.x12);
+		console.log(icon02.x16);
 		//
 		let desktop01 = document.getElementById(`test-desktop-02`);
 		if (desktop01) {

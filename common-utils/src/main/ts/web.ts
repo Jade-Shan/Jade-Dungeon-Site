@@ -13,7 +13,7 @@ export type IEscapeUnicode = HTMLElement;
 /**
  * 规范可以使用的图标大小
  */
-export enum IconSize { x16, x24, x32, x48 };
+export enum IconSize { x8 = 1, x16 = 2, x24 = 4, x32 = 8, x48 = 16, x64 = 32 };
 /**
  * Base64图片的类型
  */
@@ -25,6 +25,36 @@ export enum Base64ImgType {
  * Base64格式的图片
  */
 export type IBase64Img = { format: Base64ImgType, data: string };
+
+/**
+ * 图标 URL 资源描述。
+ *
+ * 一个图标资源由「基地址 + 分类 + 文件名」定位，例如
+ * `http://cdn-site:8080/win-98-icon/actions/48/action-unavailable.png`
+ * 拆分为 `baseUrl = http://cdn-site:8080/win-98-icon`、
+ * `category = actions`、`name = action-unavailable.png`。
+ * `supportSizes` 用位掩码记录该图标具备哪些尺寸（见 {@link IconSize}）。
+ */
+export type IconRec = {
+	/** 基地址，如 `http://cdn-site:8080/win-98-icon` */
+	baseUrl: string,
+	/** 分类目录名，如 `actions` */
+	category: string,
+	/** 图片文件名，如 `action-unavailable.png` */
+	name: string,
+	/** 图标具备的尺寸位掩码，由 {@link IconSize} 各值按位或得到（如 x16|x24|x32|x48 = 2|4|8|16） */
+	supportSizes: number,
+};
+
+/** 像素尺寸与 {@link IconSize} 位标志，按从小到大排列，供 {@link WebUtil.transIcon2url} 就近回退 */
+const ICON_SIZE_FLAGS: Array<{ px: number, flag: number }> = [
+	{ px: 8,  flag: IconSize.x8 },
+	{ px: 16, flag: IconSize.x16 },
+	{ px: 24, flag: IconSize.x24 },
+	{ px: 32, flag: IconSize.x32 },
+	{ px: 48, flag: IconSize.x48 },
+	{ px: 64, flag: IconSize.x64 },
+];
 
 /**
  * HTTP 请求选项
@@ -384,6 +414,52 @@ export class WebUtil {
 	 * @returns src格式
 	 */
 	static transBase64ImgURL(base64Img: IBase64Img): string { return `url('${this.transBase64ImgSrc(base64Img)}')` }
+
+	/**
+	 * 图标记录转为可访问的图片 URL
+	 *
+	 * 优先用请求的 `size`；图标不具备该尺寸时，先向下就近找小一号、
+	 * 再向上就近找大一号，回退到 `rec.supportSizes` 里有的尺寸。
+	 * 一个尺寸都没有时，兜底按请求的 `size` 原样拼出 URL。
+	 *
+	 * @param rec - 图标记录
+	 * @param size - 请求的像素尺寸（8/16/24/32/48/64）
+	 * @param baseURL - baseURL 可能需要外部传入
+	 * @returns 图片 URL，形如 `baseUrl/category/<尺寸>/name`
+	 */
+	static transIcon2url(rec: IconRec, size: number, baseURL?: string): string {
+		if (baseURL) { rec.baseUrl = baseURL};
+		const want = ICON_SIZE_FLAGS.find(x => x.px === size)?.flag ?? 0;
+		// 请求的尺寸正好支持
+		if (want !== 0 && (rec.supportSizes & want) !== 0) {
+			return WebUtil.buildIconUrl(rec, size);
+		}
+		// 向下就近：比 size 小、且支持的最大尺寸
+		for (let i = ICON_SIZE_FLAGS.length - 1; i >= 0; i--) {
+			const { px, flag } = ICON_SIZE_FLAGS[i];
+			if (px < size && (rec.supportSizes & flag) !== 0) {
+				return WebUtil.buildIconUrl(rec, px);
+			}
+		}
+		// 向上就近：比 size 大、且支持的最小尺寸
+		for (const { px, flag } of ICON_SIZE_FLAGS) {
+			if (px > size && (rec.supportSizes & flag) !== 0) {
+				return WebUtil.buildIconUrl(rec, px);
+			}
+		}
+		// 一个支持的尺寸都没有：兜底按请求的 size 拼 URL
+		return WebUtil.buildIconUrl(rec, size);
+	}
+
+	/**
+	 * 按「基地址/分类/尺寸/文件名」拼出图标 URL
+	 * @param rec - 图标记录
+	 * @param px - 像素尺寸
+	 * @returns 图片 URL
+	 */
+	private static buildIconUrl(rec: IconRec, px: number): string {
+		return `${rec.baseUrl}/${rec.category}/${px}/${rec.name}`;
+	}
 
 	/**
 	 * 通过动态创建 <a> 标签实现页面导航

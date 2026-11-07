@@ -14,7 +14,7 @@
  * 拆包之后本文件会成为独立的可选包 `@jade-dungeon/window-ui-icons`。
  */
 import { SimpleMap } from "./dataStructure.js";
-import { IconSize, IBase64Img, Base64ImgType } from "./web.js";
+import { IconSize, IBase64Img, Base64ImgType, IconRec } from "./web.js";
 import {
 	IconGroup, IUIResourceProvider, pickIconSize, registerUIResourceProvider,
 } from "./ui/uiResource.js";
@@ -291,6 +291,19 @@ const imgDesktopBg: IBase64Img = {
 		'R90ExLtH+zg9D6D0FFFHQDDgTz7uRNzL8xBYfebr1J+v6CrWnA6ppmoSzNuaOCLHA5y4PPrygPPP6UUUAQyajNp6I0cjARxRzbD9x2J3fMvQ44xkZAA9BSarAun6tJbJuaKKVsbzuJw2zk/Qn3yT7Cii' +
 		'gCrIxaKJjksy8kn0JH8gP5dMCiiigD//2Q=='
 };
+
+const WIN98_ICON_GROP:Array<IconRec> = [
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "blueman-pair.png" }, // 钥匙形状，适用加密登录
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "application-menu.png" }, // 适用详细编辑
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "fm-compact.png" }, // 文件列表图标，适用列表
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "document-save.png" }, // 软盘图标，适用保存
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "download.png" }, // 网络下载图标
+	{ supportSizes: 30, baseUrl: "", category: "actions", name: "config-users.png" }, // 双人图标
+	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "tag-new.png" }, // 笔记录图标，适用编辑
+	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "cs-region.png" }, // 地球图标
+	{ supportSizes: 30, baseUrl: "", category: "apps"   , name: "devhelp.png" }, // 记事本图标
+	{ supportSizes: 30, baseUrl: "", category: "mimes"  , name: "application-gpx.png" }, // 地图图标
+];
 
 /**
  * Jade UI 资源管理

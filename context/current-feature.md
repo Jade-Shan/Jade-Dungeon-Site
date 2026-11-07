@@ -49,8 +49,8 @@
     原始尺寸，但 CSS 显示尺寸可能被压缩）
   - `keydown/keyup` 增加 Shift 状态跟踪（`shiftDown`）
   - **未做浏览器手工验证** —— 三种拖动、坐标换算（图片比窗口大时的缩放）要在浏览器里看
-- **editor 场景窗口：加「当前角色视野」开关**（2026-11-06）
-  - `sandboxWindows.ts` 的 `SandboxSceneWindow` 加 `autoView` checkbox
+- **editor 状态窗口：加「当前角色视野」开关**（2026-11-06）
+  - `sandboxWindows.ts` 的 `SandboxStatusWindow` 加 `autoView` checkbox
     （文本「当前角色视野」，位于「定时刷新」下方，默认非选中）
   - `sandboxEditor.ts`：`loadScene` 成功后构造一个 `SandTable`（复用 view 页的
     视野渲染，缺背景图时跳过、编辑照常）；`redraw()` 分叉 —— `viewMode` 开启且
@@ -76,8 +76,8 @@
     对比不明显，改成两层同心圆——先画 7px 实线做深色衬底，再画虚线；
     直径（半径 34）不变。颜色最终定为：实线 `#9400d3`（紫）、虚线 `#7cfc00`（绿）
   - **未做浏览器手工验证** —— 两层圆圈的实际视觉效果要在浏览器里看
-- **editor 场景窗口：加「定时刷新」开关**（2026-11-06）
-  - `sandboxWindows.ts` 的 `SandboxSceneWindow` 加 `autoRefresh` checkbox
+- **editor 状态窗口：加「定时刷新」开关**（2026-11-06）
+  - `sandboxWindows.ts` 的 `SandboxStatusWindow` 加 `autoRefresh` checkbox
     （文本「定时刷新」，默认非选中）。98.css 的 checkbox 靠 `input + label`
     相邻兄弟选择器画外观，所以 label 紧跟 input 且用 `for` 关联
   - `sandboxEditor.ts`：`bindSceneEvents()` 绑 change 事件——选中启动

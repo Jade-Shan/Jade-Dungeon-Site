@@ -24,7 +24,7 @@ import {
  * | Map | 地图画布，点选 Token、Ctrl 拖动、Alt 缩放 |
  * | Tokens | 分组切换 + Token 列表 + 创建按钮 |
  * | Properties | 选中 Token 的属性表单 + 图片裁剪预览 |
- * | Status | 保存并发布、刷新移动请求 |
+ * | Status | 保存并发布、刷新移动请求、定时刷新、当前角色视野 |
  * | Dice | 给玩家设阈值、看全场检定结果 |
  *
  * ## ⚠️ 改 Token 位置/尺寸要用返回值替换
@@ -1161,7 +1161,7 @@ export class SandboxEditor {
 	}
 
 	/**
-	 * 绑定状态窗口：保存并发布、刷新移动请求、定时刷新开关
+	 * 绑定状态窗口：保存并发布、刷新移动请求、定时刷新开关、当前角色视野开关
 	 */
 	private bindStatusEvents(): void {
 		this.statusWin.saveBtn.addEventListener('click', () => { void this.save(); });

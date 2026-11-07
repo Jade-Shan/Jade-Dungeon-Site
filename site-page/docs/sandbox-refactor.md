@@ -619,17 +619,24 @@ editor 页面有 7 个区块（`#mapArea`、`#ctrlPanel`、`#propImgArea`、
 
 ### 5.2 建议的窗口划分
 
-| 窗口 | 内容 | 玩家 | GM |
+| 窗口（类名） | 内容 | 玩家 | GM |
 |------|------|:----:|:--:|
-| **Map** | Canvas（buffer + final 两张，buffer 隐藏） | ✅ | ✅ |
-| **Tokens** | 六个分组按钮 + Token 列表 + 创建按钮 | — | ✅ |
-| **Properties** | Token 属性表单 + 图片裁剪预览 Canvas | — | ✅ |
-| **Dice** | 掷骰输入 / 阈值设定 + 结果日志 | ✅ | ✅ |
-| **Scene** | 战役/地区/场景 + 保存发布 / 刷新请求 | — | ✅ |
+| **Scene**（`SandboxSceneWindow`） | Canvas（buffer + final 两张，buffer 隐藏） | ✅ | ✅ |
+| **Tokens**（`SandboxTokenListWindow`） | 五个分组 + 资源文件标签页、Token 列表、创建按钮 | — | ✅ |
+| **Properties**（`SandboxPropsWindow`） | Token 属性表单 + 图片裁剪预览 Canvas | — | ✅ |
+| **Dice**（`SandboxDiceWindow`） | 掷骰输入 / 阈值设定 + 结果日志 | ✅ | ✅ |
+| **Status**（`SandboxStatusWindow`） | 保存发布 / 刷新请求 + 定时刷新 + 当前角色视野 | — | ✅ |
 
-登录页建议**不做成窗口** —— 它是进入应用之前的一步，
-做成普通页面（98.css 的 `fieldset` + `field-row`）更合适。
-或者做成一个不可关闭的登录窗口，但那样「未登录」状态要额外管。
+> **窗口类名后来有调整**（2026-11-07）：地图窗口最初叫 `SandboxMapWindow`，
+> 后来改名 `SandboxSceneWindow`；「保存发布 / 刷新请求」这个窗口最初叫
+> `SandboxSceneWindow`，后来改名 `SandboxStatusWindow` —— 两个「Scene」撞名了。
+> 上表列的是**最终**类名。「定时刷新」「当前角色视野」两个开关是
+> 2026-11-06 后补进 Status 窗口的，本表内容已一并更新。
+
+登录页**最初建议不做成窗口**（它是进入应用之前的一步，做成普通页面的
+98.css `fieldset` + `field-row` 更合适），但 **2026-11-06 实际做成了窗口** ——
+登录表单装进一个 `UIWindowAdapter` 窗口，挂在 `UIDesktop` 上，和
+view / editor 共用拖动 / 缩放 / 最小化那一套。见 `sandboxLogin.ts` 头注释。
 
 **`resizeLayout()` 整个删掉** —— 窗口自己管大小，这是换窗口 UI 最大的收益。
 老代码那 20 行手算高度的逻辑连 `ctrlPanel` 都取了但没用上
@@ -903,7 +910,7 @@ SQLITE_PATH=/tmp/sb-db/jade-dungeon.db npx tsx src/main/ts/index.ts
 
 | 文件 | 行数 | 内容 |
 |------|-----:|------|
-| `sandbox/sandboxWindows.ts` | 252 | `SandboxMapWindow`（双层 Canvas）、`SandboxDiceWindow` |
+| `sandbox/sandboxWindows.ts` | 252 | `SandboxSceneWindow`（双层 Canvas，初名 `SandboxMapWindow`）、`SandboxDiceWindow` |
 | `sandbox/sandboxScene.ts` | 248 | 场景状态容器：五个分组、命中测试、序列化 |
 | `sandbox/sandboxView.ts` | 370 | 玩家视图：载场景 → 画迷雾 → 拖拽申请 → 掷骰 |
 | `html/sandbox/view.html` | 56 | 页面，`<head>` 全用 `parts/` 片段 |
@@ -978,7 +985,7 @@ Canvas 渲染与窗口布局**测不了** —— jsdom 的 `getContext('2d')` �
 |------|-----:|------|
 | `sandbox/sandboxEditor.ts` | 722 | GM 编辑器：列表 / 属性 / 创建 / 保存 / 阈值 |
 | `sandbox/sandboxLogin.ts` | 261 | 登录注册 + 选场景 |
-| `sandboxWindows.ts`（追加） | +470 | 三个 GM 窗口：Tokens / Properties / Scene |
+| `sandboxWindows.ts`（追加） | +470 | 三个 GM 窗口：Tokens / Properties / Status |
 | `html/sandbox/editor.html` | 55 | 编辑器页 |
 | `html/sandbox/index.html` | 87 | 登录页，98.css 的 `fieldset` + `field-row` |
 

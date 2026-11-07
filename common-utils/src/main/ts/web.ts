@@ -418,17 +418,17 @@ export class WebUtil {
 	/**
 	 * 图标记录转为可访问的图片 URL
 	 *
-	 * 优先用请求的 `size`；图标不具备该尺寸时，先向下就近找小一号、
-	 * 再向上就近找大一号，回退到 `rec.supportSizes` 里有的尺寸。
-	 * 一个尺寸都没有时，兜底按请求的 `size` 原样拼出 URL。
+	 * `rec.baseUrl` 必须是已设置好的完整基地址 —— 每个图标记录自带自己的
+	 * 基地址，不同图标可以指向不同 CDN。优先用请求的 `size`；图标不具备
+	 * 该尺寸时，先向下就近找小一号、再向上就近找大一号，回退到
+	 * `rec.supportSizes` 里有的尺寸。一个尺寸都没有时，兜底按请求的
+	 * `size` 原样拼出 URL。
 	 *
-	 * @param rec - 图标记录
+	 * @param rec - 图标记录（`baseUrl` 已完整）
 	 * @param size - 请求的像素尺寸（8/16/24/32/48/64）
-	 * @param baseURL - baseURL 可能需要外部传入
 	 * @returns 图片 URL，形如 `baseUrl/category/<尺寸>/name`
 	 */
-	static transIcon2url(rec: IconRec, size: number, baseURL?: string): string {
-		if (baseURL) { rec.baseUrl = baseURL};
+	static transIcon2url(rec: IconRec, size: number): string {
 		const want = ICON_SIZE_FLAGS.find(x => x.px === size)?.flag ?? 0;
 		// 请求的尺寸正好支持
 		if (want !== 0 && (rec.supportSizes & want) !== 0) {

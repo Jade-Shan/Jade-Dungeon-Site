@@ -81,7 +81,7 @@ export interface SandboxLoginConfig {
 	editorUrl?: string;
 	/** 桌面容器的 id，默认 `sandbox-desktop` */
 	desktopId?: string;
-	/** 窗口 URL 图标的基地址（如 `…/3rd/SE98`），统一传给桌面的所有窗口 */
+	/** 窗口 URL 图标的基地址（如 `…/3rd/SE98`），构造窗口 IconRec 时填入 */
 	iconBaseUrl: string;
 	/** 页面选择器，缺省项走默认 */
 	selectors?: SandboxLoginSelectors;
@@ -269,13 +269,12 @@ export class SandboxLogin {
 			throw new Error(`找不到桌面容器 #${desktopId}`);
 		}
 		const desktop = new UIDesktop(host, {
-			iconBaseUrl: this.cfg.iconBaseUrl,
 			dockBar: { range: 300, maxScale: 1.8 },
 		});
 
 		this.win = new SandboxLoginWindow(desktop, 'sandbox-login', 'Jade Dungeon 沙盘',
 			{
-				icons: { supportSizes: 30, baseUrl: "", category: "actions", name: "blueman-pair.png" },
+				icons: { supportSizes: 30, baseUrl: this.cfg.iconBaseUrl, category: "actions", name: "blueman-pair.png" },
 				body: { initSize: { width: 360, height: 430 }, overflow: 'auto' },
 			},
 			this.fieldIds());

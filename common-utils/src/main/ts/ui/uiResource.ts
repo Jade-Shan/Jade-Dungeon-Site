@@ -88,18 +88,18 @@ const PX_TO_ICON_SIZE: Record<number, IconSize> = {
  * - `IconRec` → {@link WebUtil.transIcon2url} 拼出 http 地址，再包成 `url('…')`
  * - `IconGroup` → {@link pickIconSize} 取对应尺寸，再转 `url('data:…')`
  *
+ * `IconRec` 的 `baseUrl` 由调用方在构造记录时就填好完整地址（不同图标可指向
+ * 不同 CDN），本函数不再接收、也不再覆盖它。
+ *
  * @param icon - 窗口图标，`undefined` 时返回 `undefined`
  * @param px - 想要的像素尺寸（16/24/32/48）
- * @param baseUrl - `IconRec` 的基地址，**统一注入点**。传了就覆盖
- *                  `IconRec.baseUrl`，不传则用记录里自己写的值
  * @returns {string | undefined} 可直接赋给 `style.backgroundImage` 的 URL
  */
-export function resolveIconURL(icon: WindowIcon | undefined, px: number,
-	baseUrl?: string): string | undefined //
+export function resolveIconURL(icon: WindowIcon | undefined, px: number): string | undefined //
 {
 	if (!icon) { return undefined; }
 	if (isIconRec(icon)) {
-		return `url('${WebUtil.transIcon2url(icon, px, baseUrl)}')`;
+		return `url('${WebUtil.transIcon2url(icon, px)}')`;
 	}
 	const size = PX_TO_ICON_SIZE[px];
 	const img = size ? pickIconSize(icon, size) : undefined;

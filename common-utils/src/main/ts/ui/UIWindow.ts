@@ -59,15 +59,7 @@ interface IDesktopConfig {
 		height: string
 	},
 	/** Dock 任务栏配置 */
-	dockBar?: DockBarParam,
-	/**
-	 * URL 图标（`IconRec`）的基地址
-	 *
-	 * 站点把图标的基地址（如 `…/3rd/SE98`）统一从这里传入，
-	 * 各窗口的标题栏与 Dock 图标按它拼出完整 http 地址。
-	 * 不传时退回 `IconRec` 记录里自己写的 `baseUrl`。
-	 */
-	iconBaseUrl?: string
+	dockBar?: DockBarParam
 }
 
 /**
@@ -113,7 +105,6 @@ interface CurrentWindow {
  */
 export class UIDesktop {
 	readonly desktopDiv: HTMLElement; // 窗口在上一级HTML元素
-	readonly iconBaseUrl?: string; // URL 图标的基地址（见 IDesktopConfig.iconBaseUrl）
 	private allWindows: SimpleMap<string, UIObj> = new SimpleMap(); // 全部窗口的索引
 	private windowZIndex: Array<UIObj> = []; // 窗口的z-index序列
 	private dockBar?: DockBar; // 程序栏
@@ -157,7 +148,6 @@ export class UIDesktop {
 	 */
 	constructor(desktopDiv: HTMLElement, cfg?: IDesktopConfig) {
 		this.desktopDiv = desktopDiv;
-		this.iconBaseUrl = cfg?.iconBaseUrl;
 		desktopDiv.style.height = cfg?.desktop?.height ? cfg.desktop.height : "100%";
 		desktopDiv.style.width  = cfg?.desktop?.width  ? cfg.desktop.width  : "100%";
 		// 没传背景图时问注册表要。注册表也没有就一行都不写，
@@ -1059,7 +1049,7 @@ export class DockBar {
 		icon.classList.add('menu-item');
 		// Dock 图标固定用 48x48。没图标时不写 backgroundImage，留给 CSS
 		// 的 .menu-item 决定外观
-		const iconUrl = resolveIconURL(win.cfg.icons, 48, win.desktop.iconBaseUrl);
+		const iconUrl = resolveIconURL(win.cfg.icons, 48);
 		if (iconUrl) {
 			icon.style.backgroundImage = iconUrl;
 		} else {
@@ -1130,7 +1120,7 @@ export namespace JadeWindowUI {
 		// 标题栏默认 16x16（WinCfg.iconSize 默认 16），跟随 cfg.iconSize
 		// 取对应尺寸；没图标时加 .no-icon，CSS 把图标位收掉，标题文字
 		// 不会凭空缩进
-		const iconUrl = resolveIconURL(win.cfg.icons, win.cfg.iconSize, win.desktop.iconBaseUrl);
+		const iconUrl = resolveIconURL(win.cfg.icons, win.cfg.iconSize);
 		if (iconUrl) {
 			titleBarIcon.style.backgroundImage = iconUrl;
 		} else {

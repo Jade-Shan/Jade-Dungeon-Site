@@ -65,11 +65,11 @@ function makeEditor(): { editor: SandboxEditor, props: ReturnType<typeof mockPro
 		createBar: document.createElement('div'),
 		groupBar: document.createElement('ul'),
 	};
-	any.mapWin = {
+	any.sceneWin = {
 		finalCanvas: document.createElement('canvas'),
 		setStatus(_t: string): void { /* 状态栏提示不在这里断言 */ },
 	};
-	any.sceneWin = { autoView: { checked: false } };
+	any.statusWin = { autoView: { checked: false } };
 	return { editor, props };
 }
 

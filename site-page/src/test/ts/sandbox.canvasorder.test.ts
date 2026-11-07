@@ -69,7 +69,7 @@ describe('sandboxView.redraw 的调用顺序', () => {
 		const body = rest.slice(0, end > 0 ? end : 1200);
 
 		const draw = body.indexOf('drawSceneWithUserView');
-		const resize = body.indexOf('this.mapWin.resizeCanvas');
+		const resize = body.indexOf('this.sceneWin.resizeCanvas');
 		assert.ok(draw > 0, 'redraw 里应该调 drawSceneWithUserView');
 		assert.equal(resize, -1,
 			'redraw 里不该再调 resizeCanvas —— drawSceneWithUserView 内部' +

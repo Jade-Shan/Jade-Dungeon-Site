@@ -181,7 +181,7 @@ describe('URL 拼装与后端参数名对账', () => {
 			['load-map', () => api().loadMap(ID)],
 			['save-map', () => api().saveMap(ID, '{}')],
 			['map-owner', () => api().mapOwner(1)],
-			['list-scene', () => api().listScenes()],
+			['list-scene', () => api().listCampaigns()],
 			['load-move-request', () => api().loadMoveRequests(ID)],
 			['request-move', () => api().requestMove(ID, 'teo', 1, 2)],
 			['roll-dice', () => api().rollDice(ID, 'teo', '2d6')],
@@ -314,12 +314,12 @@ describe('响应解析', () => {
 		assert.equal((await api().mapOwner(1)).data, '');
 	});
 
-	test('listScenes 取出战役的当前地点/场景（含 owner 与三级名字）', async () => {
+	test('listCampaigns 取出战役的当前地点/场景（含 owner 与三级名字）', async () => {
 		stubXhr({ status: 'success', data: [{
 			campaignId: 1, campaignName: '费伦大陆', owner: 'teo',
 			currPlaceId: 2, currPlaceName: '深水城', currSceneId: 3, currSceneName: '港口',
 		}] });
-		const r = await api().listScenes();
+		const r = await api().listCampaigns();
 		assert.equal(r.data![0].currSceneName, '港口');
 		assert.equal(r.data![0].owner, 'teo');
 		assert.equal(r.data![0].campaignId, 1);

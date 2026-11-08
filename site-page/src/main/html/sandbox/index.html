@@ -3,7 +3,7 @@
 	<head>
 @@include('./src/main/html/parts/meta-charset.html', { })
 @@include('./src/main/html/parts/importmap.html', { })
-		<title>沙盘 - 登录</title>
+		<title>沙盘 - 选场景</title>
 @@include('./src/main/html/parts/favicon.html', { })
 
 @@include('./src/main/html/parts/vendor-98css.html', { })
@@ -21,9 +21,9 @@ html,body {width:99%; height: 99%; overflow: auto;}
 <div id="sandbox-desktop" class="desktop dock-content"></div>
 	</body>
 	<script type="module">
-		import { initSandboxLogin } from "@jade-dungeon/site-page/sandbox-login";
+		import { initSandboxIndex } from "@jade-dungeon/site-page/sandbox-login";
 		window.onload = function() {
-			initSandboxLogin({ apiRoot: '@@apiRoot', iconBaseUrl: '@@cdn3rd/SE98' });
+			initSandboxIndex({ iconBaseUrl: '@@cdn3rd/SE98' });
 		}
 	</script>
 </html>

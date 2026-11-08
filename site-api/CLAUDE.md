@@ -144,6 +144,7 @@ TypeScript 源码在 **`src/main/ts/`** 下（2026-11-03 从 `src/` 迁入）：
 ```
 src/main/ts/          ← rootDir，所有 .ts 源码
 ├── index.ts          → dist/index.js
+├── userRegCli.ts     → dist/userRegCli.js
 ├── config.ts         → dist/config.js
 ├── types.ts          → dist/types.js
 ├── common/           → dist/common/
@@ -169,21 +170,35 @@ dist/                 ← 编译产物，结构扁平
 ```
 
 - **`src/main/ts/index.ts`** — 入口。用 `arg` 解析 CLI 参数（`--host`、`--port`、`--uploadPath`），调用 `initGlobalCfg(args)` 构建全局配置，连接 Redis，创建 Express 实例并调用 `initApp()` 挂载所有中间件和路由，最后监听端口。注册了 `SIGTERM`/`SIGINT` 优雅退出处理器。
+- **`src/main/ts/userRegCli.ts`** — 命令行注册用户的独立入口。`node dist/userRegCli.js -u <username> -p <password>` 在服务器本地建号，配合 `AUTH_DISABLE_REGIST`（关掉 HTTP 注册后）使用。复用 `initGlobalCfg` 读同一个 `SQLITE_PATH`、复用 `registUser()`，所以 CLI 注册的用户和 HTTP 注册完全等价。
 - **`src/main/ts/config.ts`** — 全局配置工厂。模块加载时自动执行 `dotenv.config({ path: 'config.properties' })` 读入配置（单文件，不再按环境分文件）。导出 `initGlobalCfg(args)` 函数，合并 CLI 参数、环境变量和硬编码默认值，返回 `IGlobalCfg` 对象（含 server、Redis、静态文件、上传等配置）。
 - **`src/main/ts/middleware/simpleHTTPServer.ts`** — Express 应用装配中心。导出 `initApp()` 和 `bindHandler()` 两个函数。`initApp()` 按顺序挂载：`helmet` → `cors` → `json/urlencoded` 解析 → `cookie-parser` → `multer` 上传 → 静态文件绑定 → 全局错误处理 → 自动发现并绑定路由。模块内的 `discoverHandlers()` 负责递归扫描路由目录、展开数组导出、校验与查重。`bindHandler()` 接收 `ICustomHandler[]` 数组，根据 `method` 位掩码分派到 GET/POST 绑定——两个 `if` 独立判断，所以 `HTTP_GET | HTTP_POST` 会同时绑上两个方法（2026-11-03 修复：原先是 `if / else if`，组合掩码时 POST 会被静默丢弃）。
+
+> **`helmet` 只关了 CSP，没整个关掉**（2026-11-08）：`initApp()` 里是
+> `app.use(helmet({ contentSecurityPolicy: false }))`。helmet 默认的 CSP
+> （`script-src 'self'` 禁内联 `<script>`、`script-src-attr 'none'` 禁 `onclick`）
+> 会拦下 `static/html/` 下管理页的内联 JS，`upgrade-insecure-requests` 还会把本地
+> http 表单提交强升成 https。这些管理页不渲染用户内容、没有 XSS 面，CSP 在这里
+> 只挡自己人，所以关掉换「内联 JS 简单直接」；其余安全头（nosniff、frame-ancestors
+> 等）零成本、保留。
+>
+> **代价**：`static/html/` 的页面从此没有 CSP 兜底。将来若有页面开始回显 / 渲染
+> 用户输入（比如加「预览」），XSS 缓解已经撤了，必须靠**输出转义**来防，不能指望 CSP。
 - **`src/main/ts/types.ts`** — 全局类型定义。包含 `IGlobalCfg`（server/redis/path/upload 四段结构）、`IRequestContext`、`IRequestData`、`ICustomHandler`、`IWeatherRec` 以及 `HTTP_GET`/`HTTP_POST` 常量。
 - **`src/main/ts/routes/`** — 业务路由 handler。每个文件 export `handler`，可以是单个 `ICustomHandler` 或 `ICustomHandler[]`，由 `simpleHTTPServer.ts` 在启动时递归扫描并自动注册（支持子目录分组）。新增路由只需在此目录下新建文件并 export `handler`，无需修改其他代码。
 - **`src/main/ts/service/`** — 服务层。封装第三方 API 调用与业务逻辑，供 routes 调用。当前包含天气数据聚合服务。
-- **`src/main/ts/db/`** — SQLite 数据层。`SqlitePool.ts` 是基于 `worker_threads` 的读写分离连接池（8 读 worker + 1 写 worker，读写各自独立连接，WAL 模式）；`worker.ts` 在独立线程里持有 `better-sqlite3` 连接并缓存 prepared statement；`index.ts` 提供连接池单例、建表与启动时清理过期 token。**仅 auth 模块使用**，其他模块仍走 Redis。
+- **`src/main/ts/db/`** — SQLite 数据层。`SqlitePool.ts` 是基于 `worker_threads` 的读写分离连接池（8 读 worker + 1 写 worker，读写各自独立连接，WAL 模式）；`worker.ts` 在独立线程里持有 `better-sqlite3` 连接并缓存 prepared statement；`index.ts` 提供连接池单例、建表与启动时清理过期 token。auth / blog / gallery 都走这里；sandtable 只有战役归属（owner）走这里，场景/移动/骰子仍在 Redis。
 - **`src/main/ts/service/blogService.ts`** — 博客与相册。数据存 SQLite。负责分页归一化（`normalizePaging` / `calcPageCount`，旧实现的页数公式 `parseInt((n+1)/pageSize)` 算错了，36 条会算出 3 页）、表字段与响应字段的映射、以及相册写入的事务。内含 `withTransaction` 串行锁——写池只有 1 个 worker 共用连接，并发 `BEGIN` 会撞「cannot start a transaction within a transaction」。
 - **`src/main/ts/scripts/`** — 手动执行的脚本，不参与服务启动。`migrateBlogRedisToSqlite.ts` 把 blog/gallery 从 Redis 搬到 SQLite（默认演练，需 `--write`）；`backfillExcerpt.ts` 回填文章摘要（加 `--all` 可重算全部）；`backupBlogData.ts` 备份数据与图片，取代旧后端的 `backup.js`。三个脚本都是**默认演练、需显式 `--write`** 才写数据。
 - **`src/main/ts/service/diceService.ts`** — 骰子检定。`parseRollCmd()` 解析 `3d6+3-2` 这类表达式（**先整体校验形状再按符号切分**，旧实现用正则扫描导致运算符丢失）、`rollDice()` 掷骰、以及检定状态的 Redis Hash 读写。`msg` 的输出格式沿用旧实现，前端直接显示它。
-- **`src/main/ts/service/sandtableService.ts`** — TRPG 沙盘的数据访问与权限校验。集中管理 `jadedungeon::sandtable::*` 的 key 生成（**`scence` 是拼写错误但保持原样** —— 理由不再是「怕旧后端读不到」，而是 Redis 里已经存着用这个拼写的数据，改名要连带迁移 key）、场景读写、移动请求的 Hash 操作，以及 `authorizeSceneWrite()`——身份从 token 推导而非信客户端传的 username。
+- **`src/main/ts/service/sandtableService.ts`** — TRPG 沙盘的数据访问与权限校验。战役归属（owner）存在 SQLite 的 `sandtable_campaign`，场景读写、移动请求的 Hash 操作仍在 Redis（key 前缀 `jadedungeon::sandtable::*`，其中 **`scence` 是拼写错误但保持原样** —— 理由不再是「怕旧后端读不到」，而是 Redis 里已经存着用这个拼写的数据，改名要连带迁移 key）。`authorizeSceneWrite()` 的身份从 token 推导而非信客户端传的 username。
 - **`src/main/ts/service/authService.ts`** — 认证业务逻辑。scrypt 加盐哈希（`timingSafeEqual` 比较）、token 签发/解析/校验、注册与登录（密码登录 + token 续期两条路径）。token 用 `crypto.randomUUID()` 生成，**不要用 `common/jadeutils.ts` 的 `uuid()`**——后者基于 `Math.random()`，不是密码学安全的随机源。
-- **`src/main/ts/lib/redis.ts`** — Redis 多连接管理（基于 `ioredis`）。用 `Map<string, Redis>` 管理多个命名连接（当前为 `trpg`、`blog`、`auth`），每个连接指向 `127.0.0.1:6379`。导出 `initRedis()`、`closeRedis()`、`closeAllRedis()`。连接失败不阻塞服务启动（`lazyConnect: true`），最多重试 3 次。
+- **`src/main/ts/lib/redis.ts`** — Redis 多连接管理（基于 `ioredis`）。用 `Map<string, Redis>` 管理命名连接（当前只有 `trpg`，blog / gallery / auth 已迁 SQLite），指向 `127.0.0.1:6379`。导出 `initRedis()`、`closeRedis()`、`closeAllRedis()`。连接失败不阻塞服务启动（`lazyConnect: true`），最多重试 3 次。
 - **`src/main/ts/common/jadeutils.ts`** — 通用工具函数。当前提供 `uuid()` 生成 UUID v4 格式字符串。
 - **`eslint.config.mjs`** — ESLint 配置文件。
 - **`static/`** — 静态文件根目录，通过 `/static` 路径映射对外暴露。含 `html/` 和 `image/` 子目录。
+  `html/blog/` 下是 blog / gallery 两个发文管理页（纯内联 JS + `onclick`）——
+  正因为它们，helmet 才关了 CSP，见「架构概览」。
 - **`doc/redis.md`** — Redis 技术选型文档，详细对比 `ioredis` 与 `redis`（node-redis）的差异及本项目选型理由。
 
 ## 路由系统
@@ -194,8 +209,9 @@ dist/                 ← 编译产物，结构扁平
 |------|------|------|------|
 | `/` | `src/main/ts/routes/index.ts` | GET | 欢迎页，返回 JSON `{ message, version }` |
 | `/api/weather/forecast` | `src/main/ts/routes/weather.ts` | GET | 天气预报，支持 `conky`（文本）和 `json` 两种输出格式 |
-| `/api/auth/regist` | `src/main/ts/routes/auth.ts` | **POST** | 注册。数据存 SQLite，密码 scrypt 加盐哈希 |
+| `/api/auth/regist` | `src/main/ts/routes/auth.ts` | **POST** | 注册。数据存 SQLite，密码 scrypt 加盐哈希。`AUTH_DISABLE_REGIST=true` 时一律返回 `http regist disabled`，新用户改走 CLI（`userRegCli.ts`） |
 | `/api/auth/login` | `src/main/ts/routes/auth.ts` | **POST** | 登录。支持用户名+密码、或凭 token 续期（续期会签发新 token 并作废旧的） |
+| `/api/auth/change-password` | `src/main/ts/routes/auth.ts` | **POST** | 修改密码。靠旧密码验证身份，新密码强度（≥8 位且含数字/字母/特殊字符）校验，成功后作废该用户所有 token |
 | `/api/sandtable/load-map` | `routes/sandtable/map.ts` | GET+POST | 读场景数据 |
 | `/api/sandtable/save-map` | `routes/sandtable/map.ts` | **POST** | 写场景。**强制校验 token**，owner 身份从 token 取 |
 | `/api/sandtable/map-owner` | `routes/sandtable/map.ts` | GET+POST | 查战役归属 |
@@ -502,9 +518,10 @@ grep -rn "response\.end" src/main/ts/
 |------|--------|------|
 | `PORT` | `3000` | 监听端口。配置文件里是 8089 |
 | `NODE_ENV` | `development` | 为 `development` 时错误响应带异常细节，否则只返回通用提示 |
-| `REDIS_HOST` | `127.0.0.1` | Redis 地址，应用于全部三个命名连接 |
-| `REDIS_PORT` | `6379` | Redis 端口，应用于全部三个命名连接 |
+| `REDIS_HOST` | `127.0.0.1` | Redis 地址，应用于 sandtable 命名连接 |
+| `REDIS_PORT` | `6379` | Redis 端口，应用于 sandtable 命名连接 |
 | `REDIS_NAME` | `jade-dungeon` | 连接标签，见下 |
+| `AUTH_DISABLE_REGIST` | `false` | 为 `true` 时禁用 HTTP 注册（`/api/auth/regist` 一律报错），新用户只能走 CLI（`userRegCli.ts`） |
 
 另外两个变量不在配置文件里，但代码会读：`HOST`、`UPLOAD_PATH`（都可用 CLI 参数覆盖）。
 
@@ -514,7 +531,7 @@ grep -rn "response\.end" src/main/ts/
 
 ```
 ✅ Redis 已连接: 127.0.0.1:6379 (trpg as jade-dungeon-dev:trpg)
-# Redis 侧 CLIENT LIST 可见：jade-dungeon-dev:trpg / :blog / :auth
+# Redis 侧 CLIENT LIST 可见：jade-dungeon-dev:trpg
 ```
 
 它**不参与 Redis key 的拼接**，所以改它不影响数据读写
@@ -536,6 +553,23 @@ grep -rn "response\.end" src/main/ts/
 
 CLI 参数（`--port` / `--host` / `--uploadPath`）> 配置文件 > 代码里的硬编码默认值。
 
+### 禁用 HTTP 注册（`AUTH_DISABLE_REGIST`）
+
+前端登录页已经没有注册入口（`注册` 按钮 2026-11-07 换成 `修改密码`），
+而 `/api/auth/regist` 对公网开放时会被脚本批量刷注册。
+`AUTH_DISABLE_REGIST=true` 会让它一律返回 `{ status: 'err', msg: 'http regist disabled' }`。
+
+默认关闭（不配 = 关）。关掉 HTTP 注册后，管理员在服务器本地用 CLI 建号：
+
+```bash
+npm run build
+node dist/userRegCli.js -u <username> -p <password>
+```
+
+CLI 与 HTTP 注册共用 `registUser()`、读同一个 `SQLITE_PATH`，注册出的用户完全等价。
+密码若含 shell 特殊字符（`!` `$` `` ` `` 等）要用单引号包起来。
+密码强度校验与 HTTP 注册一致：**不做**强度检查，只查非空。
+
 ### SQLite 配置
 
 | 变量 | 默认值 | 说明 |
@@ -550,9 +584,9 @@ CLI 参数（`--port` / `--host` / `--uploadPath`）> 配置文件 > 代码里�
 | auth | SQLite | `auth_user`、`auth_token` |
 | blog | SQLite | `blog_article` |
 | gallery | SQLite | `gallery_album`、`gallery_photo` |
-| sandtable | **Redis** | `jadedungeon::sandtable::*` |
+| sandtable | SQLite + Redis | 战役归属在 `sandtable_campaign`，场景/移动/骰子在 Redis |
 
-sandtable 留在 Redis 是有意的——场景数据是整块 JSON，key-value 形态更合适。
+sandtable 的场景数据留在 Redis 是有意的——整块 JSON，key-value 形态更合适。
 
 ### ⚠️ 改表结构要走 `COLUMN_MIGRATIONS`
 
@@ -575,16 +609,14 @@ sandtable 留在 Redis 是有意的——场景数据是整块 JSON，key-value 
 
 ### Redis 配置
 
-`initGlobalCfg()` 注册三个命名连接，地址与端口都取自 `config.properties`
-（2026-11-04 前是硬编码的）：
+`initGlobalCfg()` 注册一个命名连接，地址与端口都取自 `config.properties`
+（2026-11-04 前是硬编码的；blog / auth 连接 2026-11-08 随数据迁 SQLite 一并移除）：
 
 | Key | 用途 | connectionName |
 |-----|------|---------------|
-| `trpg` | TRPG 业务数据 | `<REDIS_NAME>:trpg` |
-| `blog` | 博客数据 | `<REDIS_NAME>:blog` |
-| `auth` | 认证数据 | `<REDIS_NAME>:auth` |
+| `trpg` | sandtable 场景/移动/骰子 | `<REDIS_NAME>:trpg` |
 
-三者**共用同一个 Redis 实例**，靠 key 前缀（`jadedungeon::<模块>::...`）隔离数据，
+连接只指向同一个 Redis 实例，靠 key 前缀（`jadedungeon::<模块>::...`）隔离数据，
 所以 `REDIS_HOST` / `REDIS_PORT` 只需配一组。
 
 连接失败不阻塞服务启动（`lib/redis.ts` 里 catch 住了），只打 `⚠️` 告警。

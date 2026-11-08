@@ -5,7 +5,7 @@ const redisMap: Map<string, Redis>= new Map();
 /**
  * 建立一个命名连接。
  *
- * @param key  代码里取连接用的标识（trpg / blog / auth），也是 redisMap 的键
+ * @param key  代码里取连接用的标识（当前只有 trpg），也是 redisMap 的键
  * @param name ioredis 的 connectionName，来自 config.properties 的 REDIS_NAME，
  *             仅用于在 Redis `CLIENT LIST` 里识别来源。缺省时退回 key。
  */
@@ -30,7 +30,7 @@ export const connectRedis = (key: string, host: string, port: number, name?: str
 
 
 /**
- * 按名取连接（trpg / blog / auth）。
+ * 按名取连接（当前只有 trpg）。
  *
  * 未初始化时抛错而非返回 undefined，避免调用方静默拿到空值。
  * 注意连接可能处于断开状态（`initRedis` 允许连接失败不阻塞启动），

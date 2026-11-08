@@ -35,8 +35,12 @@ export interface IGlobalCfg {
 	 * 这是给 sandtable 在**没法用真验证机的环境**里联调用的临时开关，
 	 * 由 `AUTH_BYPASS` 环境变量开启，且 `NODE_ENV=production` 时强制关闭。
 	 * 详见 config.ts 里的注释。
+	 *
+	 * `disableRegist` 为 true 时 `/api/auth/regist` 一律返回错误，新用户
+	 * 只能通过 CLI（`src/main/ts/userRegCli.ts`）注册。由 `AUTH_DISABLE_REGIST`
+	 * 环境变量开启，同样在 config.ts 里读取。
 	 */
-	readonly auth?: { readonly bypass: boolean };
+	readonly auth?: { readonly bypass: boolean; readonly disableRegist: boolean };
 	/**
 	 * 允许跨域的 origin 白名单（来自 `CROS_SITE`，逗号分隔）。
 	 * 空数组表示放开所有来源。元素是完整 origin，如 `http://example.com:8082`。

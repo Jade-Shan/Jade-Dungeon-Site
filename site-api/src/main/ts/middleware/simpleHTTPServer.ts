@@ -98,7 +98,11 @@ export const corsHeadersFor = (globalCfg: IGlobalCfg, request: Request): Record<
 export const initApp = (app: Express, globalCfg: IGlobalCfg) => {
 
 	// 基础中间件
-	app.use(helmet());
+	// helmet 默认的 Content-Security-Policy（script-src 'self'、script-src-attr 'none'、
+	// upgrade-insecure-requests）会拦下 static/html/ 下管理页的内联脚本与 onclick，
+	// 并把本地 http 表单提交强制升成 https。这些管理页不渲染用户内容、没有 XSS 面，
+	// CSP 在这里只挡自己人，所以只关 CSP，其余安全头（nosniff、frame-ancestors 等）保留。
+	app.use(helmet({ contentSecurityPolicy: false }));
 	app.use(buildCors(globalCfg));
 	app.use(express.json());
 	app.use(express.urlencoded({ extended: true }));

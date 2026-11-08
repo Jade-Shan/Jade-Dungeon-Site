@@ -619,17 +619,24 @@ editor 页面有 7 个区块（`#mapArea`、`#ctrlPanel`、`#propImgArea`、
 
 ### 5.2 建议的窗口划分
 
-| 窗口 | 内容 | 玩家 | GM |
+| 窗口（类名） | 内容 | 玩家 | GM |
 |------|------|:----:|:--:|
-| **Map** | Canvas（buffer + final 两张，buffer 隐藏） | ✅ | ✅ |
-| **Tokens** | 六个分组按钮 + Token 列表 + 创建按钮 | — | ✅ |
-| **Properties** | Token 属性表单 + 图片裁剪预览 Canvas | — | ✅ |
-| **Dice** | 掷骰输入 / 阈值设定 + 结果日志 | ✅ | ✅ |
-| **Scene** | 战役/地区/场景 + 保存发布 / 刷新请求 | — | ✅ |
+| **Scene**（`SandboxSceneWindow`） | Canvas（buffer + final 两张，buffer 隐藏） | ✅ | ✅ |
+| **Tokens**（`SandboxTokenListWindow`） | 五个分组 + 资源文件标签页、Token 列表、创建按钮 | — | ✅ |
+| **Properties**（`SandboxPropsWindow`） | Token 属性表单 + 图片裁剪预览 Canvas | — | ✅ |
+| **Dice**（`SandboxDiceWindow`） | 掷骰输入 / 阈值设定 + 结果日志 | ✅ | ✅ |
+| **Status**（`SandboxStatusWindow`） | 保存发布 / 刷新请求 + 定时刷新 + 当前角色视野 | — | ✅ |
 
-登录页建议**不做成窗口** —— 它是进入应用之前的一步，
-做成普通页面（98.css 的 `fieldset` + `field-row`）更合适。
-或者做成一个不可关闭的登录窗口，但那样「未登录」状态要额外管。
+> **窗口类名后来有调整**（2026-11-07）：地图窗口最初叫 `SandboxMapWindow`，
+> 后来改名 `SandboxSceneWindow`；「保存发布 / 刷新请求」这个窗口最初叫
+> `SandboxSceneWindow`，后来改名 `SandboxStatusWindow` —— 两个「Scene」撞名了。
+> 上表列的是**最终**类名。「定时刷新」「当前角色视野」两个开关是
+> 2026-11-06 后补进 Status 窗口的，本表内容已一并更新。
+
+登录页**最初建议不做成窗口**（它是进入应用之前的一步，做成普通页面的
+98.css `fieldset` + `field-row` 更合适），但 **2026-11-06 实际做成了窗口** ——
+登录表单装进一个 `UIWindowAdapter` 窗口，挂在 `UIDesktop` 上，和
+view / editor 共用拖动 / 缩放 / 最小化那一套。见 `sandboxLogin.ts` 头注释。
 
 **`resizeLayout()` 整个删掉** —— 窗口自己管大小，这是换窗口 UI 最大的收益。
 老代码那 20 行手算高度的逻辑连 `ctrlPanel` 都取了但没用上
@@ -680,10 +687,12 @@ site-page/src/main/ts/sandbox/
 ├── sandboxView.ts     玩家视图：视野渲染 + 拖拽申请移动 + 掷骰
 ├── sandboxEditor.ts   GM 编辑器：Token 增删改 + 保存发布 + 阈值
 ├── sandboxWindows.ts  5 个窗口类（继承 UIWindowAdapter）
-└── sandboxLogin.ts    登录 / 注册
+└── sandboxLogin.ts    登录 + 选场景 + 修改密码（三个入口：initSandboxLogin / initSandboxIndex / initSandboxChangePassword）
 
 site-page/src/main/html/sandbox/
-├── index.html         登录 + 选场景
+├── index.html         选场景（登录态 + 换身份）
+├── login.html         登录（「修改密码」跳 changePassword.html）
+├── changePassword.html 修改密码（旧密码 + 新密码×2）
 ├── view.html          玩家视图
 └── editor.html        GM 编辑器
                        （没有 readme.html —— 见 4.4 节，文档改成 Markdown）
@@ -903,7 +912,7 @@ SQLITE_PATH=/tmp/sb-db/jade-dungeon.db npx tsx src/main/ts/index.ts
 
 | 文件 | 行数 | 内容 |
 |------|-----:|------|
-| `sandbox/sandboxWindows.ts` | 252 | `SandboxMapWindow`（双层 Canvas）、`SandboxDiceWindow` |
+| `sandbox/sandboxWindows.ts` | 252 | `SandboxSceneWindow`（双层 Canvas，初名 `SandboxMapWindow`）、`SandboxDiceWindow` |
 | `sandbox/sandboxScene.ts` | 248 | 场景状态容器：五个分组、命中测试、序列化 |
 | `sandbox/sandboxView.ts` | 370 | 玩家视图：载场景 → 画迷雾 → 拖拽申请 → 掷骰 |
 | `html/sandbox/view.html` | 56 | 页面，`<head>` 全用 `parts/` 片段 |
@@ -978,7 +987,7 @@ Canvas 渲染与窗口布局**测不了** —— jsdom 的 `getContext('2d')` �
 |------|-----:|------|
 | `sandbox/sandboxEditor.ts` | 722 | GM 编辑器：列表 / 属性 / 创建 / 保存 / 阈值 |
 | `sandbox/sandboxLogin.ts` | 261 | 登录注册 + 选场景 |
-| `sandboxWindows.ts`（追加） | +470 | 三个 GM 窗口：Tokens / Properties / Scene |
+| `sandboxWindows.ts`（追加） | +470 | 三个 GM 窗口：Tokens / Properties / Status |
 | `html/sandbox/editor.html` | 55 | 编辑器页 |
 | `html/sandbox/index.html` | 87 | 登录页，98.css 的 `fieldset` + `field-row` |
 
@@ -1005,6 +1014,19 @@ Canvas 渲染与窗口布局**测不了** —— jsdom 的 `getContext('2d')` �
   留这个口子是因为 jsdom 的 `window.location` 不可重定义
   （实测 `Cannot redefine property`），没有它就测不了「URL 拼得对不对」，
   而那正是容易错的地方（战役名里一个 `&` 没编码就把后面的参数截断）
+
+> **2026-11-07 拆成两页**：原来 `index.html` 一个窗口里上半是「身份」表单、
+> 下半是「场景」表单（迁移时照搬老应用 `sandtable-index.html` 的单页结构），
+> 现拆成 `login.html`（登录 / 注册）和 `index.html`（选场景 + 登录态 +
+> 「以其他身份登录」）。场景三级定位始终走 URL 参数在两页间传递，
+> 登录成功（或放弃返回）原样带回，用户不用重填。
+> 对应测试也拆成 `sandbox.login.test.ts`（13 条）+ `sandbox.index.test.ts`（13 条）。
+>
+> **2026-11-07 又加「修改密码」页**：登录页原来的「注册」按钮换成「修改密码」，
+> 点击带着用户名（URL 参数 `username`）跳 `changePassword.html`。修改密码窗口
+> 一个旧密码框 + 两个新密码框，前端先校验「两次一致」和强度
+> （≥8 位且含数字/字母/特殊字符），后端 `POST /api/auth/change-password`
+> 再兜底校验、改成功后作废旧 token。测试 `sandbox.changePassword.test.ts`（13 条）。
 
 #### 测试：18 条单元测试 + 29 项冒烟验证
 

@@ -453,4 +453,24 @@ export class SandboxApi {
 			r => String((r as { username?: string }).username ?? ''), body);
 	}
 
+	/**
+	 * 修改密码
+	 *
+	 * 身份验证靠旧密码（不是 token），改成功后后端作废该用户所有 token、
+	 * 强制重新登录。新密码强度（≥8 位且含数字/字母/特殊字符）后端也校验，
+	 * 前端在发请求前先做一次给即时反馈。
+	 *
+	 * @param username - 用户名
+	 * @param oldPassword - 旧密码
+	 * @param newPassword - 新密码
+	 * @returns {Promise<ApiResult<void>>}
+	 */
+	async changePassword(username: string, oldPassword: string,
+		newPassword: string): Promise<ApiResult<void>> //
+	{
+		const url = `${this.root}/api/auth/change-password?${qs({})}`;
+		const body = qs({ username, oldPassword, newPassword });
+		return call<void>(url, undefined, body);
+	}
+
 }

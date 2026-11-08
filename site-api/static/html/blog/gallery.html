@@ -2,12 +2,13 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8">
-		<title>New Ablum</title>
+		<title>New Album</title>
+		<link rel="icon" type="image/x-icon" href="http://www.jade-dungeon.cn:8081/jadesites.v5/themes/site/images/favicon.ico?v=dev-0.0.1-1793846371271">
 	</head>
 	<body>
-		<h1>New Ablum</h1>
+		<h1>New Album</h1>
 		<br/>
-		<form id="newAblbumForm" action="/api/gallery/save" method="POST" enctype="multipart/form-data">
+		<form id="newAlbumForm" action="/api/gallery/save" method="POST" enctype="multipart/form-data">
 			<table>
 				<tbody>
 					<tr>
@@ -87,11 +88,11 @@
 	</body>
 <script type="text/javascript">
 let now = new Date();
-document.querySelector('#userId').value='u001'; 
-document.querySelector('#time').value = `${`${now.getFullYear()}`.padStart(4,'0')}-${`${now.getMonth() + 1}`.padStart(2,'0')}-${`${now.getDate()}`.padStart(2,'0')} ${`${now.getHours()}`.padStart(2,'0')}:${`${now.getMinutes()}`.padStart(2,'0')}:${`${now.getSeconds()}`.padStart(2,'0')}`; 
+document.querySelector('#userId').value='u001';
+document.querySelector('#time').value = `${`${now.getFullYear()}`.padStart(4,'0')}-${`${now.getMonth() + 1}`.padStart(2,'0')}-${`${now.getDate()}`.padStart(2,'0')} ${`${now.getHours()}`.padStart(2,'0')}:${`${now.getMinutes()}`.padStart(2,'0')}:${`${now.getSeconds()}`.padStart(2,'0')}`;
 document.querySelector('#timeValue').value = now;
-document.querySelector('#title').value=''; 
-document.querySelector('#blogText').value=''; 
+document.querySelector('#title').value='';
+document.querySelector('#blogText').value='';
 let clearValues = (nodes) => {
 	for (let i=0; i < nodes.length; i++) {
 		nodes[i].value = '';
@@ -109,12 +110,19 @@ let submitNewArticle = () => {
 	saveTime.setSeconds(parseInt(timeStr.substring(17,19).padStart(2,'0')));
 	document.querySelector('#timeValue').value = saveTime.getTime();
 	console.log(saveTime);
-	let userId = document.querySelector('#userId').value; 
-	let blogText = document.querySelector('#blogText').value; 
-	if (userId && blogText && userId.length > 0 && blogText.length > 0) {
-		document.querySelector('#newAblbumForm').submit();
+	let userId = document.querySelector('#userId').value;
+	let picUrls = document.querySelectorAll('input[name="picUrl"]');
+	let hasPicUrl = false;
+	for (let i = 0; i < picUrls.length; i++) {
+		if (picUrls[i].value && picUrls[i].value.length > 0) {
+			hasPicUrl = true;
+			break;
+		}
+	}
+	if (userId && userId.length > 0 && hasPicUrl) {
+		document.querySelector('#newAlbumForm').submit();
 	} else {
-		alert('userId or text is empty');
+		alert('userId or picUrl is empty');
 	}
 };
 </script>

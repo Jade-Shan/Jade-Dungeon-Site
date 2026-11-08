@@ -1,21 +1,22 @@
 /**
- * 登录页：校验、cookie、跳转 URL 拼装
+ * 登录页：登录 / 修改密码跳转 / 返回选场景
  *
- * sandbox 模块迁移的期 5 产物。这一页不碰 Canvas，所以能测得比较全。
+ * sandbox 模块迁移的期 5 产物。2026-11-07 把「登录」和「选场景」拆成两页之后，
+ * 这里只测 `login.html` 的登录页（选场景页的跳转测在 `sandbox.index.test.ts`，
+ * 修改密码页测在 `sandbox.changePassword.test.ts`）。这一页不碰 Canvas，能测得比较全。
  *
  * 要盯住的：
  *
- * - **跳转前检查登录态**：老代码是「点进入时顺便再登录一次」，
- *   那样每次进场景都换新 token、作废旧的，开两个标签页前一个就失效
- * - **三个场景参数缺一个就不跳**，而不是跳过去再报错
- * - **参数做 URL 编码**：战役名可能有空格和 `&`
+ * - **密码走 POST 不进 URL**：GET 会把密码留在 URL、浏览器历史和访问日志里
+ * - **登录成功带着场景参数回 index.html**：用户在 index 填好的三级定位不丢
+ * - **「修改密码」带着用户名跳 changePassword.html**：用户名是改谁的依据
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { withDom, withDomAsync } from './_jsdom-setup.js';
 import { initSandboxLogin } from '../../main/ts/sandbox/sandboxLogin.js';
 
-/** 登录页的 DOM，和 html/sandbox/index.html 一致：一个桌面容器，窗口由脚本建 */
+/** 登录页的 DOM，和 html/sandbox/login.html 一致：一个桌面容器，窗口由脚本建 */
 const PAGE = `<div id="sandbox-desktop" class="desktop dock-content"></div>`;
 
 /** 记下假 XHR 收到的请求 */
@@ -63,29 +64,11 @@ function fill(id: string, v: string): void {
 
 describe('init 回填', () => {
 
-	test('URL 带场景参数时回填进输入框', () => {
-		withDom(PAGE, () => {
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '/' });
-			assert.equal((document.getElementById('campaignId') as HTMLInputElement).value, 'c1');
-			assert.equal((document.getElementById('placeId') as HTMLInputElement).value, 'p1');
-			assert.equal((document.getElementById('sceneId') as HTMLInputElement).value, 's1');
-		}, 'http://localhost/index.html?campaignId=c1&placeId=p1&sceneId=s1');
-	});
-
-	test('没有 cookie 时提示请先登录', () => {
-		withDom(PAGE, () => {
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '/' });
-			assert.ok(status().includes('请先登录'), `实际: ${status()}`);
-		});
-	});
-
-	test('已有 cookie 时回填用户名并显示身份', () => {
+	test('已有 cookie 时回填用户名（换身份省一次输入）', () => {
 		withDom(PAGE, () => {
 			document.cookie = 'username=teo;path=/';
-			document.cookie = 'loginToken=teo|uuid|1;path=/';
 			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '/' });
 			assert.equal((document.getElementById('username') as HTMLInputElement).value, 'teo');
-			assert.ok(status().includes('已登录'), `实际: ${status()}`);
 		});
 	});
 
@@ -93,24 +76,38 @@ describe('init 回填', () => {
 
 describe('登录', () => {
 
-	test('成功后写 cookie 并显示身份', async () => {
+	test('成功后写 cookie 并跳回 index.html', async () => {
 		await withDomAsync(PAGE, async () => {
 			stubXhr({ status: 'success', username: 'teo', token: 'teo|uuid|9' });
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
+			let jumped = '';
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
 			fill('username', 'teo');
 			fill('password', 'pw');
 			click('btn-login');
 			await new Promise(r => setTimeout(r, 10));
-			assert.ok(status().includes('已登录'), `实际: ${status()}`);
 			assert.ok(document.cookie.includes('username=teo'), `cookie: ${document.cookie}`);
 			assert.ok(document.cookie.includes('loginToken='), `cookie: ${document.cookie}`);
+			assert.equal(jumped, './index.html');
 		});
+	});
+
+	test('登录成功带着场景参数回 index.html', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubXhr({ status: 'success', username: 'teo', token: 't' });
+			let jumped = '';
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
+			fill('username', 'teo');
+			fill('password', 'pw');
+			click('btn-login');
+			await new Promise(r => setTimeout(r, 10));
+			assert.equal(jumped, './index.html?campaignId=c1&placeId=p1&sceneId=s1');
+		}, 'http://localhost/login.html?campaignId=c1&placeId=p1&sceneId=s1');
 	});
 
 	test('走 POST，密码不出现在 URL 里', async () => {
 		await withDomAsync(PAGE, async () => {
 			stubXhr({ status: 'success', username: 'teo', token: 't' });
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: () => { } });
 			fill('username', 'teo');
 			fill('password', 'secret-pw');
 			click('btn-login');
@@ -150,7 +147,7 @@ describe('登录', () => {
 	test('输入框的首尾空白被去掉', async () => {
 		await withDomAsync(PAGE, async () => {
 			stubXhr({ status: 'success', username: 'teo', token: 't' });
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: () => { } });
 			fill('username', '  teo  ');
 			fill('password', 'pw');
 			click('btn-login');
@@ -161,120 +158,56 @@ describe('登录', () => {
 
 });
 
-describe('注册', () => {
+describe('修改密码跳转', () => {
 
-	test('成功时提示可以登录了（不自动登录）', async () => {
-		await withDomAsync(PAGE, async () => {
-			stubXhr({ status: 'success', username: 'newbie' });
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
-			fill('username', 'newbie');
-			fill('password', 'pw');
-			click('btn-regist');
-			await new Promise(r => setTimeout(r, 10));
-			assert.ok(status().includes('注册成功'), `实际: ${status()}`);
-			assert.ok(!document.cookie.includes('loginToken'), '注册不该顺手登录');
+	test('点修改密码带着用户名跳 changePassword.html', () => {
+		withDom(PAGE, () => {
+			let jumped = '';
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
+			fill('username', 'teo');
+			click('btn-change-password');
+			assert.equal(jumped, './changePassword.html?username=teo');
 		});
 	});
 
-	test('用户名被占用时给中文提示', async () => {
-		await withDomAsync(PAGE, async () => {
-			stubXhr({ status: 'err', msg: 'username exists' });
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
-			fill('username', 'teo');
-			fill('password', 'pw');
-			click('btn-regist');
-			await new Promise(r => setTimeout(r, 10));
-			assert.ok(status().includes('已被占用'), `实际: ${status()}`);
+	test('用户名为空时只跳 changePassword.html 不带查询串', () => {
+		withDom(PAGE, () => {
+			let jumped = '';
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
+			click('btn-change-password');
+			assert.equal(jumped, './changePassword.html');
+		});
+	});
+
+	test('用户名里的特殊字符被 URL 编码', () => {
+		withDom(PAGE, () => {
+			let jumped = '';
+			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
+			fill('username', 'a&b c');
+			click('btn-change-password');
+			assert.equal(jumped, './changePassword.html?username=a%26b%20c');
 		});
 	});
 
 });
 
-describe('进入场景', () => {
+describe('返回选场景', () => {
 
-	test('没登录时不跳转，提示请先登录', () => {
+	test('点返回按钮带着场景参数回 index.html', () => {
 		withDom(PAGE, () => {
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
-			click('btn-enter');
-			assert.ok(status().includes('请先登录'), `实际: ${status()}`);
-		});
-	});
-
-	test('三个场景参数缺一个就不跳', () => {
-		withDom(PAGE, () => {
-			document.cookie = 'username=teo;path=/';
-			document.cookie = 'loginToken=t;path=/';
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api' });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			// 窗口里预填了 scene01（demo 便利），这里清空以测「缺一个」
-			fill('sceneId', '');
-			click('btn-enter');
-			assert.ok(status().includes('三个都要填'), `实际: ${status()}`);
-		});
-	});
-
-	test('齐全时拼出带三个参数的 URL', () => {
-		withDom(PAGE, () => {
-			document.cookie = 'username=teo;path=/';
-			document.cookie = 'loginToken=t;path=/';
-			// jsdom 的 window.location 不可重定义，所以用 navigate 这个口子观察
 			let jumped = '';
 			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
-			click('btn-enter');
-			assert.ok(jumped.startsWith('./view.html?'), `实际: ${jumped}`);
-			assert.ok(jumped.includes('campaignId=c1'), jumped);
-			assert.ok(jumped.includes('placeId=p1'), jumped);
-			assert.ok(jumped.includes('sceneId=s1'), jumped);
-		});
+			click('btn-back');
+			assert.equal(jumped, './index.html?campaignId=c1&placeId=p1&sceneId=s1');
+		}, 'http://localhost/login.html?campaignId=c1&placeId=p1&sceneId=s1');
 	});
 
-	test('编辑按钮跳 editor.html', () => {
+	test('没有场景参数时只回 index.html 不带查询串', () => {
 		withDom(PAGE, () => {
-			document.cookie = 'username=teo;path=/';
-			document.cookie = 'loginToken=t;path=/';
 			let jumped = '';
 			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
-			click('btn-edit');
-			assert.ok(jumped.startsWith('./editor.html?'), `实际: ${jumped}`);
-		});
-	});
-
-	test('场景名里的空格与 & 被编码', () => {
-		withDom(PAGE, () => {
-			document.cookie = 'username=teo;path=/';
-			document.cookie = 'loginToken=t;path=/';
-			let jumped = '';
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
-			fill('campaignId', '深水城 & 大冒险');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
-			click('btn-enter');
-			assert.ok(!jumped.includes('深水城 &'), `裸的 & 会把参数截断: ${jumped}`);
-			assert.ok(jumped.includes(encodeURIComponent('深水城 & 大冒险')), jumped);
-		});
-	});
-
-	test('自定义目标页地址生效', () => {
-		withDom(PAGE, () => {
-			document.cookie = 'username=teo;path=/';
-			document.cookie = 'loginToken=t;path=/';
-			let jumped = '';
-			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', viewUrl: '/custom/v.html', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
-			click('btn-enter');
-			assert.ok(jumped.startsWith('/custom/v.html?'), `实际: ${jumped}`);
+			click('btn-back');
+			assert.equal(jumped, './index.html');
 		});
 	});
 
@@ -282,11 +215,13 @@ describe('进入场景', () => {
 
 describe('选择器可覆盖', () => {
 
-	test('传了覆盖项时按覆盖后的 id 建元素', async () => {
+	test('传了覆盖项时按覆盖后的 id 建元素并跳转', async () => {
 		await withDomAsync(PAGE, async () => {
 			stubXhr({ status: 'success', username: 'teo', token: 't' });
+			let jumped = '';
 			initSandboxLogin({
 				iconBaseUrl: '//cdn/SE98', apiRoot: '//api',
+				navigate: u => { jumped = u; },
 				selectors: {
 					username: '#my-user', password: '#my-pw',
 					loginBtn: '#my-login', status: '#my-status',
@@ -296,8 +231,7 @@ describe('选择器可覆盖', () => {
 			(document.getElementById('my-pw') as HTMLInputElement).value = 'pw';
 			document.getElementById('my-login')!.dispatchEvent(new MouseEvent('click'));
 			await new Promise(r => setTimeout(r, 10));
-			assert.ok((document.getElementById('my-status')!.textContent ?? '')
-				.includes('已登录'));
+			assert.equal(jumped, './index.html', '覆盖后的登录按钮要能触发登录并跳转');
 		});
 	});
 

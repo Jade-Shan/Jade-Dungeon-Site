@@ -20,8 +20,8 @@ export const initGlobalCfg = (args: ICliArgs): IGlobalCfg => {
 	const uploadPath = args['--uploadPath'] || process.env.UPLOAD_PATH || '/tmp/';
 
 	// Redis 连接参数来自 config.properties，不再硬编码。
-	// 三个命名连接（trpg / blog / auth）沿用旧后端的划分，共用同一个实例，
-	// 靠 key 前缀隔离数据，所以 host / port 对三者相同。
+	// 现在只剩 sandtable（场景/移动/骰子）还在用 Redis，blog / gallery / auth
+	// 都已迁到 SQLite，所以只保留 trpg 一个命名连接。
 	const redisHost = process.env.REDIS_HOST || '127.0.0.1';
 	const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
 	// REDIS_NAME 只做连接标签（ioredis 的 connectionName），用于在 Redis 的
@@ -50,6 +50,14 @@ export const initGlobalCfg = (args: ICliArgs): IGlobalCfg => {
 		console.warn('⚠️  这是 sandtable 联调用的临时开关，联调结束后请从配置里删掉它。');
 	}
 
+	// 禁用 HTTP 注册。开启后 /api/auth/regist 一律返回错误，
+	// 新用户只能通过 CLI（src/main/ts/userRegCli.ts）注册 —— 防止对公网开放的
+	// 站点被脚本批量刷注册。默认关闭，不配或非 true 都放行 HTTP 注册。
+	const disableRegist = (process.env.AUTH_DISABLE_REGIST || '').trim().toLowerCase() === 'true';
+	if (disableRegist) {
+		console.warn('🔒 HTTP 注册已禁用（AUTH_DISABLE_REGIST=true）：新用户请改用 CLI 注册');
+	}
+
 	// 允许跨域的来源，逗号分隔。留空或不配则放开所有来源（等同 '*'）。
 	// 注意这里要填带协议和端口的完整 origin，如 http://www.example.com:8082，
 	// 浏览器发来的 Origin 头就是这个形式，字符串必须完全匹配。
@@ -61,12 +69,10 @@ export const initGlobalCfg = (args: ICliArgs): IGlobalCfg => {
 	const globalCfg: IGlobalCfg = {
 		server: { hostname: host, port: port },
 		sqlite: { path: sqlitePath, readPoolSize: sqliteReadPoolSize },
-		auth: { bypass: authBypass },
+		auth: { bypass: authBypass, disableRegist },
 		crosSite: crosSite,
 		redis: [
 			{ key: 'trpg', host: redisHost, port: redisPort, name: `${redisName}:trpg` },
-			{ key: 'blog', host: redisHost, port: redisPort, name: `${redisName}:blog` },
-			{ key: 'auth', host: redisHost, port: redisPort, name: `${redisName}:auth` },
 		],
 		path: {
 			appRootDir: path.resolve(__dirname),

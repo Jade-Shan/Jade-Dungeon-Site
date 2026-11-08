@@ -22,6 +22,52 @@
 
 ## 历史记录
 
+- **`site-api` 增加禁用 HTTP 注册的开关 + CLI 注册入口**（2026-11-07）
+  - `config.properties` 新增 `AUTH_DISABLE_REGIST`：为 `true` 时 `/api/auth/regist`
+    一律返回 `{ status: 'err', msg: 'http regist disabled' }`，防止对公网开放时
+    被脚本批量刷注册；默认关闭（不配 = 关）。本地 `config.properties` 已启用
+    （前端登录页已无注册入口）
+  - `types.ts` 的 `IGlobalCfg.auth` 加 `disableRegist: boolean`；`config.ts` 读
+    `AUTH_DISABLE_REGIST` 填入；`routes/auth.ts` 的 regist 路由在参数校验**之前**
+    就拦下禁用场景
+  - 新增 `src/main/ts/userRegCli.ts`：命令行注册入口
+    `node dist/userRegCli.js -u <username> -p <password>`，复用 `initGlobalCfg`
+    （读同一个 `SQLITE_PATH`）+ `registUser()`，所以 CLI 建的用户和 HTTP 注册等价；
+    注册完显式 `closeSqlite()` 再退出（否则 9 个 worker 线程让进程挂着不退）
+  - `config.sample.properties` 加注释模板；`site-api/CLAUDE.md` 补目录结构、
+    架构概览、路由表、环境变量清单 + 一节「禁用 HTTP 注册」
+  - 验证：`tsc --noEmit` + `eslint` 通过；`npm run build` 产物 `dist/userRegCli.js`
+    别名正确改写为相对路径；用临时库实测 CLI 注册成功、重复注册返回
+    `username exists`、缺参数退出码 1
+- **登录页「注册」换成「修改密码」，新增 changePassword 页 + 后端接口**（2026-11-07）
+  - 登录页 `SandboxLoginSelectors.registBtn` → `changePasswordBtn`（`#btn-change-password`），
+    文本「修改密码」，点击带着用户名（URL 参数 `username`）跳 `changePassword.html`
+  - `sandboxLogin.ts` 新增修改密码窗口 `SandboxChangePasswordWindow`（旧密码 + 新密码×2，
+    三个密码框都是 password 类型）+ `SandboxChangePassword` + `initSandboxChangePassword`
+  - 前端本地校验：用户名缺失、三个框有空、两次新密码不一致、强度
+    （`checkNewPassword`：≥8 位且同时含数字/字母/特殊字符）都在发请求前拦下；
+    后端 `authService.checkPasswordStrength` 同规则兜底
+  - 后端：`POST /api/auth/change-password`，靠旧密码验证身份（不走 token），
+    改成功后作废该用户所有 token 强制重新登录
+  - 新增 `html/sandbox/changePassword.html`（复用 `sandbox-login` export，无需新增 export）
+  - 测试：`sandbox.login.test.ts` 删注册 2 条、加修改密码跳转 3 条；新增
+    `sandbox.changePassword.test.ts`（13 条）；`npm test -w site-page` 224 条全绿；
+    site-api `tsc --noEmit` + `lint` 通过
+  - **未做浏览器手工验证** —— 跳转、三框校验、改密码成功后回登录页都要在浏览器里看
+- **`sandbox/index.html` 拆成选场景页 + 登录页**（2026-11-07）
+  - 原来 `index.html` 一个窗口里上半是「身份」表单、下半是「场景」表单
+    （迁移时照搬老应用 `sandtable-index.html` 的单页结构），拆成 `login.html`
+    （登录 / 注册）和 `index.html`（选场景 + 登录态 + 「以其他身份登录」）
+  - `sandboxLogin.ts` 拆成两个窗口类 + 两个页面类 + 两个入口：
+    `initSandboxLogin`（登录页，配 `apiRoot`）+ `initSandboxIndex`（选场景页，不发请求）
+  - 场景三级定位（campaignId/placeId/sceneId）始终走 URL 参数在两页间传递：
+    index「以其他身份登录」带着三级定位跳 login，登录成功（或放弃返回）原样带回，
+    用户不用重填
+  - 新增 `html/sandbox/login.html`；`index.html` 标题改「沙盘 - 选场景」、
+    脚本改 `initSandboxIndex` 并去掉 `apiRoot`
+  - 测试拆成 `sandbox.login.test.ts`（13 条）+ `sandbox.index.test.ts`（13 条），
+    `npm test -w site-page` 全绿
+  - **未做浏览器手工验证** —— 登录跳转、场景参数往返、换身份按钮都要在浏览器里看
 - **editor 元素列表：补回「资源文件」分类**（2026-11-06）
   - 老系统的元素列表有 6 个标签（team / creater / furnishing / door / wall /
     image），迁移时漏了 `image`（对应数据源 `imgResources`）。`sandboxScene.ts`
@@ -49,8 +95,8 @@
     原始尺寸，但 CSS 显示尺寸可能被压缩）
   - `keydown/keyup` 增加 Shift 状态跟踪（`shiftDown`）
   - **未做浏览器手工验证** —— 三种拖动、坐标换算（图片比窗口大时的缩放）要在浏览器里看
-- **editor 场景窗口：加「当前角色视野」开关**（2026-11-06）
-  - `sandboxWindows.ts` 的 `SandboxSceneWindow` 加 `autoView` checkbox
+- **editor 状态窗口：加「当前角色视野」开关**（2026-11-06）
+  - `sandboxWindows.ts` 的 `SandboxStatusWindow` 加 `autoView` checkbox
     （文本「当前角色视野」，位于「定时刷新」下方，默认非选中）
   - `sandboxEditor.ts`：`loadScene` 成功后构造一个 `SandTable`（复用 view 页的
     视野渲染，缺背景图时跳过、编辑照常）；`redraw()` 分叉 —— `viewMode` 开启且
@@ -76,8 +122,8 @@
     对比不明显，改成两层同心圆——先画 7px 实线做深色衬底，再画虚线；
     直径（半径 34）不变。颜色最终定为：实线 `#9400d3`（紫）、虚线 `#7cfc00`（绿）
   - **未做浏览器手工验证** —— 两层圆圈的实际视觉效果要在浏览器里看
-- **editor 场景窗口：加「定时刷新」开关**（2026-11-06）
-  - `sandboxWindows.ts` 的 `SandboxSceneWindow` 加 `autoRefresh` checkbox
+- **editor 状态窗口：加「定时刷新」开关**（2026-11-06）
+  - `sandboxWindows.ts` 的 `SandboxStatusWindow` 加 `autoRefresh` checkbox
     （文本「定时刷新」，默认非选中）。98.css 的 checkbox 靠 `input + label`
     相邻兄弟选择器画外观，所以 label 紧跟 input 且用 `for` 关联
   - `sandboxEditor.ts`：`bindSceneEvents()` 绑 change 事件——选中启动

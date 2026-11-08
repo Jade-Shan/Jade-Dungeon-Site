@@ -471,21 +471,27 @@ class SandboxIndexWindow extends UIWindowAdapter {
 
 		this.campaignId.id = ids.campaignId;
 		this.campaignId.type = 'text';
+		this.campaignId.value = '1';
 		this.campaignId.placeholder = '战役数字 ID，如 1';
 		this.placeId.id = ids.placeId;
 		this.placeId.type = 'text';
+		this.placeId.value = '1';
 		this.placeId.placeholder = '地点数字 ID，如 2';
 		this.sceneId.id = ids.sceneId;
 		this.sceneId.type = 'text';
+		this.sceneId.value = '1';
 		this.sceneId.placeholder = '场景数字 ID，如 3';
 		this.campaignName.id = ids.campaignName;
 		this.campaignName.type = 'text';
+		this.campaignName.value = '村好剑的新征途';
 		this.campaignName.placeholder = '战役名，如 费伦大陆';
 		this.placeName.id = ids.placeName;
 		this.placeName.type = 'text';
+		this.placeName.value = '门前两座山';
 		this.placeName.placeholder = '地点名，如 深水城';
 		this.sceneName.id = ids.sceneName;
 		this.sceneName.type = 'text';
+		this.sceneName.value = '峡谷入口的废墟';
 		this.sceneName.placeholder = '场景名，如 港口';
 		this.enterBtn.id = ids.enterBtn;
 		this.enterBtn.textContent = '进入场景';

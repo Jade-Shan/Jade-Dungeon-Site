@@ -1,7 +1,7 @@
 import { getRedis } from '@/lib/redis';
 
 /**
- * TRPG 骰子检定。数据存 Redis（与旧后端共享同一批 key）。
+ * TRPG 骰子检定。数据存 Redis。
  *
  * 检定流程（三个接口配合）：
  * 1. GM 调 `set-roll-threshold` 为某玩家设阈值 → 存 `{threshold:N, sum:0, msg:""}`
@@ -13,7 +13,7 @@ import { getRedis } from '@/lib/redis';
 const REDIS_KEY = 'trpg';
 
 export const genRollResultKey = (campaignId: number, placeId: number, sceneId: number): string =>
-	`jadedungeon::sandtable::rollDiceResult::${campaignId}::${placeId}::${sceneId}`;
+	`jadedungeon:sandtable:rollDiceResult:${campaignId}:${placeId}:${sceneId}`;
 
 /** 单个骰子项：`3d6` / `d20` / 常数 */
 interface IDiceTerm {

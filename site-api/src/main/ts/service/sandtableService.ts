@@ -10,10 +10,8 @@ import { verifyToken } from '@/service/authService';
  * 的文本」改为「自增数字 id」，名字（*_name）降级为显示名 —— Redis key 的
  * 三段全是数字 id。
  *
- * key 前缀 `jadedungeon::sandtable::*` **格式不能动** —— 旧后端已停用，
- * 所以理由不再是「两代互通」，而是 **Redis 里已经存着用这些 key 的数据**。
- * 其中 `scence` 是 `scene` 的拼写错误，同样因为存量数据而保留：
- * 改名要连带写迁移脚本遍历改 key。
+ * key 前缀 `jadedungeon:sandtable:*`，层级之间用单冒号分隔。
+ * 其中 `scence` 是 `scene` 的拼写错误，沿用旧实现保留原样。
  */
 
 const REDIS_KEY = 'trpg';
@@ -21,10 +19,10 @@ const REDIS_KEY = 'trpg';
 // ───────────────────────── key 生成 ─────────────────────────
 
 export const genSceneKey = (campaignId: number, placeId: number, sceneId: number): string =>
-	`jadedungeon::sandtable::scence::${campaignId}::${placeId}::${sceneId}`;
+	`jadedungeon:sandtable:scence:${campaignId}:${placeId}:${sceneId}`;
 
 export const genMoveReqKey = (campaignId: number, placeId: number, sceneId: number): string =>
-	`jadedungeon::sandtable::moveReq::${campaignId}::${placeId}::${sceneId}`;
+	`jadedungeon:sandtable:moveReq:${campaignId}:${placeId}:${sceneId}`;
 
 // ───────────────────────── 场景数据 ─────────────────────────
 

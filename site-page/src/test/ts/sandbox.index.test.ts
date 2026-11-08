@@ -45,10 +45,14 @@ describe('init 回填', () => {
 	test('URL 带场景参数时回填进输入框（方便分享链接）', () => {
 		withDom(PAGE, () => {
 			initSandboxIndex({ iconBaseUrl: '//cdn/SE98' });
-			assert.equal((document.getElementById('campaignId') as HTMLInputElement).value, 'c1');
-			assert.equal((document.getElementById('placeId') as HTMLInputElement).value, 'p1');
-			assert.equal((document.getElementById('sceneId') as HTMLInputElement).value, 's1');
-		}, 'http://localhost/index.html?campaignId=c1&placeId=p1&sceneId=s1');
+			assert.equal((document.getElementById('campaignId') as HTMLInputElement).value, '1');
+			assert.equal((document.getElementById('placeId') as HTMLInputElement).value, '2');
+			assert.equal((document.getElementById('sceneId') as HTMLInputElement).value, '3');
+			assert.equal((document.getElementById('campaignName') as HTMLInputElement).value, 'Waterdeep');
+			assert.equal((document.getElementById('placeName') as HTMLInputElement).value, 'Harbor');
+			assert.equal((document.getElementById('sceneName') as HTMLInputElement).value, 'Dock');
+		}, 'http://localhost/index.html?campaignId=1&placeId=2&sceneId=3'
+			+ '&campaignName=Waterdeep&placeName=Harbor&sceneName=Dock');
 	});
 
 	test('没有 cookie 时提示请先登录', () => {
@@ -74,9 +78,9 @@ describe('进入场景', () => {
 	test('没登录时不跳转，提示请先登录', () => {
 		withDom(PAGE, () => {
 			initSandboxIndex({ iconBaseUrl: '//cdn/SE98' });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
+			fill('campaignId', '1');
+			fill('placeId', '2');
+			fill('sceneId', '3');
 			click('btn-enter');
 			assert.ok(status().includes('请先登录'), `实际: ${status()}`);
 		});
@@ -86,24 +90,28 @@ describe('进入场景', () => {
 		withDom(PAGE, () => {
 			loginCookies();
 			initSandboxIndex({ iconBaseUrl: '//cdn/SE98' });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
+			fill('campaignId', '1');
+			fill('placeId', '2');
 			fill('sceneId', '');
 			click('btn-enter');
-			assert.ok(status().includes('三个都要填'), `实际: ${status()}`);
+			assert.ok(status().includes('三个 ID 都要填'), `实际: ${status()}`);
 		});
 	});
 
-	test('齐全时拼出带三个参数的玩家视图地址', () => {
+	test('齐全时拼出带三级定位（3 id + 3 名字）的玩家视图地址', () => {
 		withDom(PAGE, () => {
 			loginCookies();
 			let jumped = '';
 			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
+			fill('campaignId', '1');
+			fill('placeId', '2');
+			fill('sceneId', '3');
+			fill('campaignName', 'Waterdeep');
+			fill('placeName', 'Harbor');
+			fill('sceneName', 'Dock');
 			click('btn-enter');
-			assert.equal(jumped, './view.html?campaignId=c1&placeId=p1&sceneId=s1');
+			assert.equal(jumped, './view.html?campaignId=1&placeId=2&sceneId=3'
+				+ '&campaignName=Waterdeep&placeName=Harbor&sceneName=Dock');
 		});
 	});
 
@@ -112,11 +120,11 @@ describe('进入场景', () => {
 			loginCookies();
 			let jumped = '';
 			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
+			fill('campaignId', '1');
+			fill('placeId', '2');
+			fill('sceneId', '3');
 			click('btn-edit');
-			assert.equal(jumped, './editor.html?campaignId=c1&placeId=p1&sceneId=s1');
+			assert.equal(jumped, './editor.html?campaignId=1&placeId=2&sceneId=3');
 		});
 	});
 
@@ -125,12 +133,16 @@ describe('进入场景', () => {
 			loginCookies();
 			let jumped = '';
 			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
-			fill('campaignId', '费伦 大陆');
-			fill('placeId', 'A&B');
-			fill('sceneId', 's1');
+			fill('campaignId', '1');
+			fill('placeId', '2');
+			fill('sceneId', '3');
+			fill('campaignName', '费伦 大陆');
+			fill('placeName', 'A&B');
+			fill('sceneName', 's1');
 			click('btn-enter');
-			const expected = `./view.html?campaignId=${encodeURIComponent('费伦 大陆')}`
-				+ '&placeId=A%26B&sceneId=s1';
+			const expected = './view.html?campaignId=1&placeId=2&sceneId=3'
+				+ '&campaignName=' + encodeURIComponent('费伦 大陆')
+				+ '&placeName=A%26B&sceneName=s1';
 			assert.equal(jumped, expected);
 		});
 	});
@@ -140,11 +152,11 @@ describe('进入场景', () => {
 			loginCookies();
 			let jumped = '';
 			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', viewUrl: '/custom/v.html', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
+			fill('campaignId', '1');
+			fill('placeId', '2');
+			fill('sceneId', '3');
 			click('btn-enter');
-			assert.equal(jumped, '/custom/v.html?campaignId=c1&placeId=p1&sceneId=s1');
+			assert.equal(jumped, '/custom/v.html?campaignId=1&placeId=2&sceneId=3');
 		});
 	});
 
@@ -156,11 +168,11 @@ describe('换身份登录', () => {
 		withDom(PAGE, () => {
 			let jumped = '';
 			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
+			fill('campaignId', '1');
+			fill('placeId', '2');
+			fill('sceneId', '3');
 			click('btn-switch-login');
-			assert.equal(jumped, './login.html?campaignId=c1&placeId=p1&sceneId=s1');
+			assert.equal(jumped, './login.html?campaignId=1&placeId=2&sceneId=3');
 		});
 	});
 
@@ -177,9 +189,9 @@ describe('换身份登录', () => {
 		withDom(PAGE, () => {
 			let jumped = '';
 			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', loginUrl: '/auth.html', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
+			fill('campaignId', '1');
 			click('btn-switch-login');
-			assert.equal(jumped, '/auth.html?campaignId=c1');
+			assert.equal(jumped, '/auth.html?campaignId=1');
 		});
 	});
 

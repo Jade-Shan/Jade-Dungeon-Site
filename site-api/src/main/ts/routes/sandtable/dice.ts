@@ -22,11 +22,11 @@ const sendJson = (context: IRequestContext, status: number, body: unknown) => {
 };
 
 const readSceneParams = (data: IRequestData) => {
-	const campaignId = data.params.campaignId;
-	const placeId = data.params.placeId;
-	const sceneId = data.params.sceneId;
-	const ok = Boolean(campaignId && placeId && sceneId
-		&& campaignId.length > 0 && placeId.length > 0 && sceneId.length > 0);
+	const campaignId = Number(data.params.campaignId);
+	const placeId = Number(data.params.placeId);
+	const sceneId = Number(data.params.sceneId);
+	const ok = Number.isInteger(campaignId) && Number.isInteger(placeId) && Number.isInteger(sceneId)
+		&& campaignId > 0 && placeId > 0 && sceneId > 0;
 	return { campaignId, placeId, sceneId, ok };
 };
 
@@ -65,7 +65,7 @@ export const handler: ICustomHandler[] = [
 
 			try {
 				// 只有 GM 设过阈值、且本轮还没掷过（sum == 0）才允许掷
-				const rec = await getRollRecord(campaignId!, placeId!, sceneId!, username);
+				const rec = await getRollRecord(campaignId, placeId, sceneId, username);
 				const threshold = (rec && rec.threshold > 0 && rec.sum === 0) ? rec.threshold : 0;
 				if (threshold <= 0) {
 					sendJson(context, 200, { status: 'error', msg: 'not your turn' });
@@ -80,7 +80,7 @@ export const handler: ICustomHandler[] = [
 					return;
 				}
 
-				await saveRollResult(campaignId!, placeId!, sceneId!, username,
+				await saveRollResult(campaignId, placeId, sceneId, username,
 					{ threshold, sum: result.sum, msg: result.msg });
 				sendJson(context, 200, {
 					status: 'success', threshold, msg: result.msg, sum: result.sum,
@@ -108,7 +108,7 @@ export const handler: ICustomHandler[] = [
 			}
 
 			try {
-				await setRollThreshold(campaignId!, placeId!, sceneId!, target, threshold);
+				await setRollThreshold(campaignId, placeId, sceneId, target, threshold);
 				sendJson(context, 200, { status: 'success', data: threshold });
 			} catch (err) {
 				console.error('❌ set-roll-threshold 失败:', (err as Error).message);
@@ -126,7 +126,7 @@ export const handler: ICustomHandler[] = [
 				return;
 			}
 			try {
-				const list = await loadRollResults(campaignId!, placeId!, sceneId!);
+				const list = await loadRollResults(campaignId, placeId, sceneId);
 				sendJson(context, 200, { status: 'success', msg: '', data: list });
 			} catch (err) {
 				console.error('❌ get-roll-result 失败:', (err as Error).message);

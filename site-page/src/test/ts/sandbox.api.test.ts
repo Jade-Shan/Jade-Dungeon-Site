@@ -53,7 +53,7 @@ function stubXhr(resp: unknown, fail = false): void {
 	(globalThis as unknown as Record<string, unknown>).XMLHttpRequest = FakeXhr;
 }
 
-const ID = { campaignId: 'c1', placeId: 'p1', sceneId: 's1' };
+const ID = { campaignId: 1, placeId: 2, sceneId: 3 };
 const api = () => new SandboxApi('//localhost:8089');
 
 /** 从记录的 URL 里取查询参数 */
@@ -164,9 +164,9 @@ describe('URL 拼装与后端参数名对账', () => {
 		stubXhr({ status: 'success' });
 		return api().loadMap(ID).then(() => {
 			const p = params(sent[0].url);
-			assert.equal(p.campaignId, 'c1');
-			assert.equal(p.placeId, 'p1');
-			assert.equal(p.sceneId, 's1');
+			assert.equal(p.campaignId, '1');
+			assert.equal(p.placeId, '2');
+			assert.equal(p.sceneId, '3');
 		});
 	});
 
@@ -180,7 +180,7 @@ describe('URL 拼装与后端参数名对账', () => {
 		const cases: Array<[string, () => Promise<unknown>]> = [
 			['load-map', () => api().loadMap(ID)],
 			['save-map', () => api().saveMap(ID, '{}')],
-			['map-owner', () => api().mapOwner('c1')],
+			['map-owner', () => api().mapOwner(1)],
 			['load-move-request', () => api().loadMoveRequests(ID)],
 			['request-move', () => api().requestMove(ID, 'teo', 1, 2)],
 			['roll-dice', () => api().rollDice(ID, 'teo', '2d6')],
@@ -198,10 +198,11 @@ describe('URL 拼装与后端参数名对账', () => {
 
 	test('参数做了 URL 编码', async () => {
 		stubXhr({ status: 'success' });
-		await api().rollDice({ ...ID, campaignId: '深水城 & 地下城' }, 'teo', '2d6+1');
+		// 三级定位现在是数字 id，编码与否看不出来，改用 username 这种字符串参数来验
+		await api().rollDice(ID, '深水城 & 地下城', '2d6+1');
 		assert.ok(!sent[0].url.includes(' '), '空格应被编码');
 		const p = params(sent[0].url);
-		assert.equal(p.campaignId, '深水城 & 地下城', '解码后应还原');
+		assert.equal(p.username, '深水城 & 地下城', '解码后应还原');
 		assert.equal(p.rollCmd, '2d6+1', '加号也要能还原');
 	});
 
@@ -305,11 +306,11 @@ describe('响应解析', () => {
 		assert.deepEqual(r.data, { username: 'teo', token: 'teo|uuid|123' });
 	});
 
-	test('mapOwner 取出 owner；无主战役给空串', async () => {
+	test('mapOwner 取出 owner；查不到战役给空串', async () => {
 		stubXhr({ status: 'success', owner: 'teo' });
-		assert.equal((await api().mapOwner('c1')).data, 'teo');
+		assert.equal((await api().mapOwner(1)).data, 'teo');
 		stubXhr({ status: 'success' });
-		assert.equal((await api().mapOwner('c1')).data, '');
+		assert.equal((await api().mapOwner(1)).data, '');
 	});
 
 });

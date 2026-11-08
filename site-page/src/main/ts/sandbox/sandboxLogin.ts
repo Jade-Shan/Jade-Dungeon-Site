@@ -23,7 +23,8 @@ import { SandboxApi } from './sandboxApi.js';
  *
  * ## 场景参数怎么在两页之间传递
  *
- * 场景三级定位（`campaignId / placeId / sceneId`）始终走 URL 参数：
+ * 场景三级定位始终走 URL 参数：3 个数字 id（`campaignId / placeId / sceneId`，
+ * 用于后端寻址）+ 3 个显示名（`campaignName / placeName / sceneName`，只给标题栏显示）。
  * `index.html` 填好之后，「以其他身份登录」把它们带到 `login.html`，
  * 登录成功（或放弃返回）再原样带回 `index.html`，用户不用重填。
  *
@@ -44,8 +45,8 @@ import { SandboxApi } from './sandboxApi.js';
 const COOKIE_USER = 'username';
 const COOKIE_TOKEN = 'loginToken';
 
-/** 场景三级定位的参数名，两个页面都靠它们传递 */
-const SCENE_KEYS = ['campaignId', 'placeId', 'sceneId'] as const;
+/** 场景三级定位的参数名（3 个数字 id + 3 个显示名），页面之间靠它们传递 */
+const SCENE_KEYS = ['campaignId', 'placeId', 'sceneId', 'campaignName', 'placeName', 'sceneName'] as const;
 
 /** 去掉选择器前面的 `#`，得到元素 id */
 function idOf(slt: string): string {
@@ -378,12 +379,18 @@ export function initSandboxLogin(cfg: SandboxLoginConfig): SandboxLogin {
 
 /** 选场景页的元素选择器，页面模板里要有这些 */
 export interface SandboxIndexSelectors {
-	/** 战役输入框，默认 `#campaignId` */
+	/** 战役 ID 输入框，默认 `#campaignId` */
 	campaignId?: string;
-	/** 地点输入框，默认 `#placeId` */
+	/** 地点 ID 输入框，默认 `#placeId` */
 	placeId?: string;
-	/** 场景输入框，默认 `#sceneId` */
+	/** 场景 ID 输入框，默认 `#sceneId` */
 	sceneId?: string;
+	/** 战役名输入框，默认 `#campaignName` */
+	campaignName?: string;
+	/** 地点名输入框，默认 `#placeName` */
+	placeName?: string;
+	/** 场景名输入框，默认 `#sceneName` */
+	sceneName?: string;
 	/** 进入场景按钮，默认 `#btn-enter` */
 	enterBtn?: string;
 	/** 编辑场景按钮，默认 `#btn-edit` */
@@ -399,6 +406,9 @@ const INDEX_SELECTORS: Required<SandboxIndexSelectors> = {
 	campaignId: '#campaignId',
 	placeId: '#placeId',
 	sceneId: '#sceneId',
+	campaignName: '#campaignName',
+	placeName: '#placeName',
+	sceneName: '#sceneName',
 	enterBtn: '#btn-enter',
 	editBtn: '#btn-edit',
 	switchBtn: '#btn-switch-login',
@@ -431,6 +441,9 @@ interface IndexFieldIds {
 	campaignId: string;
 	placeId: string;
 	sceneId: string;
+	campaignName: string;
+	placeName: string;
+	sceneName: string;
 	enterBtn: string;
 	editBtn: string;
 	switchBtn: string;
@@ -445,6 +458,9 @@ class SandboxIndexWindow extends UIWindowAdapter {
 	private readonly campaignId: HTMLInputElement = document.createElement('input');
 	private readonly placeId: HTMLInputElement = document.createElement('input');
 	private readonly sceneId: HTMLInputElement = document.createElement('input');
+	private readonly campaignName: HTMLInputElement = document.createElement('input');
+	private readonly placeName: HTMLInputElement = document.createElement('input');
+	private readonly sceneName: HTMLInputElement = document.createElement('input');
 	private readonly enterBtn: HTMLButtonElement = document.createElement('button');
 	private readonly editBtn: HTMLButtonElement = document.createElement('button');
 	private readonly switchBtn: HTMLButtonElement = document.createElement('button');
@@ -455,13 +471,22 @@ class SandboxIndexWindow extends UIWindowAdapter {
 
 		this.campaignId.id = ids.campaignId;
 		this.campaignId.type = 'text';
-		this.campaignId.placeholder = '如 费伦大陆从北到南';
+		this.campaignId.placeholder = '战役数字 ID，如 1';
 		this.placeId.id = ids.placeId;
 		this.placeId.type = 'text';
-		this.placeId.placeholder = '如 深水城下大迷宫';
+		this.placeId.placeholder = '地点数字 ID，如 2';
 		this.sceneId.id = ids.sceneId;
 		this.sceneId.type = 'text';
-		this.sceneId.placeholder = '如 第一层的门房';
+		this.sceneId.placeholder = '场景数字 ID，如 3';
+		this.campaignName.id = ids.campaignName;
+		this.campaignName.type = 'text';
+		this.campaignName.placeholder = '战役名，如 费伦大陆';
+		this.placeName.id = ids.placeName;
+		this.placeName.type = 'text';
+		this.placeName.placeholder = '地点名，如 深水城';
+		this.sceneName.id = ids.sceneName;
+		this.sceneName.type = 'text';
+		this.sceneName.placeholder = '场景名，如 港口';
 		this.enterBtn.id = ids.enterBtn;
 		this.enterBtn.textContent = '进入场景';
 		this.editBtn.id = ids.editBtn;
@@ -500,22 +525,25 @@ class SandboxIndexWindow extends UIWindowAdapter {
 		JadeWindowUI.renderWindowTplt(this, undefined, renderBody, renderStatusBar);
 	}
 
-	/** 「场景」一栏：战役/地点/场景 + 进入/编辑按钮 */
+	/** 「场景定位」一栏：三个数字 id + 三个显示名 + 进入/编辑按钮 */
 	private buildSceneFieldset(): HTMLFieldSetElement {
 		const fs = document.createElement('fieldset');
 		const legend = document.createElement('legend');
-		legend.textContent = '场景';
+		legend.textContent = '场景定位';
 		fs.appendChild(legend);
-		fs.appendChild(fieldRow('战役', this.campaignId));
-		fs.appendChild(fieldRow('地点', this.placeId));
-		fs.appendChild(fieldRow('场景', this.sceneId));
+		fs.appendChild(fieldRow('战役 ID', this.campaignId));
+		fs.appendChild(fieldRow('战役名', this.campaignName));
+		fs.appendChild(fieldRow('地点 ID', this.placeId));
+		fs.appendChild(fieldRow('地点名', this.placeName));
+		fs.appendChild(fieldRow('场景 ID', this.sceneId));
+		fs.appendChild(fieldRow('场景名', this.sceneName));
 		const btns = document.createElement('div');
 		btns.classList.add('field-row');
 		btns.appendChild(this.enterBtn);
 		btns.appendChild(this.editBtn);
 		fs.appendChild(btns);
 		const note = document.createElement('p');
-		note.textContent = '第一个用新战役名保存的人成为它的拥有者，其他人改不了该战役的任何场景。';
+		note.textContent = '这是开发辅助页：战役/地点/场景需先在数据库里建好，填对应的数字 ID 与名字。';
 		fs.appendChild(note);
 		return fs;
 	}
@@ -556,7 +584,7 @@ export class SandboxIndex {
 		this.win = new SandboxIndexWindow(desktop, 'sandbox-index', 'Jade Dungeon 沙盘',
 			{
 				icons: { supportSizes: 30, baseUrl: this.cfg.iconBaseUrl, category: "actions", name: "blueman-pair.png" },
-				body: { initSize: { width: 360, height: 340 }, overflow: 'auto' },
+				body: { initSize: { width: 360, height: 460 }, overflow: 'auto' },
 			},
 			this.fieldIds());
 		this.win.renderIn();
@@ -587,6 +615,9 @@ export class SandboxIndex {
 			campaignId: idOf(this.slt.campaignId),
 			placeId: idOf(this.slt.placeId),
 			sceneId: idOf(this.slt.sceneId),
+			campaignName: idOf(this.slt.campaignName),
+			placeName: idOf(this.slt.placeName),
+			sceneName: idOf(this.slt.sceneName),
 			enterBtn: idOf(this.slt.enterBtn),
 			editBtn: idOf(this.slt.editBtn),
 			switchBtn: idOf(this.slt.switchBtn),
@@ -618,13 +649,11 @@ export class SandboxIndex {
 		const placeId = readValue(this.slt.placeId);
 		const sceneId = readValue(this.slt.sceneId);
 		if (!campaignId || !placeId || !sceneId) {
-			writeStatus(this.slt.status, '战役、地点、场景三个都要填');
+			writeStatus(this.slt.status, '战役、地点、场景三个 ID 都要填');
 			return;
 		}
-		const qs = `campaignId=${encodeURIComponent(campaignId)}`
-			+ `&placeId=${encodeURIComponent(placeId)}`
-			+ `&sceneId=${encodeURIComponent(sceneId)}`;
-		this.go(`${baseUrl}?${qs}`);
+		const qs = sceneQuery(k => readValue(this.slt[k]));
+		this.go(`${baseUrl}${qs}`);
 	}
 
 	/**

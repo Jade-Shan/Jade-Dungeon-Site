@@ -4,7 +4,7 @@ import { IconRec, WebUtil } from '@jade-dungeon/jade-utils/web';
 import {
 	CircleToken, ImageResource, IToken2D, LineToken, RectangleToken, SandTable,
 } from '../trpg/sandtable.js';
-import { renderRollResults, SandboxApi, SceneId } from './sandboxApi.js';
+import { renderRollResults, SandboxApi, SceneId, SceneName } from './sandboxApi.js';
 import { SandboxScene, TokenGroup, TOKEN_GROUPS } from './sandboxScene.js';
 import {
 	SandboxDiceWindow, SandboxSceneWindow, SandboxPropsWindow,
@@ -42,6 +42,8 @@ export interface SandboxEditorConfig {
 	desktopId: string;
 	/** 场景三级定位 */
 	scene: SceneId;
+	/** 场景三级显示名（战役/地点/场景），只给标题栏显示 */
+	sceneName: SceneName;
 	/** GM 的用户名 */
 	username: string;
 	/** GM 的登录 token。保存时塞进 jsonStr，后端靠它鉴权 */
@@ -156,6 +158,16 @@ export class SandboxEditor {
 		this.api = new SandboxApi(cfg.apiRoot);
 	}
 
+	/** 标题栏文字：三级显示名，缺名时退回对应的数字 id */
+	private sceneTitle(): string {
+		const n = this.cfg.sceneName;
+		return [
+			n.campaignName || String(this.cfg.scene.campaignId),
+			n.placeName || String(this.cfg.scene.placeId),
+			n.sceneName || String(this.cfg.scene.sceneId),
+		].join(' / ');
+	}
+
 	/**
 	 * 构造一个带完整基地址的 URL 图标记录（`IconRec`）
 	 *
@@ -186,7 +198,7 @@ export class SandboxEditor {
 		});
 
 		this.sceneWin = new SandboxSceneWindow(desktop, 'sandbox-scene',
-			`编辑场景：${this.cfg.scene.campaignId} / ${this.cfg.scene.placeId} / ${this.cfg.scene.sceneId}`,
+			`编辑场景：${this.sceneTitle()}`,
 			{
 				icons: this.icon('mimes', 'application-gpx.png'),
 				body: { initSize: { width: 800, height: 560 }, overflow: 'scroll' },
@@ -292,12 +304,15 @@ export class SandboxEditor {
 	private async loadScene(): Promise<void> {
 		this.sceneWin.setStatus('载入场景……');
 		const owner = await this.api.mapOwner(this.cfg.scene.campaignId);
-		if (owner.ok && owner.data && owner.data !== this.cfg.username) {
-			this.statusWin.setInfo(`⚠️ 本战役属于 ${owner.data}，你的改动存不上`);
-		} else if (owner.ok && !owner.data) {
-			this.statusWin.setInfo('这是无主战役 —— 你第一次保存后会成为它的拥有者');
+		if (owner.ok && owner.data) {
+			if (owner.data !== this.cfg.username) {
+				this.statusWin.setInfo(`⚠️ 本战役属于 ${owner.data}，你的改动存不上`);
+			} else {
+				this.statusWin.setInfo(`拥有者：${this.cfg.username}`);
+			}
 		} else {
-			this.statusWin.setInfo(`拥有者：${this.cfg.username}`);
+			// 过渡方案下战役要先在数据库里建好（带 owner），查不到说明 ID 填错了
+			this.statusWin.setInfo('⚠️ 找不到这个战役 —— 检查战役 ID 是否已建');
 		}
 
 		const r = await this.api.loadMap(this.cfg.scene);

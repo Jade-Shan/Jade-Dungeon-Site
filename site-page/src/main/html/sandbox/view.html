@@ -24,15 +24,20 @@ html,body {width:99%; height: 99%; overflow: auto;}
 		import { WebUtil } from "@jade-dungeon/jade-utils/web";
 		import { initSandboxView } from "@jade-dungeon/site-page/sandbox-view";
 
-		// 场景三级定位走 URL 参数，和老应用一致
+		// 场景三级定位走 URL 参数：3 个数字 id + 3 个显示名
 		let params = new URLSearchParams(window.location.search);
-		let campaignId = params.get('campaignId');
-		let placeId    = params.get('placeId'   );
-		let sceneId    = params.get('sceneId'   );
+		let campaignId   = Number(params.get('campaignId'));
+		let placeId      = Number(params.get('placeId'   ));
+		let sceneId      = Number(params.get('sceneId'   ));
+		let campaignName = params.get('campaignName') || '';
+		let placeName    = params.get('placeName'   ) || '';
+		let sceneName    = params.get('sceneName'   ) || '';
 
-		// 三个都齐了才进场景。缺了就回登录页去选 ——
+		// 三个数字 id 都是正整数才进场景。缺了（或不是数字）就回选场景页 ——
 		// 老应用这里是重定向到一组写死的 demo ID，那会让人以为场景存在
-		if (!(campaignId && placeId && sceneId)) {
+		let idsOk = Number.isInteger(campaignId) && Number.isInteger(placeId) && Number.isInteger(sceneId)
+			&& campaignId > 0 && placeId > 0 && sceneId > 0;
+		if (!idsOk) {
 			window.location = './index.html';
 		} else {
 			window.onload = function() {
@@ -44,6 +49,7 @@ html,body {width:99%; height: 99%; overflow: auto;}
 					iconBaseUrl     : '@@cdn3rd/SE98',
 					diceIconBaseUrl : '@@cdn3rd/jade-trpg',
 					scene           : { campaignId: campaignId, placeId: placeId, sceneId: sceneId },
+					sceneName       : { campaignName: campaignName, placeName: placeName, sceneName: sceneName },
 					// 棋子 ID 与用户名一致的那个就是「自己」
 					username  : WebUtil.loadCookieValue('username'  ) || '',
 					loginToken: WebUtil.loadCookieValue('loginToken') || ''

@@ -77,16 +77,43 @@ CREATE TABLE IF NOT EXISTS gallery_photo (
 CREATE INDEX IF NOT EXISTS idx_album_author_time ON gallery_album(author, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_photo_album ON gallery_photo(album_id, seq);
 
--- ── 沙盘战役 ──
--- 战役归属从 Redis 的 jadedungeon::sandtable::campaignOwner::* 迁来。
--- campaign_id 是用户手填的战役名（原 campaignId），也是场景/移动/骰子等
--- 仍留在 Redis 的数据的定位键。
+-- ── 沙盘战役 / 地点 / 场景 ──
+-- 三级定位的主键是自增数字 id，名字（*_name）降级为显示名。
+-- Redis key 的三段（campaign / place / scene）全部改用数字 id。
+-- campaign_name 是业务键（UNIQUE），id 是进 Redis key 的技术主键。
 CREATE TABLE IF NOT EXISTS sandtable_campaign (
-	campaign_id TEXT    PRIMARY KEY,
-	owner       TEXT    NOT NULL,
+	id              INTEGER PRIMARY KEY AUTOINCREMENT,
+	campaign_name   TEXT    NOT NULL UNIQUE,
+	owner           TEXT    NOT NULL,
+	detail_info     TEXT    NOT NULL DEFAULT '',
+	curr_place_id   INTEGER,
+	curr_scene_id   INTEGER,
+	curr_place_name TEXT,
+	curr_scene_name TEXT,
+	create_time     INTEGER NOT NULL,
+	update_time     INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sandtable_place (
+	id          INTEGER PRIMARY KEY AUTOINCREMENT,
+	campaign_id INTEGER NOT NULL,
+	place_name  TEXT    NOT NULL DEFAULT '',
 	detail_info TEXT    NOT NULL DEFAULT '',
 	create_time INTEGER NOT NULL,
-	update_time INTEGER NOT NULL
+	update_time INTEGER NOT NULL,
+	FOREIGN KEY (campaign_id) REFERENCES sandtable_campaign(id)
+);
+
+CREATE TABLE IF NOT EXISTS sandtable_scene (
+	id          INTEGER PRIMARY KEY AUTOINCREMENT,
+	campaign_id INTEGER NOT NULL,
+	place_id    INTEGER NOT NULL,
+	scene_name  TEXT    NOT NULL DEFAULT '',
+	detail_info TEXT    NOT NULL DEFAULT '',
+	create_time INTEGER NOT NULL,
+	update_time INTEGER NOT NULL,
+	FOREIGN KEY (campaign_id) REFERENCES sandtable_campaign(id),
+	FOREIGN KEY (place_id)    REFERENCES sandtable_place(id)
 );
 `;
 

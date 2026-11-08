@@ -555,7 +555,13 @@ class SandboxIndexWindow extends UIWindowAdapter {
 		const legend = document.createElement('legend');
 		legend.textContent = '战役列表';
 		fs.appendChild(legend);
-		fs.appendChild(this.table);
+		// 表格外面套一层 sunken-panel：给表格内凹边框 + 固定尺寸
+		const tableWrap = document.createElement('div');
+		tableWrap.classList.add('sunken-panel');
+		tableWrap.style.height = '350px';
+		tableWrap.style.width = '500px';
+		tableWrap.appendChild(this.table);
+		fs.appendChild(tableWrap);
 		fs.appendChild(this.noteEl);
 		const btns = document.createElement('div');
 		btns.classList.add('field-row');

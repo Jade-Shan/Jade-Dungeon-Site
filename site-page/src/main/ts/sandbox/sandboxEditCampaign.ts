@@ -150,6 +150,8 @@ class SandboxRecordEditorPanel {
 		// 上：表格（98.css 没有 grid 辅助，sunken-panel 里放整宽表格）
 		const panel = document.createElement('div');
 		panel.classList.add('sunken-panel');
+		panel.style.height = '250px';
+		panel.style.width = '350px';
 		const table = document.createElement('table');
 		table.classList.add('interactive');
 		table.style.width = '100%';

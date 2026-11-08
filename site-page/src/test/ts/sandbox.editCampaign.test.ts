@@ -1,10 +1,10 @@
 /**
  * 编辑战役页：加载地点/场景两张表、点行选中回填表单、新建/提交、删除
  *
- * 页面是「地点编辑」「场景编辑」两个窗口，各自「左表格 + 右表单」。
- * 后端写操作走 token 鉴权（非 owner 会回 not owner），页面进入时先查一次
- * owner 并在窗口顶部提示。列表接口（list-place / list-campaign-scene）只读、
- * 不校验身份。
+ * 页面是一个窗口，内含「地点编辑」「场景编辑」两个左右并排的 fieldset，
+ * 各自「上表格 + 下属性编辑」。后端写操作走 token 鉴权（非 owner 会回 not owner），
+ * 页面进入时先查一次 owner 并在窗口顶部提示。列表接口（list-place /
+ * list-campaign-scene）只读、不校验身份。
  *
  * 要盯住的：
  *
@@ -131,6 +131,16 @@ function note(windowId: string): string {
 
 describe('加载列表', () => {
 
+	test('两个 fieldset 标题分别是「地点编辑」「场景编辑」，地点在左', async () => {
+		await withDomAsync(PAGE, async () => {
+			await boot();
+			await settle();
+			const legends = Array.from(document.querySelectorAll('fieldset legend'))
+				.map(l => l.textContent ?? '');
+			assert.deepEqual(legends, ['地点编辑', '场景编辑']);
+		});
+	});
+
 	test('加载后各发一次 list-place / list-campaign-scene，两张表填出行', async () => {
 		await withDomAsync(PAGE, async () => {
 			await boot();
@@ -169,7 +179,7 @@ describe('owner 提示', () => {
 		await withDomAsync(PAGE, async () => {
 			await boot();
 			await settle();
-			const hint = document.getElementById('edit-campaign-place-hint')!.textContent ?? '';
+			const hint = document.getElementById('edit-campaign-hint')!.textContent ?? '';
 			assert.ok(hint.includes('拥有者'), `实际: ${hint}`);
 			assert.ok(hint.includes('teo'), `实际: ${hint}`);
 		});

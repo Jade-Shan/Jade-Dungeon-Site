@@ -11,23 +11,24 @@ import { SandboxApi } from './sandboxApi.js';
  * 前端没有任何界面能增删改这些记录 —— 本页补上这一环。从选场景页的「编辑战役」
  * 按钮跳进来（只带 `campaignId` + `campaignName`，不带 place / scene）。
  *
- * 页面上是两个窗口（风格和 index / editor 一致：98.css + 桌面 + 底部 dock）：
+ * 页面上是**一个窗口**（风格和 index / editor 一致：98.css + 桌面 + 底部 dock），
+ * 窗口 body 里放两个左右并排的 `<fieldset>`：
  *
- * | 窗口 | 内容 |
- * |------|------|
- * | 地点编辑 | 左表格列出该战役的地点，右栏编辑选中地点的属性 |
- * | 场景编辑 | 左表格列出该战役的场景，右栏编辑选中场景的属性 |
+ * | fieldset | 内容 |
+ * |----------|------|
+ * | 地点编辑 | 上表格列出该战役的地点，下属性编辑区改选中地点的属性 |
+ * | 场景编辑 | 上表格列出该战役的场景，下属性编辑区改选中场景的属性 |
  *
- * 两个窗口布局完全一样，所以抽成 {@link SandboxRecordEditorWindow} 一个类，
- * 只差表格列、表单字段、以及三件回调（加载 / 保存 / 删除）。左表格最右一列
- * 是 `✕` 删除按钮（`stopPropagation` 避免点了删除又触发整行选中，参考
- * `sandboxEditor.ts` 的 `renderImageList()`）。
+ * 两个 fieldset 布局完全一样，所以抽成 {@link SandboxRecordEditorPanel} 一个类，
+ * 只差表格列、表单字段、以及三件回调（加载 / 保存 / 删除）。表格最右一列是 `✕`
+ * 删除按钮（`stopPropagation` 避免点了删除又触发整行选中，参考 `sandboxEditor.ts`
+ * 的 `renderImageList()`）。
  *
  * 写操作（保存 / 删除）走 token 鉴权，非 owner 会得到「not owner」——
  * 页面进入时先查一次 owner，不是本人就提前在窗口顶部提示「改动存不上」。
  */
 
-// ───────────────────────── 可复用的「左表格 + 右表单」窗口 ─────────────────────────
+// ───────────────────────── 可复用的「上表格 + 下表单」fieldset ─────────────────────────
 
 /** 表格里一列的定义 */
 interface ColumnDef {
@@ -37,7 +38,7 @@ interface ColumnDef {
 	label: string;
 }
 
-/** 右侧表单一个字段的定义 */
+/** 属性编辑区一个字段的定义 */
 interface FieldDef {
 	/** 记录的字段名 */
 	key: string;
@@ -53,7 +54,7 @@ interface RecordRow {
 	[key: string]: string | number;
 }
 
-/** 窗口要做的三件事，由页面注入（地点 / 场景各自实现） */
+/** fieldset 要做的三件事，由页面注入（地点 / 场景各自实现） */
 interface RecordEditorHandlers {
 	/** 拉取列表并 `setRecords` */
 	load: () => Promise<void>;
@@ -63,7 +64,7 @@ interface RecordEditorHandlers {
 	remove: (id: number) => Promise<void>;
 }
 
-/** 窗口的配置：列 / 表单字段 / 三件回调 + 可选的额外按钮 */
+/** fieldset 的配置：列 / 表单字段 / 三件回调 + 可选的额外按钮 */
 interface RecordEditorOpts {
 	columns: ColumnDef[];
 	fieldDefs: FieldDef[];
@@ -73,14 +74,16 @@ interface RecordEditorOpts {
 }
 
 /**
- * 一个「左表格 + 右表单」的记录编辑窗口
+ * 一个「上表格 + 下属性编辑」的记录编辑面板，渲染成一个 `<fieldset>`
  *
- * 地点 / 场景两个窗口共用它。表格列出记录（每行最右是删除按钮），点行选中；
- * 右侧是选中记录的字段表单，「提交」走 upsert（新建时 id 为空），「新建」清空
- * 表单进入新建态。
+ * 地点 / 场景两个 fieldset 共用它。表格列出记录（每行最右是删除按钮），点行选中；
+ * 下面是选中记录的字段表单，「提交」走 upsert（新建时 id 为空），「新建」清空
+ * 表单进入新建态。整个 fieldset 由窗口在 `renderIn()` 时塞进 body。
  */
-class SandboxRecordEditorWindow extends UIWindowAdapter {
+class SandboxRecordEditorPanel {
 
+	/** 整个 fieldset，交给窗口塞进 body */
+	readonly fieldset: HTMLFieldSetElement = document.createElement('fieldset');
 	/** 表格主体 */
 	readonly tbody: HTMLTableSectionElement = document.createElement('tbody');
 	/** 表单容器（字段在构造时按 fieldDefs 建好，不随选中变化） */
@@ -91,9 +94,7 @@ class SandboxRecordEditorWindow extends UIWindowAdapter {
 	private readonly newBtn: HTMLButtonElement = document.createElement('button');
 	/** 提交按钮 */
 	private readonly submitBtn: HTMLButtonElement = document.createElement('button');
-	/** 窗口顶部的提示行（owner 信息） */
-	private readonly hintEl: HTMLParagraphElement = document.createElement('p');
-	/** 窗口底部的状态行 */
+	/** fieldset 底部的状态行 */
 	private readonly noteEl: HTMLParagraphElement = document.createElement('p');
 	/** 字段名 → 输入控件 */
 	private readonly fields: Map<string, HTMLInputElement | HTMLTextAreaElement> = new Map();
@@ -108,19 +109,20 @@ class SandboxRecordEditorWindow extends UIWindowAdapter {
 	/** 当前选中的完整记录，`undefined` 表示未选中 / 新建态 */
 	private selectedRec: RecordRow | undefined;
 
-	constructor(desktop: UIDesktop, id: string, title: string, cfg: WinParam,
-		opts: RecordEditorOpts) //
-	{
-		super(desktop, id, title, cfg);
+	constructor(id: string, title: string, opts: RecordEditorOpts) {
 		this.columns = opts.columns;
 		this.fieldDefs = opts.fieldDefs;
 		this.handlers = opts.handlers;
 
-		// 给几个元素挂上基于窗口 id 的 id，方便单元测试定位（也方便调试）
+		// legend 标题
+		const legend = document.createElement('legend');
+		legend.textContent = title;
+		this.fieldset.appendChild(legend);
+
+		// 给几个元素挂上基于面板 id 的 id，方便单元测试定位（也方便调试）
 		this.tbody.id = `${id}-rows`;
 		this.form.id = `${id}-form`;
 		this.idEl.id = `${id}-id`;
-		this.hintEl.id = `${id}-hint`;
 		this.noteEl.id = `${id}-note`;
 
 		this.newBtn.id = `${id}-new`;
@@ -140,54 +142,35 @@ class SandboxRecordEditorWindow extends UIWindowAdapter {
 		}
 
 		this.buildForm();
+		this.buildFieldset();
 	}
 
-	renderIn(): void {
-		const renderBody = (): HTMLDivElement => {
-			const body = this.ui.windowBody;
-			body.style.overflow = 'auto';
-			body.style.display = 'flex';
-			body.style.flexDirection = 'column';
-			body.style.gap = '6px';
+	/** 组装 fieldset 的内部结构：上表格，下属性编辑区，末尾状态行 */
+	private buildFieldset(): void {
+		// 上：表格（98.css 没有 grid 辅助，sunken-panel 里放整宽表格）
+		const panel = document.createElement('div');
+		panel.classList.add('sunken-panel');
+		const table = document.createElement('table');
+		table.classList.add('interactive');
+		table.style.width = '100%';
+		table.appendChild(this.buildHead());
+		table.appendChild(this.tbody);
+		panel.appendChild(table);
+		this.fieldset.appendChild(panel);
 
-			body.appendChild(this.hintEl);
+		// 下：属性编辑区
+		this.idEl.style.margin = '4px 0';
+		this.fieldset.appendChild(this.idEl);
+		this.fieldset.appendChild(this.form);
+		const btns = document.createElement('div');
+		btns.classList.add('field-row');
+		btns.appendChild(this.newBtn);
+		btns.appendChild(this.submitBtn);
+		if (this.editBtn) { btns.appendChild(this.editBtn); }
+		this.fieldset.appendChild(btns);
 
-			// 左右两栏：左表格，右表单（98.css 没有 grid 辅助，用 flex）
-			const cols = document.createElement('div');
-			cols.style.display = 'flex';
-			cols.style.gap = '10px';
-
-			const panel = document.createElement('div');
-			panel.classList.add('sunken-panel');
-			panel.style.flex = '1';
-			panel.style.minWidth = '0';
-			const table = document.createElement('table');
-			table.classList.add('interactive');
-			table.style.width = '100%';
-			table.appendChild(this.buildHead());
-			table.appendChild(this.tbody);
-			panel.appendChild(table);
-			cols.appendChild(panel);
-
-			const right = document.createElement('div');
-			right.style.flex = '1';
-			right.style.minWidth = '0';
-			right.appendChild(this.idEl);
-			right.appendChild(this.form);
-			const btns = document.createElement('div');
-			btns.classList.add('field-row');
-			btns.appendChild(this.newBtn);
-			btns.appendChild(this.submitBtn);
-			if (this.editBtn) { btns.appendChild(this.editBtn); }
-			right.appendChild(btns);
-			cols.appendChild(right);
-
-			body.appendChild(cols);
-			body.appendChild(this.noteEl);
-			return body;
-		};
-
-		JadeWindowUI.renderWindowTplt(this, undefined, renderBody, undefined);
+		this.noteEl.style.marginTop = '6px';
+		this.fieldset.appendChild(this.noteEl);
 	}
 
 	/** 表头：各列 + 末尾空的删除列 */
@@ -274,7 +257,7 @@ class SandboxRecordEditorWindow extends UIWindowAdapter {
 		return tr;
 	}
 
-	/** 选中一条记录，高亮该行并回填右侧表单 */
+	/** 选中一条记录，高亮该行并回填下方表单 */
 	private select(rec: RecordRow): void {
 		this.selectedId = rec.id;
 		this.selectedRec = rec;
@@ -305,7 +288,7 @@ class SandboxRecordEditorWindow extends UIWindowAdapter {
 			tr.classList.remove('highlighted');
 		}
 		this.clearForm();
-		this.setNote('新建：填好右侧字段后点「提交」');
+		this.setNote('新建：填好下方字段后点「提交」');
 	}
 
 	/** 「提交」：收集字段值交给页面（新建时 id 为 undefined） */
@@ -317,12 +300,7 @@ class SandboxRecordEditorWindow extends UIWindowAdapter {
 		await this.handlers.save(this.selectedId, values);
 	}
 
-	/** 窗口顶部提示行（owner 信息） */
-	setHint(text: string): void {
-		this.hintEl.textContent = text;
-	}
-
-	/** 窗口底部状态行 */
+	/** fieldset 底部状态行 */
 	setNote(text: string): void {
 		this.noteEl.textContent = text;
 	}
@@ -330,6 +308,60 @@ class SandboxRecordEditorWindow extends UIWindowAdapter {
 }
 
 // ───────────────────────── 编辑战役页 ─────────────────────────
+
+/**
+ * 编辑战役页的**单个窗口**：body 顶部是 owner 提示，下面是两个并排的 fieldset
+ *（地点编辑 + 场景编辑）
+ */
+class SandboxEditCampaignWindow extends UIWindowAdapter {
+
+	/** 窗口顶部的提示行（owner 信息，两个 fieldset 共用） */
+	private readonly hintEl: HTMLParagraphElement = document.createElement('p');
+
+	constructor(desktop: UIDesktop, id: string, title: string, cfg: WinParam,
+		private readonly placePanel: SandboxRecordEditorPanel,
+		private readonly scenePanel: SandboxRecordEditorPanel) //
+	{
+		super(desktop, id, title, cfg);
+		this.hintEl.id = `${id}-hint`;
+	}
+
+	/** 窗口顶部提示行（owner 信息） */
+	setHint(text: string): void {
+		this.hintEl.textContent = text;
+	}
+
+	renderIn(): void {
+		const renderBody = (): HTMLDivElement => {
+			const body = this.ui.windowBody;
+			body.style.overflow = 'auto';
+			body.style.display = 'flex';
+			body.style.flexDirection = 'column';
+			body.style.gap = '6px';
+
+			body.appendChild(this.hintEl);
+
+			// 两个 fieldset 左右并排（98.css 没有 grid 辅助，用 flex）
+			const cols = document.createElement('div');
+			cols.style.display = 'flex';
+			cols.style.gap = '10px';
+			cols.style.alignItems = 'flex-start';
+
+			this.placePanel.fieldset.style.flex = '1';
+			this.placePanel.fieldset.style.minWidth = '0';
+			this.scenePanel.fieldset.style.flex = '1';
+			this.scenePanel.fieldset.style.minWidth = '0';
+			cols.appendChild(this.placePanel.fieldset);
+			cols.appendChild(this.scenePanel.fieldset);
+
+			body.appendChild(cols);
+			return body;
+		};
+
+		JadeWindowUI.renderWindowTplt(this, undefined, renderBody, undefined);
+	}
+
+}
 
 /** 编辑战役页的配置，由 editCampaign.html 从 URL / cookie / envs 注入 */
 export interface SandboxEditCampaignConfig {
@@ -363,8 +395,9 @@ export class SandboxEditCampaign {
 
 	private readonly cfg: SandboxEditCampaignConfig;
 	private readonly api: SandboxApi;
-	private placeWin!: SandboxRecordEditorWindow;
-	private sceneWin!: SandboxRecordEditorWindow;
+	private win!: SandboxEditCampaignWindow;
+	private placePanel!: SandboxRecordEditorPanel;
+	private scenePanel!: SandboxRecordEditorPanel;
 	/** owner 检查结果的提示文字，两张表的加载完成后也要带上它 */
 	private ownerHint = '';
 	/** placeId → placeName，跳编辑器时带地点显示名 */
@@ -379,7 +412,8 @@ export class SandboxEditCampaign {
 	}
 
 	/**
-	 * 启动页面：建桌面 + 两个窗口并平铺，查 owner，再拉地点 / 场景两张表
+	 * 启动页面：建桌面 + 一个窗口（内含地点/场景两个 fieldset），
+	 * 查 owner，再拉地点 / 场景两张表
 	 * @returns {Promise<void>}
 	 */
 	async start(): Promise<void> {
@@ -392,50 +426,44 @@ export class SandboxEditCampaign {
 			dockBar: { range: 300, maxScale: 1.8 },
 		});
 
-		this.placeWin = new SandboxRecordEditorWindow(desktop, 'edit-campaign-place', '地点编辑',
+		this.placePanel = new SandboxRecordEditorPanel('edit-campaign-place', '地点编辑', {
+			columns: [{ key: 'placeName', label: '地点名' }],
+			fieldDefs: [
+				{ key: 'placeName', label: '地点名', type: 'text' },
+				{ key: 'detailInfo', label: '描述', type: 'textarea' },
+			],
+			handlers: {
+				load: () => this.loadPlaces(),
+				save: (id, values) => this.savePlace(id, values),
+				remove: (id) => this.removePlace(id),
+			},
+		});
+
+		this.scenePanel = new SandboxRecordEditorPanel('edit-campaign-scene', '场景编辑', {
+			columns: [
+				{ key: 'sceneName', label: '场景名' },
+				{ key: 'placeId', label: '地点 ID' },
+			],
+			fieldDefs: [
+				{ key: 'sceneName', label: '场景名', type: 'text' },
+				{ key: 'placeId', label: '地点 ID', type: 'number' },
+				{ key: 'detailInfo', label: '描述', type: 'textarea' },
+			],
+			handlers: {
+				load: () => this.loadScenes(),
+				save: (id, values) => this.saveScene(id, values),
+				remove: (id) => this.removeScene(id),
+			},
+			editBtn: { label: '编辑场景', onClick: (rec) => this.editScene(rec) },
+		});
+
+		this.win = new SandboxEditCampaignWindow(desktop, 'edit-campaign', '编辑战役',
 			{
 				icons: this.icon('actions', 'application-menu.png'),
-				body: { initSize: { width: 560, height: 320 }, overflow: 'auto' },
+				body: { initSize: { width: 1160, height: 560 }, overflow: 'auto' },
 			},
-			{
-				columns: [{ key: 'placeName', label: '地点名' }],
-				fieldDefs: [
-					{ key: 'placeName', label: '地点名', type: 'text' },
-					{ key: 'detailInfo', label: '描述', type: 'textarea' },
-				],
-				handlers: {
-					load: () => this.loadPlaces(),
-					save: (id, values) => this.savePlace(id, values),
-					remove: (id) => this.removePlace(id),
-				},
-			});
-		this.placeWin.renderIn();
-
-		this.sceneWin = new SandboxRecordEditorWindow(desktop, 'edit-campaign-scene', '场景编辑',
-			{
-				icons: this.icon('actions', 'application-menu.png'),
-				body: { initSize: { width: 560, height: 320 }, overflow: 'auto' },
-			},
-			{
-				columns: [
-					{ key: 'sceneName', label: '场景名' },
-					{ key: 'placeId', label: '地点 ID' },
-				],
-				fieldDefs: [
-					{ key: 'sceneName', label: '场景名', type: 'text' },
-					{ key: 'placeId', label: '地点 ID', type: 'number' },
-					{ key: 'detailInfo', label: '描述', type: 'textarea' },
-				],
-				handlers: {
-					load: () => this.loadScenes(),
-					save: (id, values) => this.saveScene(id, values),
-					remove: (id) => this.removeScene(id),
-				},
-				editBtn: { label: '编辑场景', onClick: (rec) => this.editScene(rec) },
-			});
-		this.sceneWin.renderIn();
-
-		this.tileWindows();
+			this.placePanel, this.scenePanel);
+		this.win.renderIn();
 
 		await this.checkOwner();
 		await this.loadPlaces();
@@ -450,28 +478,7 @@ export class SandboxEditCampaign {
 	}
 
 	/**
-	 * 平铺两个窗口：地点在左、场景在右
-	 */
-	private tileWindows(): void {
-		const M = 20;
-		const placeW = this.placeWin.ui.win.offsetWidth;
-
-		this.placeWindow(this.placeWin, M, M);
-		this.placeWindow(this.sceneWin, M + placeW + M, M);
-	}
-
-	/**
-	 * 把窗口放到指定位置，并同步 lastPos（同 `sandboxEditor.ts` 的 placeWindow）
-	 */
-	private placeWindow(win: UIWindowAdapter, left: number, top: number): void {
-		win.status.lastPos.x = left;
-		win.status.lastPos.y = top;
-		win.ui.win.style.left = `${left}px`;
-		win.ui.win.style.top = `${top}px`;
-	}
-
-	/**
-	 * 查战役 owner，把结果提示到两个窗口顶部
+	 * 查战役 owner，把结果提示到窗口顶部
 	 *
 	 * 写操作本身靠 token 鉴权（后端会拦非 owner），这里提前提示是为了
 	 * 别让非 owner 填了半天才发现存不上（对齐 editor 的 loadScene）。
@@ -487,101 +494,100 @@ export class SandboxEditCampaign {
 		} else {
 			this.ownerHint = '⚠️ 找不到这个战役 —— 检查战役 ID 是否已建';
 		}
-		this.placeWin.setHint(this.ownerHint);
-		this.sceneWin.setHint(this.ownerHint);
+		this.win.setHint(this.ownerHint);
 	}
 
 	// ── 地点 ──
 
 	/** 拉地点列表填表 */
 	private async loadPlaces(): Promise<void> {
-		this.placeWin.setNote('加载地点……');
+		this.placePanel.setNote('加载地点……');
 		const r = await this.api.listPlaces(this.cfg.campaignId);
 		if (!r.ok || !r.data) {
-			this.placeWin.setNote(`加载地点失败：${r.msg ?? '未知错误'}`);
+			this.placePanel.setNote(`加载地点失败：${r.msg ?? '未知错误'}`);
 			return;
 		}
 		this.placeNames.clear();
 		for (const p of r.data) { this.placeNames.set(p.id, p.placeName); }
-		this.placeWin.setRecords(r.data.map((p): RecordRow => ({
+		this.placePanel.setRecords(r.data.map((p): RecordRow => ({
 			id: p.id, placeName: p.placeName, detailInfo: p.detailInfo,
 		})));
-		this.placeWin.setNote(`共 ${r.data.length} 个地点`);
+		this.placePanel.setNote(`共 ${r.data.length} 个地点`);
 	}
 
 	/** 保存（新建或更新）地点 */
 	private async savePlace(id: number | undefined, values: Record<string, string>): Promise<void> {
 		const name = (values.placeName ?? '').trim();
-		if (!name) { this.placeWin.setNote('地点名不能为空'); return; }
-		this.placeWin.setNote('保存中……');
+		if (!name) { this.placePanel.setNote('地点名不能为空'); return; }
+		this.placePanel.setNote('保存中……');
 		const r = await this.api.savePlace(this.cfg.campaignId, id, name,
 			values.detailInfo ?? '', this.cfg.loginToken);
 		if (!r.ok) {
-			this.placeWin.setNote(`保存失败：${this.ownerMsg(r.msg)}`);
+			this.placePanel.setNote(`保存失败：${this.ownerMsg(r.msg)}`);
 			return;
 		}
 		await this.loadPlaces();
-		this.placeWin.setNote(id === undefined ? '已新建地点' : '已保存地点');
+		this.placePanel.setNote(id === undefined ? '已新建地点' : '已保存地点');
 	}
 
 	/** 删除地点 */
 	private async removePlace(id: number): Promise<void> {
-		this.placeWin.setNote('删除中……');
+		this.placePanel.setNote('删除中……');
 		const r = await this.api.deletePlace(this.cfg.campaignId, id, this.cfg.loginToken);
 		if (!r.ok) {
-			this.placeWin.setNote(`删除失败：${r.msg ?? '未知错误'}`);
+			this.placePanel.setNote(`删除失败：${r.msg ?? '未知错误'}`);
 			return;
 		}
 		await this.loadPlaces();
-		this.placeWin.setNote('已删除地点');
+		this.placePanel.setNote('已删除地点');
 	}
 
 	// ── 场景 ──
 
 	/** 拉场景列表填表 */
 	private async loadScenes(): Promise<void> {
-		this.sceneWin.setNote('加载场景……');
+		this.scenePanel.setNote('加载场景……');
 		const r = await this.api.listCampaignScenes(this.cfg.campaignId);
 		if (!r.ok || !r.data) {
-			this.sceneWin.setNote(`加载场景失败：${r.msg ?? '未知错误'}`);
+			this.scenePanel.setNote(`加载场景失败：${r.msg ?? '未知错误'}`);
 			return;
 		}
-		this.sceneWin.setRecords(r.data.map((s): RecordRow => ({
+		this.scenePanel.setRecords(r.data.map((s): RecordRow => ({
 			id: s.id, sceneName: s.sceneName, placeId: s.placeId, detailInfo: s.detailInfo,
 		})));
-		this.sceneWin.setNote(`共 ${r.data.length} 个场景`);
+		this.scenePanel.setNote(`共 ${r.data.length} 个场景`);
 	}
 
 	/** 保存（新建或更新）场景 */
 	private async saveScene(id: number | undefined, values: Record<string, string>): Promise<void> {
 		const name = (values.sceneName ?? '').trim();
-		if (!name) { this.sceneWin.setNote('场景名不能为空'); return; }
+		if (!name) { this.scenePanel.setNote('场景名不能为空'); return; }
 		const placeId = Number(values.placeId);
 		if (!Number.isInteger(placeId) || placeId <= 0) {
-			this.sceneWin.setNote('地点 ID 要是正整数');
+			this.scenePanel.setNote('地点 ID 要是正整数');
 			return;
 		}
-		this.sceneWin.setNote('保存中……');
+		this.scenePanel.setNote('保存中……');
 		const r = await this.api.saveScene(this.cfg.campaignId, id, placeId, name,
 			values.detailInfo ?? '', this.cfg.loginToken);
 		if (!r.ok) {
-			this.sceneWin.setNote(`保存失败：${this.ownerMsg(r.msg)}`);
+			this.scenePanel.setNote(`保存失败：${this.ownerMsg(r.msg)}`);
 			return;
 		}
 		await this.loadScenes();
-		this.sceneWin.setNote(id === undefined ? '已新建场景' : '已保存场景');
+		this.scenePanel.setNote(id === undefined ? '已新建场景' : '已保存场景');
 	}
 
 	/** 删除场景 */
 	private async removeScene(id: number): Promise<void> {
-		this.sceneWin.setNote('删除中……');
+		this.scenePanel.setNote('删除中……');
 		const r = await this.api.deleteScene(this.cfg.campaignId, id, this.cfg.loginToken);
 		if (!r.ok) {
-			this.sceneWin.setNote(`删除失败：${r.msg ?? '未知错误'}`);
+			this.scenePanel.setNote(`删除失败：${r.msg ?? '未知错误'}`);
 			return;
 		}
 		await this.loadScenes();
-		this.sceneWin.setNote('已删除场景');
+		this.scenePanel.setNote('已删除场景');
 	}
 
 	/**
@@ -594,11 +600,11 @@ export class SandboxEditCampaign {
 	 */
 	private editScene(rec: RecordRow | undefined): void {
 		if (!this.cfg.username || !this.cfg.loginToken) {
-			this.sceneWin.setNote('请先登录');
+			this.scenePanel.setNote('请先登录');
 			return;
 		}
 		if (!rec) {
-			this.sceneWin.setNote('请先选中一个场景');
+			this.scenePanel.setNote('请先选中一个场景');
 			return;
 		}
 		const placeId = Number(rec.placeId);

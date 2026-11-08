@@ -8,7 +8,7 @@ import { SandboxApi } from './sandboxApi.js';
  * 沙盘的「编辑战役」页（editCampaign.html）
  *
  * 战役的**地点（place）与场景（scene）目前是「开发人员线下手动 INSERT」的过渡状态**，
- * 前端没有任何界面能增删改这些记录 —— 本页补上这一环。从选场景页的「编辑战役」
+ * 前端没有任何界面能增删改这些记录 —— 本页补上这一环。从选战役页的「编辑战役」
  * 按钮跳进来（只带 `campaignId` + `campaignName`，不带 place / scene）。
  *
  * 页面上是**一个窗口**（风格和 index / editor 一致：98.css + 桌面 + 底部 dock），
@@ -383,7 +383,7 @@ export interface SandboxEditCampaignConfig {
 	editorUrl?: string;
 	/**
 	 * 跳转的实现，默认 `window.location.href = url`
-	 *（同选场景页的 `navigate`，给单元测试观察跳转目标用）
+	 *（同选战役页的 `navigate`，给单元测试观察跳转目标用）
 	 */
 	navigate?: (url: string) => void;
 }
@@ -596,7 +596,7 @@ export class SandboxEditCampaign {
 	 * 这里选中的是场景级记录（已有 placeId / 场景 id），三级定位的 3 个数字 id
 	 * 都能凑齐：campaignId 用页面配置、placeId / sceneId 用选中记录。显示名里
 	 * 地点名从地点表（placeId → placeName）反查，场景名直接用选中记录。
-	 * 跳转前同样检查登录态与是否选中（对齐选场景页的 `enter` 逻辑）。
+	 * 跳转前同样检查登录态与是否选中（对齐选战役页的 `enter` 逻辑）。
 	 */
 	private editScene(rec: RecordRow | undefined): void {
 		if (!this.cfg.username || !this.cfg.loginToken) {

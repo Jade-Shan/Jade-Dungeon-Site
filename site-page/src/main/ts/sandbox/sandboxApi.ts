@@ -55,8 +55,8 @@ export interface SceneName {
 	sceneName   : string;
 }
 
-/** 场景列表里的一行（后端 `ISceneListItem`），选场景页的表格用 */
-export interface SceneListItem {
+/** 战役列表里的一行（campaign 级，含其当前地点 / 场景），选战役页的表格用 */
+export interface CampaignListItem {
 	/** 战役 ID */
 	campaignId: number;
 	/** 战役名 */
@@ -356,16 +356,16 @@ export class SandboxApi {
 	}
 
 	/**
-	 * 列出所有可进入的场景（三表 join：战役 / 地点 / 场景 + owner）
+	 * 列出所有可进入的战役（每个战役含其当前地点 / 场景 + owner）
 	 *
-	 * 选场景页的表格靠它填充。读接口，不需要身份。
+	 * 选战役页的表格靠它填充。读接口，不需要身份。
 	 *
-	 * @returns {Promise<ApiResult<Array<SceneListItem>>>} 没有场景时返回空数组
+	 * @returns {Promise<ApiResult<Array<CampaignListItem>>>} 没有战役时返回空数组
 	 */
-	async listScenes(): Promise<ApiResult<Array<SceneListItem>>> {
+	async listCampaigns(): Promise<ApiResult<Array<CampaignListItem>>> {
 		const url = `${this.root}/api/sandtable/list-scene?${qs({})}`;
-		return call<Array<SceneListItem>>(url,
-			r => (r.data as Array<SceneListItem>) ?? []);
+		return call<Array<CampaignListItem>>(url,
+			r => (r.data as Array<CampaignListItem>) ?? []);
 	}
 
 	// ── 地点 / 场景 CRUD ──

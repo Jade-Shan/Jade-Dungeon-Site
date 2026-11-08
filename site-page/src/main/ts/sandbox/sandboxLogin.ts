@@ -1,7 +1,7 @@
 import { registerDefaultUIResource } from '@jade-dungeon/jade-utils/resource';
 import { JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam } from '@jade-dungeon/jade-utils/ui-window';
 import { WebUtil } from '@jade-dungeon/jade-utils/web';
-import { SandboxApi } from './sandboxApi.js';
+import { SandboxApi, SceneListItem } from './sandboxApi.js';
 
 /**
  * 沙盘的入口页：登录页（login.html）+ 选场景页（index.html）+ 修改密码页（changePassword.html）
@@ -23,7 +23,8 @@ import { SandboxApi } from './sandboxApi.js';
  *
  * ## 场景参数怎么在两页之间传递
  *
- * 场景三级定位（`campaignId / placeId / sceneId`）始终走 URL 参数：
+ * 场景三级定位始终走 URL 参数：3 个数字 id（`campaignId / placeId / sceneId`，
+ * 用于后端寻址）+ 3 个显示名（`campaignName / placeName / sceneName`，只给标题栏显示）。
  * `index.html` 填好之后，「以其他身份登录」把它们带到 `login.html`，
  * 登录成功（或放弃返回）再原样带回 `index.html`，用户不用重填。
  *
@@ -44,8 +45,8 @@ import { SandboxApi } from './sandboxApi.js';
 const COOKIE_USER = 'username';
 const COOKIE_TOKEN = 'loginToken';
 
-/** 场景三级定位的参数名，两个页面都靠它们传递 */
-const SCENE_KEYS = ['campaignId', 'placeId', 'sceneId'] as const;
+/** 场景三级定位的参数名（3 个数字 id + 3 个显示名），页面之间靠它们传递 */
+const SCENE_KEYS = ['campaignId', 'placeId', 'sceneId', 'campaignName', 'placeName', 'sceneName'] as const;
 
 /** 去掉选择器前面的 `#`，得到元素 id */
 function idOf(slt: string): string {
@@ -99,6 +100,37 @@ function sceneQuery(read: (key: (typeof SCENE_KEYS)[number]) => string): string 
 		if (v) { parts.push(`${k}=${encodeURIComponent(v)}`); }
 	}
 	return parts.length > 0 ? `?${parts.join('&')}` : '';
+}
+
+/**
+ * 把场景列表的一行映射成跳转 URL 的参数值。
+ *
+ * 列表行是 campaign 级的（后端直接查 `sandtable_campaign` 的 curr_place_* /
+ * curr_scene_* 字段），而 view / editor 读的仍是三级定位参数
+ *（`campaignId / placeId / sceneId` + 三个显示名），所以这里把 curr_* 归位到
+ * `placeId` / `sceneId`。参数名是两页之间的契约，不能动。
+ */
+function sceneParams(rec: SceneListItem): Record<(typeof SCENE_KEYS)[number], string> {
+	return {
+		campaignId: String(rec.campaignId),
+		placeId: rec.currPlaceId ? String(rec.currPlaceId) : '',
+		sceneId: rec.currSceneId ? String(rec.currSceneId) : '',
+		campaignName: rec.campaignName ?? '',
+		placeName: rec.currPlaceName ?? '',
+		sceneName: rec.currSceneName ?? '',
+	};
+}
+
+/**
+ * 判断一条场景列表记录的「三级定位（3 id + 3 名）」是否齐全。
+ *
+ * campaign 的 id / name 是主键与 UNIQUE，必然存在；真正可能缺的是
+ * curr_place_* / curr_scene_*（战役还没绑好当前地点/场景时是 NULL / 0 / 空串）。
+ */
+function isSceneComplete(rec: SceneListItem): boolean {
+	return rec.campaignId > 0
+		&& rec.currPlaceId > 0 && rec.currSceneId > 0
+		&& !!rec.campaignName && !!rec.currPlaceName && !!rec.currSceneName;
 }
 
 // ── 登录页（login.html） ──────────────────────────────────────────────
@@ -378,12 +410,8 @@ export function initSandboxLogin(cfg: SandboxLoginConfig): SandboxLogin {
 
 /** 选场景页的元素选择器，页面模板里要有这些 */
 export interface SandboxIndexSelectors {
-	/** 战役输入框，默认 `#campaignId` */
-	campaignId?: string;
-	/** 地点输入框，默认 `#placeId` */
-	placeId?: string;
-	/** 场景输入框，默认 `#sceneId` */
-	sceneId?: string;
+	/** 场景表格的容器，默认 `#scene-table` */
+	sceneTable?: string;
 	/** 进入场景按钮，默认 `#btn-enter` */
 	enterBtn?: string;
 	/** 编辑场景按钮，默认 `#btn-edit` */
@@ -396,9 +424,7 @@ export interface SandboxIndexSelectors {
 
 /** {@link SandboxIndexSelectors} 的默认值 */
 const INDEX_SELECTORS: Required<SandboxIndexSelectors> = {
-	campaignId: '#campaignId',
-	placeId: '#placeId',
-	sceneId: '#sceneId',
+	sceneTable: '#scene-table',
 	enterBtn: '#btn-enter',
 	editBtn: '#btn-edit',
 	switchBtn: '#btn-switch-login',
@@ -407,6 +433,8 @@ const INDEX_SELECTORS: Required<SandboxIndexSelectors> = {
 
 /** 选场景页配置 */
 export interface SandboxIndexConfig {
+	/** 后端根路径，查场景列表用 */
+	apiRoot: string;
 	/** 玩家视图页的地址，默认 `./view.html` */
 	viewUrl?: string;
 	/** 编辑器页的地址，默认 `./editor.html` */
@@ -428,9 +456,7 @@ export interface SandboxIndexConfig {
 
 /** 选场景窗口里各元素的 id（不带 `#`，从 selectors 提出来） */
 interface IndexFieldIds {
-	campaignId: string;
-	placeId: string;
-	sceneId: string;
+	sceneTable: string;
 	enterBtn: string;
 	editBtn: string;
 	switchBtn: string;
@@ -438,30 +464,34 @@ interface IndexFieldIds {
 }
 
 /**
- * 选场景窗口：战役/地点/场景 + 进入/编辑按钮 + 登录态 + 换身份按钮
+ * 选场景窗口：一张场景表格（战役/地点/场景/owner）+ 进入/编辑按钮 + 登录态 + 换身份
+ *
+ * 原来的六个输入框（3 个数字 id + 3 个显示名）换成了表格 ——
+ * 三级定位不再手填，而是从数据库（`/api/sandtable/list-scene`）列出的
+ * 记录里选一行。表格用 98.css 的 table 组件：`interactive` 让行有指针光标，
+ * 点整行选中，选中的行加 `.highlighted`（98.css 内置，navy 底 + 白字）。
  */
 class SandboxIndexWindow extends UIWindowAdapter {
 
-	private readonly campaignId: HTMLInputElement = document.createElement('input');
-	private readonly placeId: HTMLInputElement = document.createElement('input');
-	private readonly sceneId: HTMLInputElement = document.createElement('input');
+	private readonly table: HTMLTableElement = document.createElement('table');
+	private readonly tbody: HTMLTableSectionElement = document.createElement('tbody');
 	private readonly enterBtn: HTMLButtonElement = document.createElement('button');
 	private readonly editBtn: HTMLButtonElement = document.createElement('button');
 	private readonly switchBtn: HTMLButtonElement = document.createElement('button');
 	private readonly statusEl: HTMLParagraphElement = document.createElement('p');
+	private readonly noteEl: HTMLParagraphElement = document.createElement('p');
+	/** 当前表格里展示的场景，与 tbody 的行一一对应 */
+	private scenes: SceneListItem[] = [];
 
 	constructor(desktop: UIDesktop, id: string, title: string, cfg: WinParam, ids: IndexFieldIds) {
 		super(desktop, id, title, cfg);
 
-		this.campaignId.id = ids.campaignId;
-		this.campaignId.type = 'text';
-		this.campaignId.placeholder = '如 费伦大陆从北到南';
-		this.placeId.id = ids.placeId;
-		this.placeId.type = 'text';
-		this.placeId.placeholder = '如 深水城下大迷宫';
-		this.sceneId.id = ids.sceneId;
-		this.sceneId.type = 'text';
-		this.sceneId.placeholder = '如 第一层的门房';
+		this.table.id = ids.sceneTable;
+		// 98.css table 组件的「可交互」态：tbody 行显示 pointer 光标
+		this.table.classList.add('interactive');
+		this.table.appendChild(this.buildHead());
+		this.table.appendChild(this.tbody);
+
 		this.enterBtn.id = ids.enterBtn;
 		this.enterBtn.textContent = '进入场景';
 		this.editBtn.id = ids.editBtn;
@@ -469,6 +499,20 @@ class SandboxIndexWindow extends UIWindowAdapter {
 		this.switchBtn.id = ids.switchBtn;
 		this.switchBtn.textContent = '以其他身份登录';
 		this.statusEl.id = ids.status;
+		this.noteEl.id = 'scene-note';
+	}
+
+	/** 表头：战役 / 地点 / 场景 / owner（98.css 自动给 thead 加 silver 立体边框） */
+	private buildHead(): HTMLTableSectionElement {
+		const thead = document.createElement('thead');
+		const tr = document.createElement('tr');
+		for (const label of ['战役', '地点', '场景', 'owner']) {
+			const th = document.createElement('th');
+			th.textContent = label;
+			tr.appendChild(th);
+		}
+		thead.appendChild(tr);
+		return thead;
 	}
 
 	renderIn(): void {
@@ -500,24 +544,88 @@ class SandboxIndexWindow extends UIWindowAdapter {
 		JadeWindowUI.renderWindowTplt(this, undefined, renderBody, renderStatusBar);
 	}
 
-	/** 「场景」一栏：战役/地点/场景 + 进入/编辑按钮 */
+	/** 「场景列表」一栏：表格 + 说明行 + 进入/编辑按钮 */
 	private buildSceneFieldset(): HTMLFieldSetElement {
 		const fs = document.createElement('fieldset');
 		const legend = document.createElement('legend');
-		legend.textContent = '场景';
+		legend.textContent = '场景列表';
 		fs.appendChild(legend);
-		fs.appendChild(fieldRow('战役', this.campaignId));
-		fs.appendChild(fieldRow('地点', this.placeId));
-		fs.appendChild(fieldRow('场景', this.sceneId));
+		fs.appendChild(this.table);
+		fs.appendChild(this.noteEl);
 		const btns = document.createElement('div');
 		btns.classList.add('field-row');
 		btns.appendChild(this.enterBtn);
 		btns.appendChild(this.editBtn);
 		fs.appendChild(btns);
-		const note = document.createElement('p');
-		note.textContent = '第一个用新战役名保存的人成为它的拥有者，其他人改不了该战役的任何场景。';
-		fs.appendChild(note);
 		return fs;
+	}
+
+	/** 填充表格：清空旧行，按列表顺序重填 */
+	setScenes(list: SceneListItem[]): void {
+		this.scenes = list;
+		this.tbody.replaceChildren();
+		for (const rec of list) {
+			this.tbody.appendChild(this.buildRow(rec));
+		}
+		// 重填后没有选中行，按钮回到可点（点下去走「请先选中」提示）
+		this.refreshButtons();
+	}
+
+	/** 表格下方的一行说明（加载状态 / 场景数量 / 空列表提示） */
+	setNote(text: string): void {
+		this.noteEl.textContent = text;
+	}
+
+	/** 建一行：战役名 + 地点名 + 场景名 + owner，点整行选中 */
+	private buildRow(rec: SceneListItem): HTMLTableRowElement {
+		const tr = document.createElement('tr');
+		// 战役 id 记在行上（一行一个 campaign），选中 / 反查时用
+		tr.dataset.campaignId = String(rec.campaignId);
+
+		for (const text of [rec.campaignName, rec.currPlaceName, rec.currSceneName, rec.owner]) {
+			const td = document.createElement('td');
+			td.textContent = text;
+			tr.appendChild(td);
+		}
+
+		// 点整行选中（单选，交给 selectCampaign 清掉别行的高亮）
+		tr.addEventListener('click', () => { this.selectCampaign(rec.campaignId); });
+		return tr;
+	}
+
+	/** 当前选中的战役行，没选中返回 undefined */
+	selectedCampaign(): SceneListItem | undefined {
+		const tr = this.tbody.querySelector<HTMLTableRowElement>('tr.highlighted');
+		if (!tr) { return undefined; }
+		const campaignId = Number(tr.dataset.campaignId);
+		return this.scenes.find(s => s.campaignId === campaignId);
+	}
+
+	/**
+	 * 选中指定 campaignId 的那一行（URL 带场景参数时回填 / 点行都用它）
+	 *
+	 * 单选语义：给目标行加 `.highlighted`，其余行去掉。98.css 的
+	 * `table>tbody>tr.highlighted` 是 navy 底 + 白字。
+	 */
+	selectCampaign(campaignId: number): void {
+		for (const tr of this.tbody.querySelectorAll<HTMLTableRowElement>('tr')) {
+			tr.classList.toggle('highlighted', tr.dataset.campaignId === String(campaignId));
+		}
+		this.refreshButtons();
+	}
+
+	/**
+	 * 选中行变化后，按「三级定位是否齐全」刷新进入/编辑按钮。
+	 *
+	 * 选中的记录 6 值不全（campaign 还没绑好当前地点/场景）时禁用按钮，
+	 * 免得跳过去 view / editor 拿着空 id 出错；没选中时保持可点，
+	 * 点下去走「请先选中一个场景」的提示。
+	 */
+	private refreshButtons(): void {
+		const rec = this.selectedCampaign();
+		const incomplete = rec !== undefined && !isSceneComplete(rec);
+		this.enterBtn.disabled = incomplete;
+		this.editBtn.disabled = incomplete;
 	}
 
 }
@@ -527,6 +635,7 @@ class SandboxIndexWindow extends UIWindowAdapter {
  */
 export class SandboxIndex {
 
+	private readonly api: SandboxApi;
 	private readonly cfg: SandboxIndexConfig;
 	private readonly slt: Required<SandboxIndexSelectors>;
 	private win?: SandboxIndexWindow;
@@ -536,11 +645,12 @@ export class SandboxIndex {
 	 */
 	constructor(cfg: SandboxIndexConfig) {
 		this.cfg = cfg;
+		this.api = new SandboxApi(cfg.apiRoot);
 		this.slt = { ...INDEX_SELECTORS, ...cfg.selectors };
 	}
 
 	/**
-	 * 建桌面 + 选场景窗口，回填 URL 参数与已登录的身份、绑定按钮
+	 * 建桌面 + 选场景窗口，显示登录态、绑定按钮，异步加载场景列表
 	 */
 	start(): void {
 		registerDefaultUIResource();
@@ -556,17 +666,11 @@ export class SandboxIndex {
 		this.win = new SandboxIndexWindow(desktop, 'sandbox-index', 'Jade Dungeon 沙盘',
 			{
 				icons: { supportSizes: 30, baseUrl: this.cfg.iconBaseUrl, category: "actions", name: "blueman-pair.png" },
-				body: { initSize: { width: 360, height: 340 }, overflow: 'auto' },
+				body: { initSize: { width: 350, height: 500 }, overflow: 'auto' },
 			},
 			this.fieldIds());
 		this.win.renderIn();
 
-		// URL 带了场景参数就回填，方便分享链接
-		const params = new URLSearchParams(window.location.search);
-		for (const key of SCENE_KEYS) {
-			const v = params.get(key);
-			if (v) { writeValue(this.slt[key], v); }
-		}
 		// 已登录过就显示身份，并提示当前身份
 		const user = WebUtil.loadCookieValue(COOKIE_USER);
 		const token = WebUtil.loadCookieValue(COOKIE_TOKEN);
@@ -579,14 +683,15 @@ export class SandboxIndex {
 		this.onClick(this.slt.enterBtn, () => { this.enter(this.cfg.viewUrl ?? './view.html'); });
 		this.onClick(this.slt.editBtn, () => { this.enter(this.cfg.editorUrl ?? './editor.html'); });
 		this.onClick(this.slt.switchBtn, () => { this.switchLogin(); });
+
+		// 表格在页面加载后才填：先查列表，再回填 URL 带过来的场景选中
+		void this.loadScenes();
 	}
 
 	/** 从选择器提取各元素的 id（不带 `#`），交给窗口建元素 */
 	private fieldIds(): IndexFieldIds {
 		return {
-			campaignId: idOf(this.slt.campaignId),
-			placeId: idOf(this.slt.placeId),
-			sceneId: idOf(this.slt.sceneId),
+			sceneTable: idOf(this.slt.sceneTable),
 			enterBtn: idOf(this.slt.enterBtn),
 			editBtn: idOf(this.slt.editBtn),
 			switchBtn: idOf(this.slt.switchBtn),
@@ -601,7 +706,33 @@ export class SandboxIndex {
 	}
 
 	/**
-	 * 带着场景参数跳到 view 或 editor
+	 * 从后端拉战役列表填进表格，并按 URL 里的 campaignId 回填选中
+	 *
+	 * 失败 / 空列表都只在表格下方的说明行里提示，不打断页面 ——
+	 * 用户仍可点「以其他身份登录」去登录页。
+	 */
+	private async loadScenes(): Promise<void> {
+		this.win?.setNote('加载场景列表……');
+		const r = await this.api.listScenes();
+		if (!r.ok || !r.data) {
+			this.win?.setNote(`加载场景列表失败：${r.msg ?? '未知错误'}`);
+			return;
+		}
+		this.win?.setScenes(r.data);
+		if (r.data.length === 0) {
+			this.win?.setNote('数据库里还没有战役，请先建好 campaign / place / scene');
+			return;
+		}
+		this.win?.setNote(`共 ${r.data.length} 个战役，选中一个后进入或编辑`);
+		// URL 带了场景参数就回填选中，方便分享链接 / 登录回来恢复选择
+		const campaignId = Number(new URLSearchParams(window.location.search).get('campaignId'));
+		if (Number.isInteger(campaignId) && campaignId > 0) {
+			this.win?.selectCampaign(campaignId);
+		}
+	}
+
+	/**
+	 * 带着选中的场景参数跳到 view 或 editor
 	 *
 	 * **跳转前检查登录态** —— 老代码是「点进入时顺便登录一次」，
 	 * 那样每次进场景都换一个新 token（旧的被作废），
@@ -614,24 +745,21 @@ export class SandboxIndex {
 		const token = WebUtil.loadCookieValue(COOKIE_TOKEN);
 		if (!user || !token) { writeStatus(this.slt.status, '请先登录'); return; }
 
-		const campaignId = readValue(this.slt.campaignId);
-		const placeId = readValue(this.slt.placeId);
-		const sceneId = readValue(this.slt.sceneId);
-		if (!campaignId || !placeId || !sceneId) {
-			writeStatus(this.slt.status, '战役、地点、场景三个都要填');
-			return;
-		}
-		const qs = `campaignId=${encodeURIComponent(campaignId)}`
-			+ `&placeId=${encodeURIComponent(placeId)}`
-			+ `&sceneId=${encodeURIComponent(sceneId)}`;
-		this.go(`${baseUrl}?${qs}`);
+		const rec = this.win?.selectedCampaign();
+		if (!rec) { writeStatus(this.slt.status, '请先选中一个场景'); return; }
+
+		const params = sceneParams(rec);
+		const q = sceneQuery(k => params[k]);
+		this.go(`${baseUrl}${q}`);
 	}
 
 	/**
-	 * 带着当前填好的场景参数跳登录页
+	 * 带着当前选中的场景参数跳登录页（没选中就只跳登录页）
 	 */
 	private switchLogin(): void {
-		const q = sceneQuery(k => readValue(this.slt[k]));
+		const rec = this.win?.selectedCampaign();
+		const params = rec ? sceneParams(rec) : undefined;
+		const q = params ? sceneQuery(k => params[k]) : '';
 		this.go(`${this.cfg.loginUrl ?? './login.html'}${q}`);
 	}
 

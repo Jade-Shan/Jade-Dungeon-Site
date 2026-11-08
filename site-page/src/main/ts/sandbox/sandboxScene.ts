@@ -2,6 +2,7 @@ import { SimpleMap } from '@jade-dungeon/jade-utils/data';
 import {
 	CircleToken, ICircleTokenRec, ILineTokenRec, IRectangleTokenRec,
 	ImageResource, IToken2D, LineToken, RectangleToken, SandTableUtils, SceneDataResp,
+	SceneInfo,
 } from '../trpg/sandtable.js';
 import { normalizeImageUrl } from './sandboxApi.js';
 
@@ -46,6 +47,8 @@ export class SandboxScene {
 	private readonly groups: Map<TokenGroup, SimpleMap<string, IToken2D>> = new Map();
 	/** 场景所属的用户名（来自 `load-map` 的响应） */
 	username = '';
+	/** 三级定位（来自 `load-map` 响应的 `info`，保存时原样写回） */
+	info: SceneInfo = { campaign: { id: 0, name: '' }, place: { id: 0, name: '' }, scene: { id: 0, name: '' } };
 
 	constructor() {
 		for (const g of TOKEN_GROUPS) { this.groups.set(g, new SimpleMap()); }
@@ -167,6 +170,7 @@ export class SandboxScene {
 		imgProxyUrl?: string): Promise<void> //
 	{
 		this.username = resp.username ?? '';
+		this.info = resp.info;
 		this.images.recs = [];
 		for (const g of TOKEN_GROUPS) { this.groups.get(g)!.recs = []; }
 
@@ -282,6 +286,7 @@ export class SandboxScene {
 			imgResources: this.imageList().map(i => ({
 				id: i.id, type: i.type, url: i.url,
 			})),
+			info: this.info,
 			mapDatas: {
 				teams: this.list('teams').map(t => t.toRecord()),
 				creaters: this.list('creaters').map(t => t.toRecord()),

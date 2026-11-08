@@ -30,7 +30,8 @@ const cfg: SandboxEditorConfig = {
 	desktopId: 'desktop',
 	iconBaseUrl: '//cdn.x/3rd/SE98',
 	diceIconBaseUrl: '//cdn.x/3rd/jade-trpg',
-	scene: { campaignId: 'c1', placeId: 'p1', sceneId: 's1' },
+	scene: { campaignId: 1, placeId: 2, sceneId: 3 },
+	sceneName: { campaignName: 'Waterdeep', placeName: 'Harbor', sceneName: 'Dock' },
 	username: 'gm',
 	loginToken: 'tk',
 };

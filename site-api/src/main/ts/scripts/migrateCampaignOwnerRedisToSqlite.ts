@@ -2,6 +2,12 @@ import Redis from 'ioredis';
 import { initSqlite, closeSqlite, getSqlite } from '@/db';
 
 /**
+ * ⚠️ 已退役（2026-11-08）：`sandtable_campaign` 表结构已改 —— 主键从
+ * `campaign_id`（文本，用户手填的战役名）换成自增数字 `id`，战役名改列
+ * `campaign_name`。本脚本往旧列 `campaign_id` 写数据，不再匹配新表结构，
+ * 直接跑会失败。它的历史使命（把 Redis 的 campaignOwner 迁到 SQLite）
+ * 已完成，保留仅供对照旧迁移方式，不要再执行。
+ *
  * 把战役归属（campaignOwner）从 Redis 搬到 SQLite 的 sandtable_campaign 表。
  *
  * 用法（在项目根执行）：

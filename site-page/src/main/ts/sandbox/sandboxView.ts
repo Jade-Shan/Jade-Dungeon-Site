@@ -2,7 +2,7 @@ import { IconRec, WebUtil } from '@jade-dungeon/jade-utils/web';
 import { registerDefaultUIResource } from '@jade-dungeon/jade-utils/resource';
 import { UIDesktop } from '@jade-dungeon/jade-utils/ui-window';
 import { IToken2D, SandTable } from '../trpg/sandtable.js';
-import { renderRollResults, SandboxApi, SceneId } from './sandboxApi.js';
+import { renderRollResults, SandboxApi, SceneId, SceneName } from './sandboxApi.js';
 import { SandboxScene } from './sandboxScene.js';
 import { SandboxDiceWindow, SandboxSceneWindow } from './sandboxWindows.js';
 
@@ -40,6 +40,8 @@ export interface SandboxViewConfig {
 	desktopId: string;
 	/** 场景三级定位 */
 	scene: SceneId;
+	/** 场景三级显示名（战役/地点/场景），只给标题栏显示 */
+	sceneName: SceneName;
 	/** 当前玩家的用户名。棋子 ID 与它一致的那个就是「自己」 */
 	username: string;
 	/** 登录 token，提移动请求时带上 */
@@ -89,6 +91,16 @@ export class SandboxView {
 		this.api = new SandboxApi(cfg.apiRoot);
 	}
 
+	/** 标题栏文字：三级显示名，缺名时退回对应的数字 id */
+	private sceneTitle(): string {
+		const n = this.cfg.sceneName;
+		return [
+			n.campaignName || String(this.cfg.scene.campaignId),
+			n.placeName || String(this.cfg.scene.placeId),
+			n.sceneName || String(this.cfg.scene.sceneId),
+		].join(' / ');
+	}
+
 	/**
 	 * 构造一个带完整基地址的 URL 图标记录（`IconRec`）
 	 *
@@ -119,9 +131,8 @@ export class SandboxView {
 		}
 		const desktop = new UIDesktop(host, { dockBar: { range: 300, maxScale: 1.8 } });
 
-		this.sceneWin = new SandboxSceneWindow(desktop, 'sandbox-scene',
-			`${this.cfg.scene.campaignId} / ${this.cfg.scene.placeId} / ${this.cfg.scene.sceneId}`,
-			{ 
+		this.sceneWin = new SandboxSceneWindow(desktop, 'sandbox-scene', this.sceneTitle(),
+			{
 				icons: this.icon('mimes', 'application-gpx.png'),
 				body: { initSize: { width: 800, height: 600 }, overflow: 'scroll' } });
 		this.sceneWin.renderIn();
@@ -388,6 +399,7 @@ export class SandboxView {
  *   iconBaseUrl: '@@cdn3rd/SE98',
  *   diceIconBaseUrl: '@@cdn3rd/jade-trpg',
  *   scene: {campaignId, placeId, sceneId},
+ *   sceneName: {campaignName, placeName, sceneName},
  *   username: WebUtil.loadCookieValue('username'),
  *   loginToken: WebUtil.loadCookieValue('loginToken'),
  * });

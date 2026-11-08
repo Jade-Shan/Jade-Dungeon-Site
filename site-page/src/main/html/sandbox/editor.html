@@ -21,20 +21,30 @@ html,body {width:99%; height: 99%; overflow: auto;}
 		import { initSandboxEditor } from "@jade-dungeon/site-page/sandbox-editor";
 
 		let params = new URLSearchParams(window.location.search);
-		let campaignId = params.get('campaignId');
-		let placeId    = params.get('placeId'   );
-		let sceneId    = params.get('sceneId'   );
+		let campaignId   = Number(params.get('campaignId'));
+		let placeId      = Number(params.get('placeId'   ));
+		let sceneId      = Number(params.get('sceneId'   ));
+		let campaignName = params.get('campaignName') || '';
+		let placeName    = params.get('placeName'   ) || '';
+		let sceneName    = params.get('sceneName'   ) || '';
 
 		let username   = WebUtil.loadCookieValue('username'  ) || '';
 		let loginToken = WebUtil.loadCookieValue('loginToken') || '';
 
+		// 三个数字 id 都是正整数才算定位有效
+		let idsOk = Number.isInteger(campaignId) && Number.isInteger(placeId) && Number.isInteger(sceneId)
+			&& campaignId > 0 && placeId > 0 && sceneId > 0;
+
 		// 编辑器要身份（保存时后端靠 loginToken 鉴权），没登录就回登录页
-		if (!(campaignId && placeId && sceneId)) {
+		if (!idsOk) {
 			window.location = './index.html';
 		} else if (!(username && loginToken)) {
 			window.location = './index.html?campaignId=' + encodeURIComponent(campaignId)
 				+ '&placeId=' + encodeURIComponent(placeId)
-				+ '&sceneId=' + encodeURIComponent(sceneId);
+				+ '&sceneId=' + encodeURIComponent(sceneId)
+				+ '&campaignName=' + encodeURIComponent(campaignName)
+				+ '&placeName=' + encodeURIComponent(placeName)
+				+ '&sceneName=' + encodeURIComponent(sceneName);
 		} else {
 			window.onload = function() {
 				initSandboxEditor({
@@ -44,6 +54,7 @@ html,body {width:99%; height: 99%; overflow: auto;}
 					iconBaseUrl     : '@@cdn3rd/SE98',
 					diceIconBaseUrl : '@@cdn3rd/jade-trpg',
 					scene           : { campaignId: campaignId, placeId: placeId, sceneId: sceneId },
+					sceneName       : { campaignName: campaignName, placeName: placeName, sceneName: sceneName },
 					username    : username,
 					loginToken  : loginToken
 				}).catch(e => {

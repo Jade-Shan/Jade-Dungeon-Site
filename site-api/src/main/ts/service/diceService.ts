@@ -1,7 +1,7 @@
 import { getRedis } from '@/lib/redis';
 
 /**
- * TRPG 骰子检定。数据存 Redis（与旧后端共享同一批 key）。
+ * TRPG 骰子检定。数据存 Redis。
  *
  * 检定流程（三个接口配合）：
  * 1. GM 调 `set-roll-threshold` 为某玩家设阈值 → 存 `{threshold:N, sum:0, msg:""}`
@@ -12,8 +12,8 @@ import { getRedis } from '@/lib/redis';
 
 const REDIS_KEY = 'trpg';
 
-export const genRollResultKey = (campaignId: string, placeId: string, sceneId: string): string =>
-	`jadedungeon::sandtable::rollDiceResult::${campaignId}::${placeId}::${sceneId}`;
+export const genRollResultKey = (campaignId: number, placeId: number, sceneId: number): string =>
+	`jadedungeon:sandtable:rollDiceResult:${campaignId}:${placeId}:${sceneId}`;
 
 /** 单个骰子项：`3d6` / `d20` / 常数 */
 interface IDiceTerm {
@@ -138,7 +138,7 @@ export interface IRollResultRow extends IRollRecord {
 
 /** 设定某玩家的检定阈值，并把 sum 清零（表示「轮到他掷」） */
 export const setRollThreshold = async (
-	campaignId: string, placeId: string, sceneId: string, username: string, threshold: number,
+	campaignId: number, placeId: number, sceneId: number, username: string, threshold: number,
 ): Promise<void> => {
 	// 值的 JSON 形状不能随便改 —— 旧后端已停用，但 Redis 里的存量记录是这个形状，
 	// 本服务自己的读取路径（getRollRecord / getAllRollResults）也按它解析
@@ -149,7 +149,7 @@ export const setRollThreshold = async (
 
 /** 读某玩家当前的检定状态 */
 export const getRollRecord = async (
-	campaignId: string, placeId: string, sceneId: string, username: string,
+	campaignId: number, placeId: number, sceneId: number, username: string,
 ): Promise<IRollRecord | undefined> => {
 	const raw = await getRedis(REDIS_KEY).hget(genRollResultKey(campaignId, placeId, sceneId), username);
 	if (!raw) { return undefined; }
@@ -161,7 +161,7 @@ export const getRollRecord = async (
 };
 
 export const saveRollResult = async (
-	campaignId: string, placeId: string, sceneId: string, username: string, rec: IRollRecord,
+	campaignId: number, placeId: number, sceneId: number, username: string, rec: IRollRecord,
 ): Promise<void> => {
 	await getRedis(REDIS_KEY).hset(
 		genRollResultKey(campaignId, placeId, sceneId), username, JSON.stringify(rec));
@@ -169,7 +169,7 @@ export const saveRollResult = async (
 
 /** 读全场检定结果。单条坏数据跳过，不影响整体（沿用旧实现策略）。 */
 export const loadRollResults = async (
-	campaignId: string, placeId: string, sceneId: string,
+	campaignId: number, placeId: number, sceneId: number,
 ): Promise<IRollResultRow[]> => {
 	const raw = await getRedis(REDIS_KEY).hgetall(genRollResultKey(campaignId, placeId, sceneId));
 	const list: IRollResultRow[] = [];

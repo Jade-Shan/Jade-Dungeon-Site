@@ -100,8 +100,10 @@ describe('登录', () => {
 			fill('password', 'pw');
 			click('btn-login');
 			await new Promise(r => setTimeout(r, 10));
-			assert.equal(jumped, './index.html?campaignId=c1&placeId=p1&sceneId=s1');
-		}, 'http://localhost/login.html?campaignId=c1&placeId=p1&sceneId=s1');
+			assert.equal(jumped, './index.html?campaignId=1&placeId=2&sceneId=3'
+				+ '&campaignName=Waterdeep&placeName=Harbor&sceneName=Dock');
+		}, 'http://localhost/login.html?campaignId=1&placeId=2&sceneId=3'
+			+ '&campaignName=Waterdeep&placeName=Harbor&sceneName=Dock');
 	});
 
 	test('走 POST，密码不出现在 URL 里', async () => {
@@ -198,8 +200,10 @@ describe('返回选场景', () => {
 			let jumped = '';
 			initSandboxLogin({ iconBaseUrl: '//cdn/SE98', apiRoot: '//api', navigate: u => { jumped = u; } });
 			click('btn-back');
-			assert.equal(jumped, './index.html?campaignId=c1&placeId=p1&sceneId=s1');
-		}, 'http://localhost/login.html?campaignId=c1&placeId=p1&sceneId=s1');
+			assert.equal(jumped, './index.html?campaignId=1&placeId=2&sceneId=3'
+				+ '&campaignName=Waterdeep&placeName=Harbor&sceneName=Dock');
+		}, 'http://localhost/login.html?campaignId=1&placeId=2&sceneId=3'
+			+ '&campaignName=Waterdeep&placeName=Harbor&sceneName=Dock');
 	});
 
 	test('没有场景参数时只回 index.html 不带查询串', () => {

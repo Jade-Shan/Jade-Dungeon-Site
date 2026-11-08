@@ -472,6 +472,11 @@ let testSceneData: SceneDataResp = {
     {"id": "icons", "type": "Image", "url": "http://www.jade-dungeon.cn:8081/jadeutils.v3/themes/trpg/images/icons.jpg"},
     {"id": "map"  , "type": "Image", "url": "http://www.jade-dungeon.cn:8081/jadeutils.v3/themes/trpg/images/map.jpg"  }
   ],
+  "info": {
+    "campaign": {"id": 1, "name": "费伦大陆"},
+    "place"   : {"id": 1, "name": "深水城"},
+    "scene"   : {"id": 1, "name": "港口"}
+  },
   "mapDatas": {
     "teams": [
       {"id": "spectator", "x": 236, "y": 230, "visible": false, "blockView": false, "color": "#0000FF", "img": {"imgKey": "icons", "sx": 100, "sy": 150, "width": 50, "height": 50}, "type": "Circle", "radius": 25},

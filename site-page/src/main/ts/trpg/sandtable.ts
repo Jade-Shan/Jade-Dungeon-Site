@@ -1056,6 +1056,21 @@ export class LineToken extends CanvasLine2D implements IToken2D, ILineToken {
 
 
 /**
+ * 三级定位（campaign / place / scene）的数字 id 与名字。
+ *
+ * 2026-11-08 起场景数据带这份三级定位 —— id 用于后端寻址（Redis key 三段），
+ * name 用于前端标题栏显示。存进场景 JSON 后随 `load-map` 原样返回。
+ */
+export interface SceneInfo {
+	/** 战役 */
+	campaign: { id: number, name: string },
+	/** 地点 */
+	place   : { id: number, name: string },
+	/** 场景 */
+	scene   : { id: number, name: string },
+}
+
+/**
  * 场景数据接口响应（从后端加载的完整沙盘数据）
  */
 export interface SceneDataResp {
@@ -1065,6 +1080,8 @@ export interface SceneDataResp {
 	loginToken  : string,
 	/** 图片资源列表 */
 	imgResources: Array<ImageResource>,
+	/** 三级定位（数字 id + 名字） */
+	info        : SceneInfo,
 	/** 地图数据 */
 	mapDatas: {
 		/** 队伍 */

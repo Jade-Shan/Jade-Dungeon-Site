@@ -45,6 +45,76 @@ export const getCampaignOwner = async (campaignId: number): Promise<string | nul
 	return row?.owner ?? null;
 };
 
+/**
+ * 校验「进入场景」的定位是否有效，供 load-map 在取场景前兜底。
+ *
+ * campaign 的 curr_place_* / curr_scene_* 必须齐全（非 NULL），且与请求里的
+ * placeId / sceneId 一致。前端已经把 6 值不全的记录在进入按钮上禁用，
+ * 这里拦住绕过前端、直接拼 URL 发请求的情况。
+ *
+ * @returns null 表示通过；否则是可直接返回给客户端的错误信息
+ */
+export const assertSceneReachable = async (
+	campaignId: number, placeId: number, sceneId: number,
+): Promise<string | null> => {
+	const row = await getSqlite().queryOne<{
+		currPlaceId: number | null;
+		currPlaceName: string | null;
+		currSceneId: number | null;
+		currSceneName: string | null;
+	}>(
+		`SELECT curr_place_id AS currPlaceId, curr_place_name AS currPlaceName,
+		        curr_scene_id AS currSceneId, curr_scene_name AS currSceneName
+		   FROM sandtable_campaign WHERE id = ?`,
+		[campaignId]);
+	if (!row) {
+		return 'not found';
+	}
+	if (!row.currPlaceId || !row.currPlaceName || !row.currSceneId || !row.currSceneName) {
+		return 'scene incomplete';
+	}
+	if (row.currPlaceId !== placeId || row.currSceneId !== sceneId) {
+		return 'scene mismatch';
+	}
+	return null;
+};
+
+/** 场景列表里的一行：一个战役 + 它当前的 place / scene（3 id + 3 名）+ owner */
+export interface ISceneListItem {
+	campaignId: number;
+	campaignName: string;
+	owner: string;
+	currPlaceId: number;
+	currPlaceName: string;
+	currSceneId: number;
+	currSceneName: string;
+}
+
+/**
+ * 列出所有战役及其当前的 place / scene，供选场景页的表格展示。
+ *
+ * 直接查 `sandtable_campaign` —— 它冗余存了 curr_place_* / curr_scene_* 字段，
+ * 记录该战役当前所在的地点与场景，不用再 JOIN place / scene 表。
+ * 列表一行一个战役，展示「战役名 / 当前地点名 / 当前场景名 / owner」。
+ *
+ * 读操作，不校验身份 —— 和 `load-map` / `map-owner` 一致，选场景页需要它
+ * 在登录前就把可进入的场景列出来。
+ */
+export const listScenes = async (): Promise<ISceneListItem[]> => {
+	return getSqlite().query<ISceneListItem>(`
+		SELECT
+			c.id              AS campaignId,
+			c.campaign_name   AS campaignName,
+			c.owner           AS owner,
+			c.curr_place_id   AS currPlaceId,
+			c.curr_place_name AS currPlaceName,
+			c.curr_scene_id   AS currSceneId,
+			c.curr_scene_name AS currSceneName
+		FROM sandtable_campaign c
+		ORDER BY c.id
+	`);
+};
+
 // ───────────────────────── 移动请求 ─────────────────────────
 
 export interface IMoveRequest {

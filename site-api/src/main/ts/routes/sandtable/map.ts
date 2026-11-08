@@ -2,8 +2,8 @@ import { ICustomHandler, IRequestContext, IRequestData, HTTP_GET, HTTP_POST } fr
 import { corsHeadersFor, sendOnce } from '@/middleware/simpleHTTPServer';
 import { verifyToken } from '@/service/authService';
 import {
-	authorizeSceneWrite, delMoveRequest, getCampaignOwner,
-	loadMoveRequests, loadScene, saveScene, setMoveRequest,
+	assertSceneReachable, authorizeSceneWrite, delMoveRequest, getCampaignOwner,
+	listScenes, loadMoveRequests, loadScene, saveScene, setMoveRequest,
 } from '@/service/sandtableService';
 
 /**
@@ -38,6 +38,19 @@ const readSceneParams = (data: IRequestData) => {
 };
 
 export const handler: ICustomHandler[] = [
+	{
+		urlPtn: '/api/sandtable/list-scene',
+		method: HTTP_GET | HTTP_POST,
+		bindFunc: async (context: IRequestContext, _data: IRequestData) => {
+			try {
+				const list = await listScenes();
+				sendJson(context, 200, { status: 'success', msg: '', data: list });
+			} catch (err) {
+				console.error('❌ list-scene 失败:', (err as Error).message);
+				sendJson(context, 200, { status: 'error', msg: (err as Error).message });
+			}
+		}
+	},
 	{
 		urlPtn: '/api/sandtable/load-move-request',
 		method: HTTP_GET | HTTP_POST,
@@ -124,6 +137,18 @@ export const handler: ICustomHandler[] = [
 			const { campaignId, placeId, sceneId, ok } = readSceneParams(data);
 			if (!ok) {
 				sendJson(context, 200, { status: 'error', msg: 'miss params' });
+				return;
+			}
+			// 兜底：拦住「当前地点/场景没绑好」或「id 对不上」的进入请求
+			try {
+				const unreachable = await assertSceneReachable(campaignId, placeId, sceneId);
+				if (unreachable) {
+					sendJson(context, 200, { status: 'error', msg: unreachable });
+					return;
+				}
+			} catch (err) {
+				console.error('❌ 校验场景定位失败:', (err as Error).message);
+				sendJson(context, 200, { status: 'error', msg: 'scene reachable check failed' });
 				return;
 			}
 			try {

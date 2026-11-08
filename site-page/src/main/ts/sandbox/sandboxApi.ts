@@ -55,6 +55,24 @@ export interface SceneName {
 	sceneName   : string;
 }
 
+/** 场景列表里的一行（后端 `ISceneListItem`），选场景页的表格用 */
+export interface SceneListItem {
+	/** 战役 ID */
+	campaignId: number;
+	/** 战役名 */
+	campaignName: string;
+	/** 所属 owner 的用户名 */
+	owner: string;
+	/** 当前地点 ID（campaign 表冗余的 curr_* 字段） */
+	currPlaceId: number;
+	/** 当前地点名 */
+	currPlaceName: string;
+	/** 当前场景 ID */
+	currSceneId: number;
+	/** 当前场景名 */
+	currSceneName: string;
+}
+
 /** 棋子的移动请求（后端 `IMoveRequest`） */
 export interface MoveRequestRec {
 	/** 提出请求的用户名 */
@@ -309,6 +327,19 @@ export class SandboxApi {
 	async mapOwner(campaignId: number): Promise<ApiResult<string>> {
 		const url = `${this.root}/api/sandtable/map-owner?${qs({ campaignId })}`;
 		return call<string>(url, r => String((r as { owner?: string }).owner ?? ''));
+	}
+
+	/**
+	 * 列出所有可进入的场景（三表 join：战役 / 地点 / 场景 + owner）
+	 *
+	 * 选场景页的表格靠它填充。读接口，不需要身份。
+	 *
+	 * @returns {Promise<ApiResult<Array<SceneListItem>>>} 没有场景时返回空数组
+	 */
+	async listScenes(): Promise<ApiResult<Array<SceneListItem>>> {
+		const url = `${this.root}/api/sandtable/list-scene?${qs({})}`;
+		return call<Array<SceneListItem>>(url,
+			r => (r.data as Array<SceneListItem>) ?? []);
 	}
 
 	// ── 移动请求 ──

@@ -2,8 +2,8 @@ import { ICustomHandler, IRequestContext, IRequestData, HTTP_GET, HTTP_POST } fr
 import { corsHeadersFor, sendOnce } from '@/middleware/simpleHTTPServer';
 import { verifyToken } from '@/service/authService';
 import {
-	authorizeSceneWrite, delMoveRequest, getCampaignOwner,
-	loadMoveRequests, loadScene, saveScene, setMoveRequest,
+	assertSceneReachable, authorizeSceneWrite, delMoveRequest, getCampaignOwner,
+	listScenes, loadMoveRequests, loadScene, saveScene, setMoveRequest,
 } from '@/service/sandtableService';
 
 /**
@@ -27,17 +27,30 @@ const sendJson = (context: IRequestContext, status: number, body: unknown) => {
 	}, JSON.stringify(body));
 };
 
-/** 三级场景定位参数的校验，几个接口共用 */
+/** 三级场景定位参数的校验，几个接口共用。三个都是数字 id，须为正整数。 */
 const readSceneParams = (data: IRequestData) => {
-	const campaignId = data.params.campaignId;
-	const placeId = data.params.placeId;
-	const sceneId = data.params.sceneId;
-	const ok = Boolean(campaignId && placeId && sceneId
-		&& campaignId.length > 0 && placeId.length > 0 && sceneId.length > 0);
+	const campaignId = Number(data.params.campaignId);
+	const placeId = Number(data.params.placeId);
+	const sceneId = Number(data.params.sceneId);
+	const ok = Number.isInteger(campaignId) && Number.isInteger(placeId) && Number.isInteger(sceneId)
+		&& campaignId > 0 && placeId > 0 && sceneId > 0;
 	return { campaignId, placeId, sceneId, ok };
 };
 
 export const handler: ICustomHandler[] = [
+	{
+		urlPtn: '/api/sandtable/list-scene',
+		method: HTTP_GET | HTTP_POST,
+		bindFunc: async (context: IRequestContext, _data: IRequestData) => {
+			try {
+				const list = await listScenes();
+				sendJson(context, 200, { status: 'success', msg: '', data: list });
+			} catch (err) {
+				console.error('❌ list-scene 失败:', (err as Error).message);
+				sendJson(context, 200, { status: 'error', msg: (err as Error).message });
+			}
+		}
+	},
 	{
 		urlPtn: '/api/sandtable/load-move-request',
 		method: HTTP_GET | HTTP_POST,
@@ -48,7 +61,7 @@ export const handler: ICustomHandler[] = [
 				return;
 			}
 			try {
-				const list = await loadMoveRequests(campaignId!, placeId!, sceneId!);
+				const list = await loadMoveRequests(campaignId, placeId, sceneId);
 				sendJson(context, 200, { status: 'success', msg: '', data: list });
 			} catch (err) {
 				console.error('❌ load-move-request 失败:', (err as Error).message);
@@ -87,10 +100,10 @@ export const handler: ICustomHandler[] = [
 				const x = Number(data.params.x);
 				const y = Number(data.params.y);
 				if (Number.isFinite(x) && Number.isFinite(y) && x > -1 && y > -1) {
-					await setMoveRequest(campaignId!, placeId!, sceneId!, username, x, y);
+					await setMoveRequest(campaignId, placeId, sceneId, username, x, y);
 				} else {
 					// 坐标为负或缺失表示撤销移动请求
-					await delMoveRequest(campaignId!, placeId!, sceneId!, username);
+					await delMoveRequest(campaignId, placeId, sceneId, username);
 				}
 				sendJson(context, 200, { status: 'success' });
 			} catch (err) {
@@ -103,8 +116,8 @@ export const handler: ICustomHandler[] = [
 		urlPtn: '/api/sandtable/map-owner',
 		method: HTTP_GET | HTTP_POST,
 		bindFunc: async (context: IRequestContext, data: IRequestData) => {
-			const campaignId = data.params.campaignId;
-			if (!campaignId) {
+			const campaignId = Number(data.params.campaignId);
+			if (!Number.isInteger(campaignId) || campaignId <= 0) {
 				sendJson(context, 200, { status: 'error', msg: 'miss params' });
 				return;
 			}
@@ -126,8 +139,20 @@ export const handler: ICustomHandler[] = [
 				sendJson(context, 200, { status: 'error', msg: 'miss params' });
 				return;
 			}
+			// 兜底：拦住「当前地点/场景没绑好」或「id 对不上」的进入请求
 			try {
-				const raw = await loadScene(campaignId!, placeId!, sceneId!);
+				const unreachable = await assertSceneReachable(campaignId, placeId, sceneId);
+				if (unreachable) {
+					sendJson(context, 200, { status: 'error', msg: unreachable });
+					return;
+				}
+			} catch (err) {
+				console.error('❌ 校验场景定位失败:', (err as Error).message);
+				sendJson(context, 200, { status: 'error', msg: 'scene reachable check failed' });
+				return;
+			}
+			try {
+				const raw = await loadScene(campaignId, placeId, sceneId);
 				if (!raw) {
 					sendJson(context, 200, { status: 'error', msg: 'empty' });
 					return;
@@ -163,12 +188,12 @@ export const handler: ICustomHandler[] = [
 
 			try {
 				// 身份以 token 为准。旧实现信 payload.username，可被任意伪造。
-				const authz = await authorizeSceneWrite(campaignId!, payload.loginToken);
+				const authz = await authorizeSceneWrite(campaignId, payload.loginToken);
 				if (!authz.ok) {
 					sendJson(context, 200, { status: 'err', msg: authz.msg });
 					return;
 				}
-				await saveScene(campaignId!, placeId!, sceneId!, jsonStr);
+				await saveScene(campaignId, placeId, sceneId, jsonStr);
 				sendJson(context, 200, { status: 'success', msg: 'save success' });
 			} catch (err) {
 				console.error('❌ save-map 失败:', (err as Error).message);

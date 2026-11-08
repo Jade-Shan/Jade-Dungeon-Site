@@ -9,7 +9,7 @@
 	"compilerOptions": {
 		"target": "ES6",
 		"module": "ES6",
-		"lib": ["ES6", "DOM", "ES2019.String"],
+		"lib": ["ES6", "DOM", "ES2017.Object", "ES2019.String"],
 		"moduleResolution": "bundler",
 		"strict": true,
 		"noImplicitAny": true,

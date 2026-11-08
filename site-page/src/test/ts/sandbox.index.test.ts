@@ -1,25 +1,60 @@
 /**
- * 选场景页：回填、进入/编辑跳转、换身份跳登录页
+ * 选场景页：加载场景表格、选中后进入/编辑、换身份跳登录页
  *
- * sandbox 模块迁移的期 5 产物。2026-11-07 把「登录」和「选场景」拆成两页之后，
- * 这里只测 `index.html` 的选场景页（登录页的请求测在 `sandbox.login.test.ts`）。
- * 这一页**不发请求** —— 进入场景只读 cookie、拼 URL 跳 view / editor，
- * 换身份只跳 login.html —— 所以不碰 Canvas，能测得比较全。
+ * sandbox 模块迁移的期 5 产物。2026-11-08 把「六个手填输入框」换成了「从数据库
+ * 列出的场景表格」：页面加载时请求 `/api/sandtable/list-scene`，填一张
+ * （战役 / 地点 / 场景 / owner）表格，用户选中一行再点「进入 / 编辑场景」。
+ * 表格一行一个战役 —— 后端直接查 `sandtable_campaign` 的 curr_place_* /
+ * curr_scene_* 字段，不再 JOIN place / scene 表。
  *
  * 要盯住的：
  *
+ * - **列表加载后才出现行**，加载中 / 失败 / 空列表在表格下方的说明行里提示
  * - **跳转前检查登录态**：没登录点「进入场景」就提示，不跳
- * - **三个场景参数缺一个就不跳**
+ * - **没选中就不跳**
+ * - **6 值不全的记录进不去**：campaign 还没绑好当前地点/场景时（curr_place_* /
+ *   curr_scene_* 为空），「进入 / 编辑场景」按钮禁用。这是第一道防护，
+ *   后端 load-map 还有第二道
  * - **参数做 URL 编码**：战役名里一个空格或 `&` 会把后面的参数截断
- * - **换身份跳登录页时带上场景参数**：登录回来不用重填三级定位
+ * - **换身份跳登录页时带上选中项**：登录回来不用重新选
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { withDom } from './_jsdom-setup.js';
+import { withDom, withDomAsync } from './_jsdom-setup.js';
 import { initSandboxIndex } from '../../main/ts/sandbox/sandboxLogin.js';
 
 /** 选场景页的 DOM，和 html/sandbox/index.html 一致：一个桌面容器，窗口由脚本建 */
 const PAGE = `<div id="sandbox-desktop" class="desktop dock-content"></div>`;
+
+/** 记下假 XHR 收到的请求 */
+let sent: Array<{ url: string, method: string, body?: string }> = [];
+
+/**
+ * 用假 XHR 顶替真实请求
+ * @param resp - 响应体
+ */
+function stubXhr(resp: unknown): void {
+	sent = [];
+	class FakeXhr {
+		status = 200;
+		statusText = 'OK';
+		responseText = '';
+		timeout = 0;
+		withCredentials = false;
+		onload: ((e: unknown) => void) | null = null;
+		onerror: ((e: unknown) => void) | null = null;
+		private url = '';
+		private method = '';
+		open(m: string, u: string): void { this.method = m; this.url = u; }
+		setRequestHeader(): void { }
+		send(body?: string): void {
+			sent.push({ url: this.url, method: this.method, body: body });
+			this.responseText = JSON.stringify(resp);
+			this.onload?.({});
+		}
+	}
+	(globalThis as unknown as Record<string, unknown>).XMLHttpRequest = FakeXhr;
+}
 
 /** 点一个按钮 */
 function click(id: string): void {
@@ -28,11 +63,8 @@ function click(id: string): void {
 
 /** 读状态提示 */
 const status = () => document.getElementById('login-status')!.textContent ?? '';
-
-/** 填输入框 */
-function fill(id: string, v: string): void {
-	(document.getElementById(id) as HTMLInputElement).value = v;
-}
+/** 读表格下方的说明行 */
+const note = () => document.getElementById('scene-note')!.textContent ?? '';
 
 /** 已经登录：写身份 cookie */
 function loginCookies(): void {
@@ -40,28 +72,131 @@ function loginCookies(): void {
 	document.cookie = 'loginToken=teo|uuid|1;path=/';
 }
 
-describe('init 回填', () => {
+/** 等异步加载（list-scene 的 XHR 落定 + 微任务） */
+async function settle(): Promise<void> {
+	await new Promise(r => setTimeout(r, 10));
+}
 
-	test('URL 带场景参数时回填进输入框（方便分享链接）', () => {
-		withDom(PAGE, () => {
-			initSandboxIndex({ iconBaseUrl: '//cdn/SE98' });
-			assert.equal((document.getElementById('campaignId') as HTMLInputElement).value, 'c1');
-			assert.equal((document.getElementById('placeId') as HTMLInputElement).value, 'p1');
-			assert.equal((document.getElementById('sceneId') as HTMLInputElement).value, 's1');
-		}, 'http://localhost/index.html?campaignId=c1&placeId=p1&sceneId=s1');
+/** 表格里所有的行 */
+function rows(): Array<HTMLTableRowElement> {
+	return Array.from(document.querySelectorAll<HTMLTableRowElement>('#scene-table tbody tr'));
+}
+
+/** 点指定 campaignId 的那一行（模拟用户点行选中） */
+function selectCampaign(campaignId: number): void {
+	const tr = rows().find(r => r.dataset.campaignId === String(campaignId));
+	assert.ok(tr, `找不到 campaignId=${campaignId} 的行`);
+	tr!.dispatchEvent(new MouseEvent('click'));
+}
+
+/**
+ * 场景列表 fixture：三个战役，跨两个 owner。
+ * 前两个绑好了当前地点/场景，最后一个（荒原）curr_place_* / curr_scene_* 为空，
+ * 用来测「6 值不全 → 按钮禁用」。
+ */
+const SCENES = [
+	{ campaignId: 1, campaignName: '费伦大陆', owner: 'teo', currPlaceId: 2, currPlaceName: '深水城', currSceneId: 3, currSceneName: '港口' },
+	{ campaignId: 5, campaignName: '异域', owner: 'alice', currPlaceId: 6, currPlaceName: '印记城', currSceneId: 7, currSceneName: '大殿' },
+	{ campaignId: 9, campaignName: '荒原', owner: 'teo', currPlaceId: 0, currPlaceName: '', currSceneId: 0, currSceneName: '' },
+];
+
+/** 带一份场景列表的 stub（成功） */
+const stubScenes = (data: unknown) => stubXhr({ status: 'success', msg: '', data: data });
+
+describe('列表加载', () => {
+
+	test('加载后表格按列表填出行（含 owner）', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			assert.ok(sent[0].url.includes('/api/sandtable/list-scene'), `实际: ${sent[0].url}`);
+			assert.equal(rows().length, 3);
+			const cells = rows()[0].querySelectorAll('td');
+			// 4 列：战役 / 地点 / 场景 / owner
+			assert.equal(cells[0].textContent, '费伦大陆');
+			assert.equal(cells[1].textContent, '深水城');
+			assert.equal(cells[2].textContent, '港口');
+			assert.equal(cells[3].textContent, 'teo');
+		});
 	});
 
-	test('没有 cookie 时提示请先登录', () => {
-		withDom(PAGE, () => {
-			initSandboxIndex({ iconBaseUrl: '//cdn/SE98' });
+	test('空列表时在说明行提示', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubScenes([]);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			assert.equal(document.querySelectorAll('#scene-table tbody tr').length, 0);
+			assert.ok(note().includes('还没有战役'), `实际: ${note()}`);
+		});
+	});
+
+	test('加载失败时在说明行提示原因', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubXhr({ status: 'error', msg: 'boom' });
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			assert.ok(note().includes('boom'), `实际: ${note()}`);
+		});
+	});
+
+	test('加载完成后显示战役数量', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			assert.ok(note().includes('共 3 个战役'), `实际: ${note()}`);
+		});
+	});
+
+});
+
+describe('点行选中', () => {
+
+	test('点整行后该行高亮，其他行不高亮', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			selectCampaign(1);
+			const sel = rows().filter(r => r.classList.contains('highlighted'));
+			assert.equal(sel.length, 1, '只高亮一行');
+			assert.equal(Number(sel[0].dataset.campaignId), 1);
+		});
+	});
+
+	test('再点另一行，前一行取消高亮（单选）', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			selectCampaign(1);
+			selectCampaign(5);
+			const sel = rows().filter(r => r.classList.contains('highlighted'));
+			assert.equal(sel.length, 1);
+			assert.equal(Number(sel[0].dataset.campaignId), 5);
+		});
+	});
+
+});
+
+describe('登录态', () => {
+
+	test('没有 cookie 时提示请先登录', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
 			assert.ok(status().includes('请先登录'), `实际: ${status()}`);
 		});
 	});
 
-	test('已有 cookie 时显示当前身份', () => {
-		withDom(PAGE, () => {
+	test('已有 cookie 时显示当前身份', async () => {
+		await withDomAsync(PAGE, async () => {
 			loginCookies();
-			initSandboxIndex({ iconBaseUrl: '//cdn/SE98' });
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
 			assert.ok(status().includes('已登录'), `实际: ${status()}`);
 			assert.ok(status().includes('teo'), `实际: ${status()}`);
 		});
@@ -69,82 +204,137 @@ describe('init 回填', () => {
 
 });
 
-describe('进入场景', () => {
+describe('三级定位不全的记录', () => {
 
-	test('没登录时不跳转，提示请先登录', () => {
-		withDom(PAGE, () => {
-			initSandboxIndex({ iconBaseUrl: '//cdn/SE98' });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
+	test('选中 6 值不全的记录后进入/编辑按钮禁用', async () => {
+		await withDomAsync(PAGE, async () => {
+			loginCookies();
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			selectCampaign(9); // 荒原：curr place/scene 为空
+			const enter = document.getElementById('btn-enter') as HTMLButtonElement;
+			const edit = document.getElementById('btn-edit') as HTMLButtonElement;
+			assert.ok(enter.disabled, '进入按钮应禁用');
+			assert.ok(edit.disabled, '编辑按钮应禁用');
+		});
+	});
+
+	test('改选齐全的记录后按钮恢复可点', async () => {
+		await withDomAsync(PAGE, async () => {
+			loginCookies();
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			selectCampaign(9);
+			const enter = document.getElementById('btn-enter') as HTMLButtonElement;
+			assert.ok(enter.disabled, '先禁用');
+			selectCampaign(1);
+			assert.ok(!enter.disabled, '齐全记录进入按钮应可点');
+		});
+	});
+
+	test('没选中时按钮可点（点下去走「请先选中」提示）', async () => {
+		await withDomAsync(PAGE, async () => {
+			loginCookies();
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			const enter = document.getElementById('btn-enter') as HTMLButtonElement;
+			assert.ok(!enter.disabled, '没选中时不该禁用');
+		});
+	});
+
+});
+
+describe('进入/编辑场景', () => {
+
+	test('没登录时不跳转，提示请先登录', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			selectCampaign(1);
 			click('btn-enter');
 			assert.ok(status().includes('请先登录'), `实际: ${status()}`);
 		});
 	});
 
-	test('三个场景参数缺一个就不跳', () => {
-		withDom(PAGE, () => {
+	test('没选中时不跳转，提示先选中', async () => {
+		await withDomAsync(PAGE, async () => {
 			loginCookies();
-			initSandboxIndex({ iconBaseUrl: '//cdn/SE98' });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', '');
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
 			click('btn-enter');
-			assert.ok(status().includes('三个都要填'), `实际: ${status()}`);
+			assert.ok(status().includes('先选中'), `实际: ${status()}`);
 		});
 	});
 
-	test('齐全时拼出带三个参数的玩家视图地址', () => {
-		withDom(PAGE, () => {
+	test('选中后拼出带三级定位（3 id + 3 名字）的玩家视图地址', async () => {
+		await withDomAsync(PAGE, async () => {
 			loginCookies();
+			stubScenes(SCENES);
 			let jumped = '';
-			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
+			await settle();
+			selectCampaign(1);
 			click('btn-enter');
-			assert.equal(jumped, './view.html?campaignId=c1&placeId=p1&sceneId=s1');
+			assert.equal(jumped, './view.html?campaignId=1&placeId=2&sceneId=3'
+				+ '&campaignName=' + encodeURIComponent('费伦大陆')
+				+ '&placeName=' + encodeURIComponent('深水城')
+				+ '&sceneName=' + encodeURIComponent('港口'));
 		});
 	});
 
-	test('编辑按钮跳编辑器地址', () => {
-		withDom(PAGE, () => {
+	test('编辑按钮跳编辑器地址', async () => {
+		await withDomAsync(PAGE, async () => {
 			loginCookies();
+			stubScenes(SCENES);
 			let jumped = '';
-			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
+			await settle();
+			selectCampaign(5);
 			click('btn-edit');
-			assert.equal(jumped, './editor.html?campaignId=c1&placeId=p1&sceneId=s1');
+			assert.equal(jumped, './editor.html?campaignId=5&placeId=6&sceneId=7'
+				+ '&campaignName=' + encodeURIComponent('异域')
+				+ '&placeName=' + encodeURIComponent('印记城')
+				+ '&sceneName=' + encodeURIComponent('大殿'));
 		});
 	});
 
-	test('场景名里的空格与 & 被 URL 编码', () => {
-		withDom(PAGE, () => {
+	test('场景名里的空格与 & 被 URL 编码', async () => {
+		await withDomAsync(PAGE, async () => {
 			loginCookies();
+			stubScenes([{
+				campaignId: 1, campaignName: '费伦 大陆', owner: 'teo',
+				currPlaceId: 2, currPlaceName: 'A&B', currSceneId: 3, currSceneName: 's1',
+			}]);
 			let jumped = '';
-			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
-			fill('campaignId', '费伦 大陆');
-			fill('placeId', 'A&B');
-			fill('sceneId', 's1');
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
+			await settle();
+			selectCampaign(1);
 			click('btn-enter');
-			const expected = `./view.html?campaignId=${encodeURIComponent('费伦 大陆')}`
-				+ '&placeId=A%26B&sceneId=s1';
+			const expected = './view.html?campaignId=1&placeId=2&sceneId=3'
+				+ '&campaignName=' + encodeURIComponent('费伦 大陆')
+				+ '&placeName=A%26B&sceneName=s1';
 			assert.equal(jumped, expected);
 		});
 	});
 
-	test('自定义玩家视图地址生效', () => {
-		withDom(PAGE, () => {
+	test('自定义玩家视图地址生效', async () => {
+		await withDomAsync(PAGE, async () => {
 			loginCookies();
+			stubScenes(SCENES);
 			let jumped = '';
-			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', viewUrl: '/custom/v.html', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98', viewUrl: '/custom/v.html', navigate: u => { jumped = u; } });
+			await settle();
+			selectCampaign(1);
 			click('btn-enter');
-			assert.equal(jumped, '/custom/v.html?campaignId=c1&placeId=p1&sceneId=s1');
+			assert.equal(jumped, '/custom/v.html?campaignId=1&placeId=2&sceneId=3'
+				+ '&campaignName=' + encodeURIComponent('费伦大陆')
+				+ '&placeName=' + encodeURIComponent('深水城')
+				+ '&sceneName=' + encodeURIComponent('港口'));
 		});
 	});
 
@@ -152,35 +342,60 @@ describe('进入场景', () => {
 
 describe('换身份登录', () => {
 
-	test('带着填好的场景参数跳 login.html', () => {
-		withDom(PAGE, () => {
+	test('选中后带着场景参数跳 login.html', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubScenes(SCENES);
 			let jumped = '';
-			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
-			fill('placeId', 'p1');
-			fill('sceneId', 's1');
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
+			await settle();
+			selectCampaign(1);
 			click('btn-switch-login');
-			assert.equal(jumped, './login.html?campaignId=c1&placeId=p1&sceneId=s1');
+			assert.equal(jumped, './login.html?campaignId=1&placeId=2&sceneId=3'
+				+ '&campaignName=' + encodeURIComponent('费伦大陆')
+				+ '&placeName=' + encodeURIComponent('深水城')
+				+ '&sceneName=' + encodeURIComponent('港口'));
 		});
 	});
 
-	test('场景参数为空时只跳 login.html 不带查询串', () => {
-		withDom(PAGE, () => {
+	test('没选中时只跳 login.html 不带查询串', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubScenes(SCENES);
 			let jumped = '';
-			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
+			await settle();
 			click('btn-switch-login');
 			assert.equal(jumped, './login.html');
 		});
 	});
 
-	test('自定义登录页地址生效', () => {
-		withDom(PAGE, () => {
+	test('自定义登录页地址生效', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubScenes(SCENES);
 			let jumped = '';
-			initSandboxIndex({ iconBaseUrl: '//cdn/SE98', loginUrl: '/auth.html', navigate: u => { jumped = u; } });
-			fill('campaignId', 'c1');
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98', loginUrl: '/auth.html', navigate: u => { jumped = u; } });
+			await settle();
+			selectCampaign(5);
 			click('btn-switch-login');
-			assert.equal(jumped, '/auth.html?campaignId=c1');
+			assert.equal(jumped, '/auth.html?campaignId=5&placeId=6&sceneId=7'
+				+ '&campaignName=' + encodeURIComponent('异域')
+				+ '&placeName=' + encodeURIComponent('印记城')
+				+ '&sceneName=' + encodeURIComponent('大殿'));
 		});
+	});
+
+});
+
+describe('URL 回填选中', () => {
+
+	test('URL 带 campaignId 时在表格里选中对应行（登录回来恢复选择）', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			const sel = rows().filter(r => r.classList.contains('highlighted'));
+			assert.equal(sel.length, 1, '应该只高亮一行');
+			assert.equal(Number(sel[0].dataset.campaignId), 5);
+		}, 'http://localhost/index.html?campaignId=5&placeId=6&sceneId=7');
 	});
 
 });
@@ -189,7 +404,7 @@ describe('选择器可覆盖', () => {
 
 	test('桌面容器缺失时抛可读的错', () => {
 		withDom('<div></div>', () => {
-			assert.throws(() => initSandboxIndex({ iconBaseUrl: '//cdn/SE98' }), /桌面容器/);
+			assert.throws(() => initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' }), /桌面容器/);
 		});
 	});
 

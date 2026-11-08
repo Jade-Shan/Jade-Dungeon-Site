@@ -35,14 +35,42 @@ export interface ApiResult<T> {
 	msg ?: string;
 }
 
-/** 场景的三级定位 */
+/** 场景的三级定位（数字 id，进 API 参数 / Redis key） */
 export interface SceneId {
 	/** 战役 / 模组 ID */
-	campaignId: string;
+	campaignId: number;
 	/** 地点 ID */
-	placeId   : string;
+	placeId   : number;
 	/** 场景 ID */
-	sceneId   : string;
+	sceneId   : number;
+}
+
+/** 场景的三级显示名（只进界面标题栏，不进 API） */
+export interface SceneName {
+	/** 战役名 */
+	campaignName: string;
+	/** 地点名 */
+	placeName   : string;
+	/** 场景名 */
+	sceneName   : string;
+}
+
+/** 场景列表里的一行（后端 `ISceneListItem`），选场景页的表格用 */
+export interface SceneListItem {
+	/** 战役 ID */
+	campaignId: number;
+	/** 战役名 */
+	campaignName: string;
+	/** 所属 owner 的用户名 */
+	owner: string;
+	/** 当前地点 ID（campaign 表冗余的 curr_* 字段） */
+	currPlaceId: number;
+	/** 当前地点名 */
+	currPlaceName: string;
+	/** 当前场景 ID */
+	currSceneId: number;
+	/** 当前场景名 */
+	currSceneName: string;
 }
 
 /** 棋子的移动请求（后端 `IMoveRequest`） */
@@ -230,7 +258,7 @@ function apiBase(apiRoot: string): string {
  *
  * ```typescript
  * const api = new SandboxApi('//localhost:8089');
- * const r = await api.loadMap({campaignId: 'c1', placeId: 'p1', sceneId: 's1'});
+ * const r = await api.loadMap({campaignId: 1, placeId: 2, sceneId: 3});
  * if (r.ok) { console.log(r.data!.mapDatas); }
  * ```
  */
@@ -293,12 +321,25 @@ export class SandboxApi {
 	 * `queryCampaignOwner` 但无调用点）。保留封装是因为它能让编辑器在
 	 * 进入时就提示「你不是 owner，改了也存不上」，而不是等到保存才报错。
 	 *
-	 * @param campaignId - 战役 ID
-	 * @returns {Promise<ApiResult<string>>} owner 的用户名；无主战役返回空串
+	 * @param campaignId - 战役数字 ID
+	 * @returns {Promise<ApiResult<string>>} owner 的用户名；查不到该战役返回空串
 	 */
-	async mapOwner(campaignId: string): Promise<ApiResult<string>> {
+	async mapOwner(campaignId: number): Promise<ApiResult<string>> {
 		const url = `${this.root}/api/sandtable/map-owner?${qs({ campaignId })}`;
 		return call<string>(url, r => String((r as { owner?: string }).owner ?? ''));
+	}
+
+	/**
+	 * 列出所有可进入的场景（三表 join：战役 / 地点 / 场景 + owner）
+	 *
+	 * 选场景页的表格靠它填充。读接口，不需要身份。
+	 *
+	 * @returns {Promise<ApiResult<Array<SceneListItem>>>} 没有场景时返回空数组
+	 */
+	async listScenes(): Promise<ApiResult<Array<SceneListItem>>> {
+		const url = `${this.root}/api/sandtable/list-scene?${qs({})}`;
+		return call<Array<SceneListItem>>(url,
+			r => (r.data as Array<SceneListItem>) ?? []);
 	}
 
 	// ── 移动请求 ──

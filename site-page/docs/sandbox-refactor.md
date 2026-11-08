@@ -269,7 +269,7 @@ return { isCrossOrigin: parsed.origin !== location.origin, absUrl: parsed.href }
 | | 页面位置 | `./images/sandtable/map.jpg` 解析到 |
 |---|---|---|
 | 老 | `webroot/sandtable.html` | ✅ `webroot/images/sandtable/map.jpg` |
-| 新 | `webroot/html/sandbox/view.html` | ❌ `webroot/html/sandbox/images/sandtable/map.jpg` |
+| 新 | `webroot/html/sandbox/view.html`（这文件现已名为 `viewScene.html`） | ❌ `webroot/html/sandbox/images/sandtable/map.jpg` |
 
 而 `loadImageByProxy` 的失败分支是**静默换占位图**，不抛错 ——
 表现是「地图变成一张 50×50 的灰色小图」，不是报错。
@@ -693,8 +693,8 @@ site-page/src/main/html/sandbox/
 ├── index.html         选场景（登录态 + 换身份）
 ├── login.html         登录（「修改密码」跳 changePassword.html）
 ├── changePassword.html 修改密码（旧密码 + 新密码×2）
-├── view.html          玩家视图
-└── editor.html        GM 编辑器
+├── view.html          玩家视图（这文件现已名为 viewScene.html）
+└── editor.html        GM 编辑器（这文件现已名为 editScene.html）
                        （没有 readme.html —— 见 4.4 节，文档改成 Markdown）
 
 site-page/docs/                 ← 这棵树**不发 CDN**，读者是开发者
@@ -915,7 +915,7 @@ SQLITE_PATH=/tmp/sb-db/jade-dungeon.db npx tsx src/main/ts/index.ts
 | `sandbox/sandboxWindows.ts` | 252 | `SandboxSceneWindow`（双层 Canvas，初名 `SandboxMapWindow`）、`SandboxDiceWindow` |
 | `sandbox/sandboxScene.ts` | 248 | 场景状态容器：五个分组、命中测试、序列化 |
 | `sandbox/sandboxView.ts` | 370 | 玩家视图：载场景 → 画迷雾 → 拖拽申请 → 掷骰 |
-| `html/sandbox/view.html` | 56 | 页面，`<head>` 全用 `parts/` 片段 |
+| `html/sandbox/view.html`（这文件现已名为 `viewScene.html`） | 56 | 页面，`<head>` 全用 `parts/` 片段 |
 
 `site-page/package.json` 加了 4 条 `exports`（import map 自动跟上，实测产物里有）。
 
@@ -988,7 +988,7 @@ Canvas 渲染与窗口布局**测不了** —— jsdom 的 `getContext('2d')` �
 | `sandbox/sandboxEditor.ts` | 722 | GM 编辑器：列表 / 属性 / 创建 / 保存 / 阈值 |
 | `sandbox/sandboxLogin.ts` | 261 | 登录注册 + 选场景 |
 | `sandboxWindows.ts`（追加） | +470 | 三个 GM 窗口：Tokens / Properties / Status |
-| `html/sandbox/editor.html` | 55 | 编辑器页 |
+| `html/sandbox/editor.html`（这文件现已名为 `editScene.html`） | 55 | 编辑器页 |
 | `html/sandbox/index.html` | 87 | 登录页，98.css 的 `fieldset` + `field-row` |
 
 `package.json` 又加了 2 条 `exports`（共 6 条）。
@@ -1202,7 +1202,7 @@ jsdom 的 `getContext('2d')` 返回 `null`（没装 `canvas` 原生模块），
 
 ### 11.1.1 ⚠️ 浏览器验证抓到的第一个 bug：Token 图片不显示（2026-11-05 已修）
 
-`sandbox/editor.html` 载入后**棋子和门的图片一张都不显示**（地图背景正常）。
+`sandbox/editor.html`（这文件现已名为 `editScene.html`）载入后**棋子和门的图片一张都不显示**（地图背景正常）。
 两个独立的缺陷，都是静默的：
 
 **① 装载顺序反了 —— 这是直接原因**

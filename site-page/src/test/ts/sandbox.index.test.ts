@@ -1,9 +1,9 @@
 /**
- * 选场景页：加载场景表格、选中后进入/编辑、换身份跳登录页
+ * 选场景页：加载场景表格、选中后进入、换身份跳登录页
  *
  * sandbox 模块迁移的期 5 产物。2026-11-08 把「六个手填输入框」换成了「从数据库
  * 列出的场景表格」：页面加载时请求 `/api/sandtable/list-scene`，填一张
- * （战役 / 地点 / 场景 / owner）表格，用户选中一行再点「进入 / 编辑场景」。
+ * （战役 / 地点 / 场景 / owner）表格，用户选中一行再点「进入场景」或「编辑战役」。
  * 表格一行一个战役 —— 后端直接查 `sandtable_campaign` 的 curr_place_* /
  * curr_scene_* 字段，不再 JOIN place / scene 表。
  *
@@ -13,7 +13,7 @@
  * - **跳转前检查登录态**：没登录点「进入场景」就提示，不跳
  * - **没选中就不跳**
  * - **6 值不全的记录进不去**：campaign 还没绑好当前地点/场景时（curr_place_* /
- *   curr_scene_* 为空），「进入 / 编辑场景」按钮禁用。这是第一道防护，
+ *   curr_scene_* 为空），「进入场景」按钮禁用。这是第一道防护，
  *   后端 load-map 还有第二道
  * - **参数做 URL 编码**：战役名里一个空格或 `&` 会把后面的参数截断
  * - **换身份跳登录页时带上选中项**：登录回来不用重新选
@@ -206,7 +206,7 @@ describe('登录态', () => {
 
 describe('三级定位不全的记录', () => {
 
-	test('选中 6 值不全的记录后进入/编辑按钮禁用', async () => {
+	test('选中 6 值不全的记录后进入按钮禁用', async () => {
 		await withDomAsync(PAGE, async () => {
 			loginCookies();
 			stubScenes(SCENES);
@@ -214,9 +214,7 @@ describe('三级定位不全的记录', () => {
 			await settle();
 			selectCampaign(9); // 荒原：curr place/scene 为空
 			const enter = document.getElementById('btn-enter') as HTMLButtonElement;
-			const edit = document.getElementById('btn-edit') as HTMLButtonElement;
 			assert.ok(enter.disabled, '进入按钮应禁用');
-			assert.ok(edit.disabled, '编辑按钮应禁用');
 		});
 	});
 
@@ -247,7 +245,7 @@ describe('三级定位不全的记录', () => {
 
 });
 
-describe('进入/编辑场景', () => {
+describe('进入场景', () => {
 
 	test('没登录时不跳转，提示请先登录', async () => {
 		await withDomAsync(PAGE, async () => {
@@ -280,26 +278,10 @@ describe('进入/编辑场景', () => {
 			await settle();
 			selectCampaign(1);
 			click('btn-enter');
-			assert.equal(jumped, './view.html?campaignId=1&placeId=2&sceneId=3'
+			assert.equal(jumped, './viewScene.html?campaignId=1&placeId=2&sceneId=3'
 				+ '&campaignName=' + encodeURIComponent('费伦大陆')
 				+ '&placeName=' + encodeURIComponent('深水城')
 				+ '&sceneName=' + encodeURIComponent('港口'));
-		});
-	});
-
-	test('编辑按钮跳编辑器地址', async () => {
-		await withDomAsync(PAGE, async () => {
-			loginCookies();
-			stubScenes(SCENES);
-			let jumped = '';
-			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
-			await settle();
-			selectCampaign(5);
-			click('btn-edit');
-			assert.equal(jumped, './editor.html?campaignId=5&placeId=6&sceneId=7'
-				+ '&campaignName=' + encodeURIComponent('异域')
-				+ '&placeName=' + encodeURIComponent('印记城')
-				+ '&sceneName=' + encodeURIComponent('大殿'));
 		});
 	});
 
@@ -315,7 +297,7 @@ describe('进入/编辑场景', () => {
 			await settle();
 			selectCampaign(1);
 			click('btn-enter');
-			const expected = './view.html?campaignId=1&placeId=2&sceneId=3'
+			const expected = './viewScene.html?campaignId=1&placeId=2&sceneId=3'
 				+ '&campaignName=' + encodeURIComponent('费伦 大陆')
 				+ '&placeName=A%26B&sceneName=s1';
 			assert.equal(jumped, expected);
@@ -405,6 +387,97 @@ describe('选择器可覆盖', () => {
 	test('桌面容器缺失时抛可读的错', () => {
 		withDom('<div></div>', () => {
 			assert.throws(() => initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' }), /桌面容器/);
+		});
+	});
+
+});
+
+describe('编辑战役按钮', () => {
+
+	test('选中他人战役时禁用', async () => {
+		await withDomAsync(PAGE, async () => {
+			loginCookies(); // 当前登录 teo
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			selectCampaign(5); // alice 的战役
+			const btn = document.getElementById('btn-edit-campaign') as HTMLButtonElement;
+			assert.ok(btn.disabled, '他人战役应禁用编辑战役');
+		});
+	});
+
+	test('选中自己战役时可用', async () => {
+		await withDomAsync(PAGE, async () => {
+			loginCookies();
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			selectCampaign(1); // teo 的战役
+			const btn = document.getElementById('btn-edit-campaign') as HTMLButtonElement;
+			assert.ok(!btn.disabled, '自己战役应可点');
+		});
+	});
+
+	test('选中 campaignId 为 0 的记录时禁用', async () => {
+		await withDomAsync(PAGE, async () => {
+			loginCookies();
+			stubScenes([{
+				campaignId: 0, campaignName: '空', owner: 'teo',
+				currPlaceId: 0, currPlaceName: '', currSceneId: 0, currSceneName: '',
+			}]);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			selectCampaign(0);
+			const btn = document.getElementById('btn-edit-campaign') as HTMLButtonElement;
+			assert.ok(btn.disabled, 'campaignId 为空应禁用');
+		});
+	});
+
+	test('选中自己战役（即使 6 值不全）也可点', async () => {
+		await withDomAsync(PAGE, async () => {
+			loginCookies();
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			selectCampaign(9); // 荒原：owner teo，6 值不全
+			const btn = document.getElementById('btn-edit-campaign') as HTMLButtonElement;
+			assert.ok(!btn.disabled, '编辑战役不要求 6 值齐全');
+		});
+	});
+
+	test('点击后拼出编辑战役地址（只带 campaignId + campaignName）', async () => {
+		await withDomAsync(PAGE, async () => {
+			loginCookies();
+			stubScenes(SCENES);
+			let jumped = '';
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98', navigate: u => { jumped = u; } });
+			await settle();
+			selectCampaign(1);
+			click('btn-edit-campaign');
+			assert.equal(jumped, './editCampaign.html?campaignId=1&campaignName='
+				+ encodeURIComponent('费伦大陆'));
+		});
+	});
+
+	test('没选中时点击提示先选中', async () => {
+		await withDomAsync(PAGE, async () => {
+			loginCookies();
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			click('btn-edit-campaign');
+			assert.ok(status().includes('先选中'), `实际: ${status()}`);
+		});
+	});
+
+	test('没登录时点击提示请先登录', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubScenes(SCENES);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			selectCampaign(1);
+			click('btn-edit-campaign');
+			assert.ok(status().includes('请先登录'), `实际: ${status()}`);
 		});
 	});
 

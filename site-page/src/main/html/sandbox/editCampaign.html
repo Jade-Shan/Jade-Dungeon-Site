@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+@@include('./src/main/html/parts/meta-charset.html', { })
+@@include('./src/main/html/parts/importmap.html', { })
+		<title>沙盘 - 编辑战役</title>
+@@include('./src/main/html/parts/favicon.html', { })
+
+@@include('./src/main/html/parts/vendor-98css.html', { })
+@@include('./src/main/html/parts/theme-window-ui.html', { })
+		<!-- 桌面要占满视口，html/body 两层都得显式设高度 -->
+		<style>
+html,body {width:99%; height: 99%; overflow: auto;}
+		</style>
+	</head>
+	<body>
+<div id="sandbox-desktop" class="desktop dock-content"></div>
+	</body>
+	<script type="module">
+		import { WebUtil } from "@jade-dungeon/jade-utils/web";
+		import { initSandboxEditCampaign } from "@jade-dungeon/site-page/sandbox-edit-campaign";
+
+		let params = new URLSearchParams(window.location.search);
+		let campaignId   = Number(params.get('campaignId'));
+		let campaignName = params.get('campaignName') || '';
+
+		let username   = WebUtil.loadCookieValue('username'  ) || '';
+		let loginToken = WebUtil.loadCookieValue('loginToken') || '';
+
+		// campaignId 得是正整数；编辑战役要身份（写操作靠 loginToken 鉴权）
+		let idOk = Number.isInteger(campaignId) && campaignId > 0;
+
+		if (!idOk) {
+			window.location = './index.html';
+		} else if (!(username && loginToken)) {
+			window.location = './index.html?campaignId=' + encodeURIComponent(campaignId)
+				+ '&campaignName=' + encodeURIComponent(campaignName);
+		} else {
+			window.onload = function() {
+				initSandboxEditCampaign({
+					apiRoot     : '@@apiRoot',
+					desktopId   : 'sandbox-desktop',
+					iconBaseUrl : '@@cdn3rd/SE98',
+					campaignId  : campaignId,
+					campaignName: campaignName,
+					username    : username,
+					loginToken  : loginToken
+				}).catch(e => {
+					console.error('编辑战役页启动失败:', e);
+					document.getElementById('sandbox-desktop').innerHTML =
+						'<p style="padding:1em">编辑战役页启动失败：' + e.message + '</p>';
+				});
+			}
+		}
+	</script>
+</html>

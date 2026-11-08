@@ -42,6 +42,10 @@
 			"types": "./dist/sandbox/sandboxLogin.d.ts",
 			"default": "./dist/sandbox/sandboxLogin.js"
 		},
+		"./sandbox-edit-campaign": {
+			"types": "./dist/sandbox/sandboxEditCampaign.d.ts",
+			"default": "./dist/sandbox/sandboxEditCampaign.js"
+		},
 		"./blog-comm": {
 			"types": "./dist/blog/common.d.ts",
 			"default": "./dist/blog/common.js"

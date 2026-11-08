@@ -184,3 +184,106 @@ export const authorizeSceneWrite = async (campaignId: number, token?: string): P
 	}
 	return { ok: true, username, msg: 'ok' };
 };
+
+// ───────────────────────── 地点 / 场景 CRUD ─────────────────────────
+
+/** 地点记录。响应字段用 camelCase（表字段 snake_case，映射集中在此） */
+export interface IPlaceRecord {
+	id: number;
+	campaignId: number;
+	placeName: string;
+	detailInfo: string;
+}
+
+/** 场景记录 */
+export interface ISceneRecord {
+	id: number;
+	campaignId: number;
+	placeId: number;
+	sceneName: string;
+	detailInfo: string;
+}
+
+/** 列出某战役的地点。只读，不校验身份（与 list-scene 一致） */
+export const listPlaces = async (campaignId: number): Promise<IPlaceRecord[]> => {
+	const rows = await getSqlite().query<{
+		id: number; campaign_id: number; place_name: string; detail_info: string;
+	}>(`SELECT id, campaign_id, place_name, detail_info FROM sandtable_place
+	    WHERE campaign_id = ? ORDER BY id`, [campaignId]);
+	return rows.map(r => ({
+		id: r.id, campaignId: r.campaign_id, placeName: r.place_name, detailInfo: r.detail_info,
+	}));
+};
+
+/** 列出某战役的场景。只读 */
+export const listCampaignScenes = async (campaignId: number): Promise<ISceneRecord[]> => {
+	const rows = await getSqlite().query<{
+		id: number; campaign_id: number; place_id: number; scene_name: string; detail_info: string;
+	}>(`SELECT id, campaign_id, place_id, scene_name, detail_info FROM sandtable_scene
+	    WHERE campaign_id = ? ORDER BY id`, [campaignId]);
+	return rows.map(r => ({
+		id: r.id, campaignId: r.campaign_id, placeId: r.place_id,
+		sceneName: r.scene_name, detailInfo: r.detail_info,
+	}));
+};
+
+/**
+ * 创建或更新地点（upsert）。调用方已校验 owner。
+ *
+ * id 为正整数时 UPDATE（带 `AND campaign_id` 防止跨战役改别人的记录），
+ * 否则 INSERT 并返回新 id。
+ */
+export const savePlace = async (
+	campaignId: number, id: number | undefined, placeName: string, detailInfo: string,
+): Promise<number> => {
+	const now = Date.now();
+	if (id !== undefined && id > 0) {
+		await getSqlite().run(
+			`UPDATE sandtable_place SET place_name = ?, detail_info = ?, update_time = ?
+			  WHERE id = ? AND campaign_id = ?`,
+			[placeName, detailInfo, now, id, campaignId]);
+		return id;
+	}
+	const res = await getSqlite().run(
+		`INSERT INTO sandtable_place (campaign_id, place_name, detail_info, create_time, update_time)
+		 VALUES (?, ?, ?, ?, ?)`,
+		[campaignId, placeName, detailInfo, now, now]);
+	return Number(res.lastInsertRowid);
+};
+
+/**
+ * 删除地点。前置检查有没有场景引用它 —— 外键（无 ON DELETE）会让直接删抛约束错误。
+ */
+export const deletePlace = async (id: number): Promise<{ ok: boolean; msg: string }> => {
+	const ref = await getSqlite().queryOne<{ c: number }>(
+		'SELECT COUNT(*) AS c FROM sandtable_scene WHERE place_id = ?', [id]);
+	if (ref && ref.c > 0) {
+		return { ok: false, msg: '该地点下还有场景，请先删除场景' };
+	}
+	await getSqlite().run('DELETE FROM sandtable_place WHERE id = ?', [id]);
+	return { ok: true, msg: '' };
+};
+
+/** 创建或更新场景记录（upsert）。命名加 `Record` 是为了和上面的 Redis 场景 JSON `saveScene` 区分。 */
+export const saveSceneRecord = async (
+	campaignId: number, id: number | undefined, placeId: number, sceneName: string, detailInfo: string,
+): Promise<number> => {
+	const now = Date.now();
+	if (id !== undefined && id > 0) {
+		await getSqlite().run(
+			`UPDATE sandtable_scene SET place_id = ?, scene_name = ?, detail_info = ?, update_time = ?
+			  WHERE id = ? AND campaign_id = ?`,
+			[placeId, sceneName, detailInfo, now, id, campaignId]);
+		return id;
+	}
+	const res = await getSqlite().run(
+		`INSERT INTO sandtable_scene (campaign_id, place_id, scene_name, detail_info, create_time, update_time)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		[campaignId, placeId, sceneName, detailInfo, now, now]);
+	return Number(res.lastInsertRowid);
+};
+
+/** 删除场景 */
+export const deleteScene = async (id: number): Promise<void> => {
+	await getSqlite().run('DELETE FROM sandtable_scene WHERE id = ?', [id]);
+};

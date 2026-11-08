@@ -24,7 +24,7 @@ import { SandboxDiceWindow, SandboxSceneWindow } from './sandboxWindows.js';
  *
  * ## 配置
  *
- * 页面从 `envs.js` 注入三个值，见 `src/main/html/sandbox/view.html`。
+ * 页面从 `envs.js` 注入三个值，见 `src/main/html/sandbox/viewScene.html`。
  */
 export interface SandboxViewConfig {
 	/** 后端根路径，来自 `envs.js` 的 `apiRoot` */
@@ -61,7 +61,7 @@ const SHADOW_STYLE = 'rgba(0, 0, 0, 0.7)';
 /**
  * 玩家视图
  *
- * 用法见 `view.html`：构造之后调 `start()`。
+ * 用法见 `viewScene.html`：构造之后调 `start()`。
  */
 export class SandboxView {
 
@@ -389,7 +389,7 @@ export class SandboxView {
 /**
  * 玩家视图的页面入口
  *
- * 页面里这么调（见 `src/main/html/sandbox/view.html`）：
+ * 页面里这么调（见 `src/main/html/sandbox/viewScene.html`）：
  *
  * ```javascript
  * initSandboxView({

@@ -173,6 +173,17 @@ dist/                 ← 编译产物，结构扁平
 - **`src/main/ts/userRegCli.ts`** — 命令行注册用户的独立入口。`node dist/userRegCli.js -u <username> -p <password>` 在服务器本地建号，配合 `AUTH_DISABLE_REGIST`（关掉 HTTP 注册后）使用。复用 `initGlobalCfg` 读同一个 `SQLITE_PATH`、复用 `registUser()`，所以 CLI 注册的用户和 HTTP 注册完全等价。
 - **`src/main/ts/config.ts`** — 全局配置工厂。模块加载时自动执行 `dotenv.config({ path: 'config.properties' })` 读入配置（单文件，不再按环境分文件）。导出 `initGlobalCfg(args)` 函数，合并 CLI 参数、环境变量和硬编码默认值，返回 `IGlobalCfg` 对象（含 server、Redis、静态文件、上传等配置）。
 - **`src/main/ts/middleware/simpleHTTPServer.ts`** — Express 应用装配中心。导出 `initApp()` 和 `bindHandler()` 两个函数。`initApp()` 按顺序挂载：`helmet` → `cors` → `json/urlencoded` 解析 → `cookie-parser` → `multer` 上传 → 静态文件绑定 → 全局错误处理 → 自动发现并绑定路由。模块内的 `discoverHandlers()` 负责递归扫描路由目录、展开数组导出、校验与查重。`bindHandler()` 接收 `ICustomHandler[]` 数组，根据 `method` 位掩码分派到 GET/POST 绑定——两个 `if` 独立判断，所以 `HTTP_GET | HTTP_POST` 会同时绑上两个方法（2026-11-03 修复：原先是 `if / else if`，组合掩码时 POST 会被静默丢弃）。
+
+> **`helmet` 只关了 CSP，没整个关掉**（2026-11-08）：`initApp()` 里是
+> `app.use(helmet({ contentSecurityPolicy: false }))`。helmet 默认的 CSP
+> （`script-src 'self'` 禁内联 `<script>`、`script-src-attr 'none'` 禁 `onclick`）
+> 会拦下 `static/html/` 下管理页的内联 JS，`upgrade-insecure-requests` 还会把本地
+> http 表单提交强升成 https。这些管理页不渲染用户内容、没有 XSS 面，CSP 在这里
+> 只挡自己人，所以关掉换「内联 JS 简单直接」；其余安全头（nosniff、frame-ancestors
+> 等）零成本、保留。
+>
+> **代价**：`static/html/` 的页面从此没有 CSP 兜底。将来若有页面开始回显 / 渲染
+> 用户输入（比如加「预览」），XSS 缓解已经撤了，必须靠**输出转义**来防，不能指望 CSP。
 - **`src/main/ts/types.ts`** — 全局类型定义。包含 `IGlobalCfg`（server/redis/path/upload 四段结构）、`IRequestContext`、`IRequestData`、`ICustomHandler`、`IWeatherRec` 以及 `HTTP_GET`/`HTTP_POST` 常量。
 - **`src/main/ts/routes/`** — 业务路由 handler。每个文件 export `handler`，可以是单个 `ICustomHandler` 或 `ICustomHandler[]`，由 `simpleHTTPServer.ts` 在启动时递归扫描并自动注册（支持子目录分组）。新增路由只需在此目录下新建文件并 export `handler`，无需修改其他代码。
 - **`src/main/ts/service/`** — 服务层。封装第三方 API 调用与业务逻辑，供 routes 调用。当前包含天气数据聚合服务。
@@ -186,6 +197,8 @@ dist/                 ← 编译产物，结构扁平
 - **`src/main/ts/common/jadeutils.ts`** — 通用工具函数。当前提供 `uuid()` 生成 UUID v4 格式字符串。
 - **`eslint.config.mjs`** — ESLint 配置文件。
 - **`static/`** — 静态文件根目录，通过 `/static` 路径映射对外暴露。含 `html/` 和 `image/` 子目录。
+  `html/blog/` 下是 blog / gallery 两个发文管理页（纯内联 JS + `onclick`）——
+  正因为它们，helmet 才关了 CSP，见「架构概览」。
 - **`doc/redis.md`** — Redis 技术选型文档，详细对比 `ioredis` 与 `redis`（node-redis）的差异及本项目选型理由。
 
 ## 路由系统

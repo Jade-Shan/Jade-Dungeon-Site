@@ -71,6 +71,8 @@ interface RecordEditorOpts {
 	handlers: RecordEditorHandlers;
 	/** 可选：额外的按钮（放在「新建」「提交」之后），点击回调收到当前选中记录 */
 	editBtn?: { label: string; onClick: (rec: RecordRow | undefined) => void };
+	/** 可选：「新建」时填入表单的字段默认值（点「新建」时才求值） */
+	newDefaults?: () => Record<string, string>;
 }
 
 /**
@@ -104,15 +106,21 @@ class SandboxRecordEditorPanel {
 	private readonly handlers: RecordEditorHandlers;
 	/** 可选的「编辑场景」按钮（只有传了 editBtn 配置才建） */
 	private readonly editBtn?: HTMLButtonElement;
+	/** 可选：「新建」时填入表单的字段默认值 */
+	private readonly newDefaults?: () => Record<string, string>;
 	/** 当前选中的记录 id，`undefined` 表示新建态 */
 	private selectedId: number | undefined;
 	/** 当前选中的完整记录，`undefined` 表示未选中 / 新建态 */
 	private selectedRec: RecordRow | undefined;
 
+	/** 当前选中的记录 id（供别的面板读，如场景新建时带出地点 id） */
+	get currentId(): number | undefined { return this.selectedId; }
+
 	constructor(id: string, title: string, opts: RecordEditorOpts) {
 		this.columns = opts.columns;
 		this.fieldDefs = opts.fieldDefs;
 		this.handlers = opts.handlers;
+		this.newDefaults = opts.newDefaults;
 
 		// legend 标题
 		const legend = document.createElement('legend');
@@ -127,7 +135,7 @@ class SandboxRecordEditorPanel {
 
 		this.newBtn.id = `${id}-new`;
 		this.submitBtn.id = `${id}-submit`;
-		this.newBtn.textContent = '新建';
+		this.newBtn.textContent = '➕';
 		this.submitBtn.textContent = '提交';
 		this.submitBtn.classList.add('default');
 		this.newBtn.addEventListener('click', () => { this.newRecord(); });
@@ -166,7 +174,6 @@ class SandboxRecordEditorPanel {
 		this.fieldset.appendChild(this.form);
 		const btns = document.createElement('div');
 		btns.classList.add('field-row');
-		btns.appendChild(this.newBtn);
 		btns.appendChild(this.submitBtn);
 		if (this.editBtn) { btns.appendChild(this.editBtn); }
 		this.fieldset.appendChild(btns);
@@ -229,6 +236,8 @@ class SandboxRecordEditorPanel {
 		for (const rec of records) {
 			this.tbody.appendChild(this.buildRow(rec));
 		}
+		// 记录行之后追加一行，最后一列放「新建」按钮
+		this.tbody.appendChild(this.buildNewRow());
 		this.clearForm();
 	}
 
@@ -259,6 +268,18 @@ class SandboxRecordEditorPanel {
 
 		tr.style.cursor = 'pointer';
 		tr.addEventListener('click', () => { this.select(rec); });
+		return tr;
+	}
+
+	/** 建「新建」行：前面各列空着，最后一列（删除列）放「新建」按钮 */
+	private buildNewRow(): HTMLTableRowElement {
+		const tr = document.createElement('tr');
+		for (let i = 0; i < this.columns.length; i++) {
+			tr.appendChild(document.createElement('td'));
+		}
+		const td = document.createElement('td');
+		td.appendChild(this.newBtn);
+		tr.appendChild(td);
 		return tr;
 	}
 
@@ -293,6 +314,13 @@ class SandboxRecordEditorPanel {
 			tr.classList.remove('highlighted');
 		}
 		this.clearForm();
+		// 可选的新建默认值：清空之后再填，比如场景新建时带出地点 id
+		if (this.newDefaults) {
+			for (const [key, value] of Object.entries(this.newDefaults())) {
+				const el = this.fields.get(key);
+				if (el) { el.value = value; }
+			}
+		}
 		this.setNote('新建：填好下方字段后点「提交」');
 	}
 
@@ -464,6 +492,13 @@ export class SandboxEditCampaign {
 				remove: (id) => this.removeScene(id),
 			},
 			editBtn: { label: '编辑场景', onClick: (rec) => this.editScene(rec) },
+			// 点「新建」时，把地点表当前选中记录 id 带到「地点 ID」输入框
+			newDefaults: () => {
+				const defaults: Record<string, string> = {};
+				const placeId = this.placePanel.currentId;
+				if (placeId !== undefined) { defaults.placeId = String(placeId); }
+				return defaults;
+			},
 		});
 
 		this.win = new SandboxEditCampaignWindow(desktop, 'edit-campaign', '编辑战役',

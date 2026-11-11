@@ -145,39 +145,48 @@ describe('加载列表', () => {
 		await withDomAsync(PAGE, async () => {
 			await boot();
 			await settle();
-			assert.equal(rows('edit-campaign-place').length, 2);
-			assert.equal(rows('edit-campaign-scene').length, 1);
+			// 记录行之后各追加一行放「新建」按钮，所以行数 = 记录数 + 1
+			assert.equal(rows('edit-campaign-place').length, 3);
+			assert.equal(rows('edit-campaign-scene').length, 2);
 			assert.ok(sent.some(s => s.url.includes('/list-place')), '应请求 list-place');
 			assert.ok(sent.some(s => s.url.includes('/list-campaign-scene')), '应请求 list-campaign-scene');
 		});
 	});
 
-	test('地点表第一行显示地点名', async () => {
+	test('地点表第一行显示地点ID与地点名', async () => {
 		await withDomAsync(PAGE, async () => {
 			await boot();
 			await settle();
 			const cells = rows('edit-campaign-place')[0].querySelectorAll('td');
-			assert.equal(cells[0].textContent, '深水城');
+			assert.equal(cells[0].textContent, '1');
+			assert.equal(cells[1].textContent, '深水城');
 		});
 	});
 
-	test('地点表显示地点ID列', async () => {
-		await withDomAsync(PAGE, async () => {
-			await boot();
-			await settle();
-			const cells = rows('edit-campaign-place')[0].querySelectorAll('td');
-			assert.equal(cells[0].textContent, '深水城');
-			assert.equal(cells[1].textContent, '1');
-		});
-	});
-
-	test('场景表显示场景名与地点 ID', async () => {
+	test('场景表显示场景ID、场景名与所属地点 ID', async () => {
 		await withDomAsync(PAGE, async () => {
 			await boot();
 			await settle();
 			const cells = rows('edit-campaign-scene')[0].querySelectorAll('td');
-			assert.equal(cells[0].textContent, '港口');
-			assert.equal(cells[1].textContent, '1');
+			assert.equal(cells[0].textContent, '3');
+			assert.equal(cells[1].textContent, '港口');
+			assert.equal(cells[2].textContent, '1');
+		});
+	});
+
+	test('新建按钮放在表格末尾新建行的最后一列', async () => {
+		await withDomAsync(PAGE, async () => {
+			await boot();
+			await settle();
+			for (const windowId of ['edit-campaign-place', 'edit-campaign-scene']) {
+				const btn = document.getElementById(`${windowId}-new`);
+				assert.ok(btn, `找不到 ${windowId} 的新建按钮`);
+				const td = btn!.parentElement;
+				const tr = td!.parentElement;
+				const tbody = document.getElementById(`${windowId}-rows`);
+				assert.equal(tr, tbody!.lastElementChild, `${windowId} 新建按钮应在最后一行`);
+				assert.equal(td, tr!.lastElementChild, `${windowId} 新建按钮应在最后一列`);
+			}
 		});
 	});
 
@@ -294,6 +303,25 @@ describe('新建与提交', () => {
 			await settle();
 			assert.ok(!sent.some(s => s.url.includes('/save-scene')), '不该发 save-scene');
 			assert.ok(note('edit-campaign-scene').includes('正整数'), `实际: ${note('edit-campaign-scene')}`);
+		});
+	});
+
+	test('点场景新建时，把地点表选中记录 id 带到「地点 ID」', async () => {
+		await withDomAsync(PAGE, async () => {
+			await boot();
+			await settle();
+			rows('edit-campaign-place')[0].dispatchEvent(new MouseEvent('click'));
+			click('edit-campaign-scene-new');
+			assert.equal(fieldValue('edit-campaign-scene', 'placeId'), '1');
+		});
+	});
+
+	test('地点表没选中时点场景新建，「地点 ID」为空', async () => {
+		await withDomAsync(PAGE, async () => {
+			await boot();
+			await settle();
+			click('edit-campaign-scene-new');
+			assert.equal(fieldValue('edit-campaign-scene', 'placeId'), '');
 		});
 	});
 

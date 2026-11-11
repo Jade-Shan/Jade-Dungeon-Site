@@ -161,6 +161,16 @@ describe('加载列表', () => {
 		});
 	});
 
+	test('地点表显示地点ID列', async () => {
+		await withDomAsync(PAGE, async () => {
+			await boot();
+			await settle();
+			const cells = rows('edit-campaign-place')[0].querySelectorAll('td');
+			assert.equal(cells[0].textContent, '深水城');
+			assert.equal(cells[1].textContent, '1');
+		});
+	});
+
 	test('场景表显示场景名与地点 ID', async () => {
 		await withDomAsync(PAGE, async () => {
 			await boot();
@@ -295,6 +305,7 @@ describe('删除', () => {
 		await withDomAsync(PAGE, async () => {
 			await boot();
 			await settle();
+			window.confirm = () => true;
 			const del = rows('edit-campaign-place')[0].querySelector('button');
 			assert.ok(del, '找不到删除按钮');
 			del!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -309,6 +320,7 @@ describe('删除', () => {
 		await withDomAsync(PAGE, async () => {
 			await boot();
 			await settle();
+			window.confirm = () => true;
 			const del = rows('edit-campaign-scene')[0].querySelector('button');
 			assert.ok(del);
 			del!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -330,6 +342,7 @@ describe('删除', () => {
 			};
 			await initSandboxEditCampaign(CFG);
 			await settle();
+			window.confirm = () => true;
 			const del = rows('edit-campaign-place')[0].querySelector('button');
 			del!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 			await settle();
@@ -338,6 +351,20 @@ describe('删除', () => {
 	});
 
 });
+
+	test('点删除但取消确认时，不发删除请求', async () => {
+		await withDomAsync(PAGE, async () => {
+			await boot();
+			await settle();
+			window.confirm = () => false;
+			const del = rows('edit-campaign-place')[0].querySelector('button');
+			assert.ok(del, '找不到删除按钮');
+			del!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			await settle();
+			assert.ok(!sent.some(s => s.url.includes('/delete-place')),
+				'取消确认后不该发 delete-place');
+		});
+	});
 
 describe('编辑场景按钮', () => {
 

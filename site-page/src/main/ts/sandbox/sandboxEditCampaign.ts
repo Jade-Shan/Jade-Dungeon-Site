@@ -20,7 +20,7 @@ import { SandboxApi } from './sandboxApi.js';
  * | 场景编辑 | 上表格列出该战役的场景，下属性编辑区改选中场景的属性 |
  *
  * 两个 fieldset 布局完全一样，所以抽成 {@link SandboxRecordEditorPanel} 一个类，
- * 只差表格列、表单字段、以及三件回调（加载 / 保存 / 删除）。表格最右一列是 `✕`
+ * 只差表格列、表单字段、以及三件回调（加载 / 保存 / 删除）。表格最右一列是 `🗑️`
  * 删除按钮（`stopPropagation` 避免点了删除又触发整行选中，参考 `sandboxEditor.ts`
  * 的 `renderImageList()`）。
  *
@@ -245,10 +245,13 @@ class SandboxRecordEditorPanel {
 
 		const tdDel = document.createElement('td');
 		const del = document.createElement('button');
-		del.textContent = '✕';
+		del.classList.add('.table-cell-del-btn');
+		del.textContent = '❌';
 		// stopPropagation：删记录不该同时触发整行选中
 		del.addEventListener('click', (e) => {
 			e.stopPropagation();
+			// 删除不可逆，先走浏览器默认确认弹框，取消则不删
+			if (!window.confirm('确定要删除这条记录吗？')) { return; }
 			void this.handlers.remove(rec.id);
 		});
 		tdDel.appendChild(del);
@@ -429,7 +432,10 @@ export class SandboxEditCampaign {
 		});
 
 		this.placePanel = new SandboxRecordEditorPanel('edit-campaign-place', '地点编辑', {
-			columns: [{ key: 'placeName', label: '地点名' }],
+			columns: [
+				{ key: 'id', label: '地点ID' },
+				{ key: 'placeName', label: '地点名' },
+			],
 			fieldDefs: [
 				{ key: 'placeName', label: '地点名', type: 'text' },
 				{ key: 'detailInfo', label: '描述', type: 'textarea' },
@@ -443,8 +449,9 @@ export class SandboxEditCampaign {
 
 		this.scenePanel = new SandboxRecordEditorPanel('edit-campaign-scene', '场景编辑', {
 			columns: [
+				{ key: 'id', label: '场景ID' },
 				{ key: 'sceneName', label: '场景名' },
-				{ key: 'placeId', label: '地点 ID' },
+				{ key: 'placeId', label: '所属地点 ID' },
 			],
 			fieldDefs: [
 				{ key: 'sceneName', label: '场景名', type: 'text' },

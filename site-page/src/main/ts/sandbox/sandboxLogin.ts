@@ -557,9 +557,8 @@ class SandboxIndexWindow extends UIWindowAdapter {
 		fs.appendChild(legend);
 		// 表格外面套一层 sunken-panel：给表格内凹边框 + 固定尺寸
 		const tableWrap = document.createElement('div');
+		tableWrap.id = 'sdbx-cmp-select-panel';
 		tableWrap.classList.add('sunken-panel');
-		tableWrap.style.height = '350px';
-		tableWrap.style.width = '500px';
 		tableWrap.appendChild(this.table);
 		fs.appendChild(tableWrap);
 		fs.appendChild(this.noteEl);

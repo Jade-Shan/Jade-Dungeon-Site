@@ -353,6 +353,8 @@ class SandboxRecordEditorPanel {
 		for (const tr of this.tbody.querySelectorAll<HTMLTableRowElement>('tr')) {
 			tr.classList.toggle('highlighted', tr.dataset.rid === String(rec.id));
 		}
+		this.setFormDisabled(false);
+		this.setEditBtnDisabled(false);
 		for (const f of this.fieldDefs) {
 			const el = this.fields.get(f.key);
 			if (el) { el.value = String(rec[f.key] ?? ''); }
@@ -368,6 +370,21 @@ class SandboxRecordEditorPanel {
 			if (el) { el.value = ''; }
 		}
 		this.idEl.textContent = '（未选中记录）';
+		this.setFormDisabled(true);
+		this.setEditBtnDisabled(true);
+	}
+
+	/** 让表单字段与提交按钮整体启用/禁用：未选中时禁用，选中或新建时启用 */
+	private setFormDisabled(disabled: boolean): void {
+		for (const el of this.fields.values()) {
+			el.disabled = disabled;
+		}
+		this.submitBtn.disabled = disabled;
+	}
+
+	/** 「编辑场景」按钮只在真正选中一条记录时可用（新建态也没有可跳转的场景） */
+	private setEditBtnDisabled(disabled: boolean): void {
+		if (this.editBtn) { this.editBtn.disabled = disabled; }
 	}
 
 	/** 「新建」：清掉选中，进入新建态 */
@@ -384,6 +401,8 @@ class SandboxRecordEditorPanel {
 				if (el) { el.value = value; }
 			}
 		}
+		// 新建态要能输入：clearForm 刚禁用了字段，这里再启用
+		this.setFormDisabled(false);
 		this.setNote('新建：填好下方字段后点「提交」');
 	}
 

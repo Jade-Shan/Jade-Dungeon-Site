@@ -141,7 +141,7 @@ class SandboxRecordEditorPanel {
 		this.newBtn = UIButton.initElemt({
 			id: `${id}-new`,
 			textContent: '➕',
-			classList: ["table-cell-new-btn"],
+			classList: ["table-cell-opt-btn"],
 			events: { click: (e) => { this.newRecord(); } }
 		});
 		this.submitBtn = UIButton.initElemt({
@@ -315,8 +315,8 @@ class SandboxRecordEditorPanel {
 
 		// stopPropagation：删记录不该同时触发整行选中
 		const del = UIButton.initElemt({
-			textContent : '❌',
-			classList: ['table-cell-del-btn'],
+			textContent : '❌', // 🗑
+			classList: ['table-cell-opt-btn'],
 			events: { click: (e) => {
 					e.stopPropagation();
 					// 删除不可逆，先走浏览器默认确认弹框，取消则不删
@@ -432,13 +432,22 @@ class SandboxEditCampaignWindow extends UIWindowAdapter {
 
 	/** 窗口顶部的提示行（owner 信息，两个 fieldset 共用） */
 	private readonly hintEl: HTMLParagraphElement = document.createElement('p');
+	/** 「退回首页」按钮（跳回选战役页） */
+	private readonly homeBtn: HTMLButtonElement;
 
 	constructor(desktop: UIDesktop, id: string, title: string, cfg: WinParam,
 		private readonly placePanel: SandboxRecordEditorPanel,
-		private readonly scenePanel: SandboxRecordEditorPanel) //
+		private readonly scenePanel: SandboxRecordEditorPanel,
+		onBackHome: () => void) //
 	{
 		super(desktop, id, title, cfg);
 		this.hintEl.id = `${id}-hint`;
+		this.homeBtn = UIButton.initElemt({
+			id: `${id}-home`,
+			textContent: '退回首页',
+			classList: ['default'],
+			events: { click: () => { onBackHome(); } },
+		});
 	}
 
 	/** 窗口顶部提示行（owner 信息） */
@@ -454,7 +463,15 @@ class SandboxEditCampaignWindow extends UIWindowAdapter {
 			body.style.flexDirection = 'column';
 			body.style.gap = '6px';
 
-			body.appendChild(this.hintEl);
+			// 顶部一行：owner 提示在左、「退回首页」按钮在右
+			const top = document.createElement('div');
+			top.style.display = 'flex';
+			top.style.justifyContent = 'space-between';
+			top.style.alignItems = 'center';
+			this.hintEl.style.margin = '0';
+			top.appendChild(this.hintEl);
+			top.appendChild(this.homeBtn);
+			body.appendChild(top);
 
 			// 两个 fieldset 左右并排（98.css 没有 grid 辅助，用 flex）
 			const cols = document.createElement('div');
@@ -496,6 +513,8 @@ export interface SandboxEditCampaignConfig {
 	loginToken: string;
 	/** 场景编辑器页的地址，默认 `./editScene.html` */
 	editorUrl?: string;
+	/** 选战役页（首页）的地址，默认 `./index.html`，点「退回首页」跳这里 */
+	indexUrl?: string;
 	/**
 	 * 跳转的实现，默认 `window.location.href = url`
 	 *（同选战役页的 `navigate`，给单元测试观察跳转目标用）
@@ -588,7 +607,8 @@ export class SandboxEditCampaign {
 				icons: this.icon('actions', 'application-menu.png'),
 				body: { initSize: { width: 1160, height: 560 }, overflow: 'auto' },
 			},
-			this.placePanel, this.scenePanel);
+			this.placePanel, this.scenePanel,
+			() => this.backHome());
 		this.win.renderIn();
 
 		await this.checkOwner();
@@ -741,6 +761,17 @@ export class SandboxEditCampaign {
 			+ `&placeName=${encodeURIComponent(this.placeName(placeId))}`
 			+ `&sceneName=${encodeURIComponent(String(rec.sceneName ?? ''))}`;
 		this.go(`${this.cfg.editorUrl ?? './editScene.html'}${q}`);
+	}
+
+	/**
+	 * 「退回首页」：带着当前战役参数回选战役页（index.html），
+	 * 让选战役页能按 URL 里的 `campaignId` 回填选中（对齐选战役页的
+	 * `editCampaign()` 和 editCampaign.html 里未登录时的跳转）。
+	 */
+	private backHome(): void {
+		const q = `?campaignId=${encodeURIComponent(String(this.cfg.campaignId))}`
+			+ `&campaignName=${encodeURIComponent(this.cfg.campaignName)}`;
+		this.go(`${this.cfg.indexUrl ?? './index.html'}${q}`);
 	}
 
 	/** 按 placeId 反查地点显示名，查不到给空串 */

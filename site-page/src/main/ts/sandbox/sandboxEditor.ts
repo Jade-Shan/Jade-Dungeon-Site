@@ -10,6 +10,7 @@ import {
 	SandboxDiceWindow, SandboxSceneWindow, SandboxPropsWindow,
 	SandboxStatusWindow, SandboxTokenListWindow,
 } from './sandboxWindows.js';
+import { UIButton } from './components/comm.js';
 
 /**
  * 沙盘的 GM 编辑器
@@ -522,10 +523,11 @@ export class SandboxEditor {
 			tdVis.textContent = tk.visible ? '可见' : '隐形';
 			tr.appendChild(tdVis);
 
+			const del = UIButton.initElemt({ textContent : '❌', // 🗑 
+				classList: ['table-cell-opt-btn'],
+				events: { click: (e) => { void this.deleteToken(group, tk.id); } } });
+
 			const tdDel = document.createElement('td');
-			const del = document.createElement('button');
-			del.textContent = '✕';
-			del.addEventListener('click', () => { void this.deleteToken(group, tk.id); });
 			tdDel.appendChild(del);
 			tr.appendChild(tdDel);
 
@@ -539,12 +541,15 @@ export class SandboxEditor {
 		label.textContent = '新建：';
 		bar.appendChild(label);
 		for (const shape of GROUP_SHAPES[group]) {
-			const btn = document.createElement('button');
-			btn.textContent = SHAPE_ICON[shape];
-			btn.title = `新建${shape}，然后点地图落位`;
-			btn.addEventListener('click', () => {
-				this.pendingShape = { group, shape };
-				this.sceneWin.setStatus(`点地图放下这个${SHAPE_ICON[shape]}`);
+			const btn = UIButton.initElemt({
+				textContent: SHAPE_ICON[shape],
+				title: `新建${shape}，然后点地图落位`,
+				events: {
+					click: (e) => {
+						this.pendingShape = { group, shape };
+						this.sceneWin.setStatus(`点地图放下这个${SHAPE_ICON[shape]}`);
+					}
+				}
 			});
 			bar.appendChild(btn);
 		}
@@ -572,14 +577,18 @@ export class SandboxEditor {
 			tdUrl.textContent = img.url.length > 32 ? `${img.url.slice(0, 32)}…` : img.url;
 			tr.appendChild(tdUrl);
 
-			const tdDel = document.createElement('td');
-			const del = document.createElement('button');
-			del.textContent = '✕';
-			// 删除按钮 stopPropagation，避免点了删除又触发整行的选中
-			del.addEventListener('click', (e) => {
-				e.stopPropagation();
-				void this.deleteImage(img.id);
+			const del = UIButton.initElemt({
+				textContent: '❌', // 🗑
+				classList: ['table-cell-opt-btn'],
+				events: {
+					click: (e) => {
+						// 删除按钮 stopPropagation，避免点了删除又触发整行的选中
+						e.stopPropagation();
+						void this.deleteImage(img.id);
+					}
+				}
 			});
+			const tdDel = document.createElement('td');
 			tdDel.appendChild(del);
 			tr.appendChild(tdDel);
 
@@ -596,10 +605,11 @@ export class SandboxEditor {
 		const label = document.createElement('span');
 		label.textContent = '新建：';
 		bar.appendChild(label);
-		const btn = document.createElement('button');
-		btn.textContent = '🌠';
-		btn.title = '新建图片资源（id 为 map 的那张是场景背景图）';
-		btn.addEventListener('click', () => { this.createImage(); });
+		const btn = UIButton.initElemt({
+			textContent: '🌠',
+			title: '新建图片资源（id 为 map 的那张是场景背景图）',
+			events: { click: (e) => { this.createImage(); } }
+		});
 		bar.appendChild(btn);
 	}
 

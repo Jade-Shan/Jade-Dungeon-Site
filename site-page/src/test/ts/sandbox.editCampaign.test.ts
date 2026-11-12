@@ -434,3 +434,20 @@ describe('编辑场景按钮', () => {
 	});
 
 });
+
+describe('退回首页按钮', () => {
+
+	test('点「退回首页」跳首页并带 campaignId + campaignName', async () => {
+		await withDomAsync(PAGE, async () => {
+			stubXhr();
+			router = defaultRouter;
+			let jumped = '';
+			await initSandboxEditCampaign({ ...CFG, navigate: u => { jumped = u; } });
+			await settle();
+			click('edit-campaign-home');
+			assert.equal(jumped, './index.html?campaignId=9&campaignName='
+				+ encodeURIComponent('荒原'));
+		});
+	});
+
+});

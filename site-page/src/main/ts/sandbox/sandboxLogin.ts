@@ -2,6 +2,7 @@ import { registerDefaultUIResource } from '@jade-dungeon/jade-utils/resource';
 import { JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam } from '@jade-dungeon/jade-utils/ui-window';
 import { WebUtil } from '@jade-dungeon/jade-utils/web';
 import { SandboxApi, CampaignListItem } from './sandboxApi.js';
+import { UIButton } from './components/comm.js';
 
 /**
  * 沙盘的入口页：登录页（login.html）+ 选战役页（index.html）+ 修改密码页（changePassword.html）
@@ -209,9 +210,9 @@ class SandboxLoginWindow extends UIWindowAdapter {
 
 	private readonly username: HTMLInputElement = document.createElement('input');
 	private readonly password: HTMLInputElement = document.createElement('input');
-	private readonly loginBtn: HTMLButtonElement = document.createElement('button');
-	private readonly changePasswordBtn: HTMLButtonElement = document.createElement('button');
-	private readonly backBtn: HTMLButtonElement = document.createElement('button');
+	private readonly loginBtn: HTMLButtonElement;
+	private readonly changePasswordBtn: HTMLButtonElement;
+	private readonly backBtn: HTMLButtonElement;
 	private readonly statusEl: HTMLParagraphElement = document.createElement('p');
 
 	constructor(desktop: UIDesktop, id: string, title: string, cfg: WinParam, ids: LoginFieldIds) {
@@ -221,13 +222,9 @@ class SandboxLoginWindow extends UIWindowAdapter {
 		this.username.type = 'text';
 		this.password.id = ids.password;
 		this.password.type = 'password';
-		this.loginBtn.id = ids.loginBtn;
-		this.loginBtn.classList.add('default');
-		this.loginBtn.textContent = '登录';
-		this.changePasswordBtn.id = ids.changePasswordBtn;
-		this.changePasswordBtn.textContent = '修改密码';
-		this.backBtn.id = ids.backBtn;
-		this.backBtn.textContent = '返回选战役';
+		this.loginBtn = UIButton.initElemt({ id: ids.loginBtn, textContent: '登录', classList: ['default'] });
+		this.changePasswordBtn= UIButton.initElemt({ id: ids.changePasswordBtn, textContent: '修改密码' });
+		this.backBtn= UIButton.initElemt({ id: ids.backBtn, textContent: '返回选战役' });
 		this.statusEl.id = ids.status;
 	}
 
@@ -475,9 +472,9 @@ class SandboxIndexWindow extends UIWindowAdapter {
 
 	private readonly table: HTMLTableElement = document.createElement('table');
 	private readonly tbody: HTMLTableSectionElement = document.createElement('tbody');
-	private readonly enterBtn: HTMLButtonElement = document.createElement('button');
-	private readonly editCampaignBtn: HTMLButtonElement = document.createElement('button');
-	private readonly switchBtn: HTMLButtonElement = document.createElement('button');
+	private readonly enterBtn: HTMLButtonElement;
+	private readonly editCampaignBtn: HTMLButtonElement;
+	private readonly switchBtn: HTMLButtonElement;
 	private readonly statusEl: HTMLParagraphElement = document.createElement('p');
 	private readonly noteEl: HTMLParagraphElement = document.createElement('p');
 	/** 当前登录用户名，判断「编辑战役」按钮是否可点（owner 得是本人） */
@@ -497,14 +494,15 @@ class SandboxIndexWindow extends UIWindowAdapter {
 		this.table.appendChild(this.buildHead());
 		this.table.appendChild(this.tbody);
 
-		this.enterBtn.id = ids.enterBtn;
-		this.enterBtn.textContent = '进入战役';
-		this.editCampaignBtn.id = ids.editCampaignBtn;
-		this.editCampaignBtn.textContent = '编辑战役';
-		this.switchBtn.id = ids.switchBtn;
-		this.switchBtn.textContent = '以其他身份登录';
+		this.enterBtn = UIButton.initElemt({ id: ids.enterBtn, textContent: '进入战役' });
+		this.editCampaignBtn =  UIButton.initElemt({ id: ids.editCampaignBtn, textContent: '编辑战役' });
+		this.switchBtn = UIButton.initElemt({ id: ids.switchBtn, textContent: '以其他身份登录' });
+
 		this.statusEl.id = ids.status;
 		this.noteEl.id = 'campaign-note';
+
+		// 初始没选中任何行，两个按钮先禁用，选中后 refreshButtons 再放开
+		this.refreshButtons();
 	}
 
 	/** 表头：战役 / 地点 / 场景 / owner（98.css 自动给 thead 加 silver 立体边框） */
@@ -577,7 +575,7 @@ class SandboxIndexWindow extends UIWindowAdapter {
 		for (const rec of list) {
 			this.tbody.appendChild(this.buildRow(rec));
 		}
-		// 重填后没有选中行，按钮回到可点（点下去走「请先选中」提示）
+		// 重填后没有选中行，按钮回到禁用
 		this.refreshButtons();
 	}
 
@@ -625,25 +623,24 @@ class SandboxIndexWindow extends UIWindowAdapter {
 	}
 
 	/**
-	 * 选中行变化后，按「三级定位是否齐全」刷新进入/编辑按钮。
+	 * 选中行变化后，刷新进入/编辑两个按钮的禁用态。
 	 *
-	 * 选中的记录 6 值不全（campaign 还没绑好当前地点/场景）时禁用按钮，
-	 * 免得跳过去 view / editor 拿着空 id 出错；没选中时保持可点，
-	 * 点下去走「请先选中一个战役」的提示。
-	 *
-	 * 「编辑战役」按钮的禁用条件不同：它不要求 6 值齐全（正是用来给
-	 * 「没绑好地点/场景」的战役补数据的），只看两点 —— 选中记录的
-	 * owner 不是当前登录用户、或 campaignId 为空。没选中时保持可点，
-	 * 点下去走「请先选中一个战役」的提示。
+	 * 没选中任何战役时两个按钮都禁用 —— 点了也是空操作，不如直接禁用。
+	 * 选中之后：
+	 * - 「进入战役」要求三级定位（6 值）齐全，campaign 还没绑好当前地点/场景
+	 *   时禁用，免得跳过去 view / editor 拿着空 id 出错。
+	 * - 「编辑战役」不要求 6 值齐全（正是用来给「没绑好地点/场景」的战役
+	 *   补数据的），只看两点 —— owner 不是当前登录用户、或 campaignId 为空。
 	 */
 	private refreshButtons(): void {
 		const rec = this.selectedCampaign();
-		const incomplete = rec !== undefined && !isSceneComplete(rec);
-		this.enterBtn.disabled = incomplete;
+		const noSelection = rec === undefined;
+		const incomplete = !noSelection && !isSceneComplete(rec);
+		this.enterBtn.disabled = noSelection || incomplete;
 
-		const noCampaign = rec !== undefined && !(rec.campaignId > 0);
-		const notOwner = rec !== undefined && rec.owner !== this.username;
-		this.editCampaignBtn.disabled = noCampaign || notOwner;
+		const noCampaign = !noSelection && !(rec.campaignId > 0);
+		const notOwner = !noSelection && rec.owner !== this.username;
+		this.editCampaignBtn.disabled = noSelection || noCampaign || notOwner;
 	}
 
 }
@@ -908,8 +905,8 @@ class SandboxChangePasswordWindow extends UIWindowAdapter {
 	private readonly oldPassword: HTMLInputElement = document.createElement('input');
 	private readonly newPassword: HTMLInputElement = document.createElement('input');
 	private readonly confirmPassword: HTMLInputElement = document.createElement('input');
-	private readonly submitBtn: HTMLButtonElement = document.createElement('button');
-	private readonly backBtn: HTMLButtonElement = document.createElement('button');
+	private readonly submitBtn: HTMLButtonElement;
+	private readonly backBtn: HTMLButtonElement;
 	private readonly statusEl: HTMLParagraphElement = document.createElement('p');
 	private readonly username: string;
 
@@ -925,11 +922,8 @@ class SandboxChangePasswordWindow extends UIWindowAdapter {
 		this.newPassword.type = 'password';
 		this.confirmPassword.id = ids.confirmPassword;
 		this.confirmPassword.type = 'password';
-		this.submitBtn.id = ids.submitBtn;
-		this.submitBtn.classList.add('default');
-		this.submitBtn.textContent = '修改密码';
-		this.backBtn.id = ids.backBtn;
-		this.backBtn.textContent = '返回登录';
+		this.submitBtn = UIButton.initElemt({ id: ids.submitBtn, textContent: '修改密码', classList: ['default'] });
+		this.backBtn = UIButton.initElemt({ id: ids.backBtn, textContent: '返回登录' });
 		this.statusEl.id = ids.status;
 	}
 

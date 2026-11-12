@@ -232,14 +232,14 @@ describe('三级定位不全的记录', () => {
 		});
 	});
 
-	test('没选中时按钮可点（点下去走「请先选中」提示）', async () => {
+	test('没选中时进入按钮禁用', async () => {
 		await withDomAsync(PAGE, async () => {
 			loginCookies();
 			stubCampaigns(CAMPAIGNS);
 			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
 			await settle();
 			const enter = document.getElementById('btn-enter') as HTMLButtonElement;
-			assert.ok(!enter.disabled, '没选中时不该禁用');
+			assert.ok(enter.disabled, '没选中时进入按钮应禁用');
 		});
 	});
 
@@ -258,12 +258,14 @@ describe('进入战役', () => {
 		});
 	});
 
-	test('没选中时不跳转，提示先选中', async () => {
+	test('没选中时（按钮已禁用）直接派发点击仍不跳转、防御性提示先选中', async () => {
 		await withDomAsync(PAGE, async () => {
 			loginCookies();
 			stubCampaigns(CAMPAIGNS);
 			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
 			await settle();
+			// 按钮已禁用，真实用户点不到；这里用 dispatchEvent 绕过 disabled，
+			// 验证 enter() 的「没选中」防御分支仍兜底
 			click('btn-enter');
 			assert.ok(status().includes('先选中'), `实际: ${status()}`);
 		});
@@ -394,6 +396,17 @@ describe('选择器可覆盖', () => {
 
 describe('编辑战役按钮', () => {
 
+	test('没选中时禁用', async () => {
+		await withDomAsync(PAGE, async () => {
+			loginCookies();
+			stubCampaigns(CAMPAIGNS);
+			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
+			await settle();
+			const btn = document.getElementById('btn-edit-campaign') as HTMLButtonElement;
+			assert.ok(btn.disabled, '没选中时编辑战役按钮应禁用');
+		});
+	});
+
 	test('选中他人战役时禁用', async () => {
 		await withDomAsync(PAGE, async () => {
 			loginCookies(); // 当前登录 teo
@@ -459,12 +472,14 @@ describe('编辑战役按钮', () => {
 		});
 	});
 
-	test('没选中时点击提示先选中', async () => {
+	test('没选中时（按钮已禁用）直接派发点击仍提示先选中', async () => {
 		await withDomAsync(PAGE, async () => {
 			loginCookies();
 			stubCampaigns(CAMPAIGNS);
 			initSandboxIndex({ apiRoot: '//api', iconBaseUrl: '//cdn/SE98' });
 			await settle();
+			// 按钮已禁用，真实用户点不到；这里用 dispatchEvent 绕过 disabled，
+			// 验证 editCampaign() 的「没选中」防御分支仍兜底
 			click('btn-edit-campaign');
 			assert.ok(status().includes('先选中'), `实际: ${status()}`);
 		});

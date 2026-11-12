@@ -111,7 +111,7 @@ private attachColResizer(th: HTMLTableCellElement, index: number): void {
 3. **设 `min-width` 兜底** —— 上面 `MIN = 24` 防止拖到负宽/0 把列拖没。
    顺带一提：98.css 给 `button` 设了 `min-width: 75px`，所以表格里那两个小
    按钮（删除/新建）要另外覆盖 `min-width`，见 `sandbox.less` 的
-   `button.table-cell-del-btn` / `button.table-cell-new-btn` 规则。
+   `button.table-cell-opt-btn` 规则。
 
 ## 怎么用
 

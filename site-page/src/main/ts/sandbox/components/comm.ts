@@ -23,6 +23,7 @@ export class UIComponent {
 
 export interface BtnCfg extends CpmtCfg {
 	textContent: string;
+	title?: string;
 	events?: {
 		click?: (e: PointerEvent) => void;
 	}
@@ -34,6 +35,7 @@ export class UIButton {
 		let elem: HTMLButtonElement = document.createElement('button');
 		UIComponent.initElemt(elem, cfg);
 		elem.textContent = cfg.textContent;
+		if (cfg.title) { elem.title = cfg.title; }
 		if (cfg.events) {
 			if (cfg.events.click) {
 				let click = cfg.events.click;

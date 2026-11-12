@@ -88,6 +88,10 @@ class SandboxRecordEditorPanel {
 	readonly fieldset: HTMLFieldSetElement = document.createElement('fieldset');
 	/** 表格主体 */
 	readonly tbody: HTMLTableSectionElement = document.createElement('tbody');
+	/** 表格本体（列宽拖拽改它的 <col>，见 buildFieldset） */
+	private readonly table: HTMLTableElement = document.createElement('table');
+	/** 每个数据列的 <col>，不含末尾删除列 —— 拖拽列宽时改它们的 width */
+	private readonly colEls: HTMLTableColElement[] = [];
 	/** 表单容器（字段在构造时按 fieldDefs 建好，不随选中变化） */
 	private readonly form: HTMLDivElement = document.createElement('div');
 	/** 选中记录的 ID 展示行 */
@@ -136,6 +140,7 @@ class SandboxRecordEditorPanel {
 		this.newBtn.id = `${id}-new`;
 		this.submitBtn.id = `${id}-submit`;
 		this.newBtn.textContent = '➕';
+		this.newBtn.classList.add('table-cell-new-btn');
 		this.submitBtn.textContent = '提交';
 		this.submitBtn.classList.add('default');
 		this.newBtn.addEventListener('click', () => { this.newRecord(); });
@@ -160,12 +165,26 @@ class SandboxRecordEditorPanel {
 		panel.classList.add('sunken-panel');
 		panel.style.height = '250px';
 		panel.style.width = '350px';
-		const table = document.createElement('table');
-		table.classList.add('interactive');
-		table.style.width = '100%';
-		table.appendChild(this.buildHead());
-		table.appendChild(this.tbody);
-		panel.appendChild(table);
+
+		// 列宽可拖拽：fixed 布局下 <col> 的 width 才是权威，拖拽只改对应 <col>。
+		// 数据列等分，末尾删除列固定窄宽、不参与拖拽（见 buildHead / attachColResizer）
+		this.table.classList.add('interactive', 'col-resizable');
+		this.table.style.width = '100%';
+		this.table.style.tableLayout = 'fixed';
+		const colgroup = document.createElement('colgroup');
+		for (let i = 0; i < this.columns.length; i++) {
+			const col = document.createElement('col');
+			this.colEls.push(col);
+			colgroup.appendChild(col);
+		}
+		const delCol = document.createElement('col');
+		delCol.style.width = '40px';
+		colgroup.appendChild(delCol);
+		this.table.appendChild(colgroup);
+
+		this.table.appendChild(this.buildHead());
+		this.table.appendChild(this.tbody);
+		panel.appendChild(this.table);
 		this.fieldset.appendChild(panel);
 
 		// 下：属性编辑区
@@ -186,15 +205,52 @@ class SandboxRecordEditorPanel {
 	private buildHead(): HTMLTableSectionElement {
 		const thead = document.createElement('thead');
 		const tr = document.createElement('tr');
-		for (const c of this.columns) {
+		this.columns.forEach((c, i) => {
 			const th = document.createElement('th');
 			th.textContent = c.label;
+			this.attachColResizer(th, i);
 			tr.appendChild(th);
-		}
+		});
 		const thDel = document.createElement('th');
 		tr.appendChild(thDel);
 		thead.appendChild(tr);
 		return thead;
+	}
+
+	/**
+	 * 给表头列挂右侧的拖拽把手：按下把手后左右拖动改这一列的宽度。
+	 * 宽度改在 `colEls[index]` 上（fixed 布局下它决定整列），
+	 * 起点用 `<th>` 当前渲染宽度 —— 直接读 `<col>` 的 box 不可靠。
+	 */
+	private attachColResizer(th: HTMLTableCellElement, index: number): void {
+		const handle = document.createElement('span');
+		handle.className = 'col-resizer';
+		th.appendChild(handle);
+
+		handle.addEventListener('mousedown', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			const col = this.colEls[index];
+			if (!col) { return; }
+			const startX = e.clientX;
+			const startWidth = th.getBoundingClientRect().width;
+			const MIN = 24;
+
+			const onMove = (ev: MouseEvent): void => {
+				const w = Math.max(MIN, startWidth + ev.clientX - startX);
+				col.style.width = `${w}px`;
+			};
+			const onUp = (): void => {
+				document.removeEventListener('mousemove', onMove);
+				document.removeEventListener('mouseup', onUp);
+				document.body.style.cursor = '';
+				document.body.style.userSelect = '';
+			};
+			document.addEventListener('mousemove', onMove);
+			document.addEventListener('mouseup', onUp);
+			document.body.style.cursor = 'col-resize';
+			document.body.style.userSelect = 'none';
+		});
 	}
 
 	/** 按 fieldDefs 建表单字段（一次建好，之后只改值） */
@@ -254,7 +310,7 @@ class SandboxRecordEditorPanel {
 
 		const tdDel = document.createElement('td');
 		const del = document.createElement('button');
-		del.classList.add('.table-cell-del-btn');
+		del.classList.add('table-cell-del-btn');
 		del.textContent = '❌';
 		// stopPropagation：删记录不该同时触发整行选中
 		del.addEventListener('click', (e) => {

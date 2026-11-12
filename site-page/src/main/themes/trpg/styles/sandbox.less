@@ -1,3 +1,13 @@
 #sdbx-cmp-select-panel { height: 300px; width: 100%; };
 #sdbx-cmp-select-panel>#campaign-table { width: 100%; };
-button.table-cell-del-btn { color: red; width: 20px; }
+button.table-cell-del-btn,
+button.table-cell-new-btn {
+	width: 24px; height: 24px; min-width: 24px; min-height: 24px;
+	padding: 0; font-size: 14px;
+};
+table.col-resizable th { position: relative; }
+table.col-resizable .col-resizer {
+	position: absolute; top: 0; right: -3px; width: 6px; height: 100%;
+	cursor: col-resize; user-select: none;
+}
+table.col-resizable .col-resizer:hover { background: #a0a0a0; }

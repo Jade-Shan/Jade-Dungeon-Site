@@ -3,6 +3,7 @@ import {
 	JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam,
 } from '@jade-dungeon/jade-utils/ui-window';
 import { SandboxApi } from './sandboxApi.js';
+import { UIButton } from './components/comm.js';
 
 /**
  * 沙盘的「编辑战役」页（editCampaign.html）
@@ -97,9 +98,9 @@ class SandboxRecordEditorPanel {
 	/** 选中记录的 ID 展示行 */
 	private readonly idEl: HTMLParagraphElement = document.createElement('p');
 	/** 新建按钮 */
-	private readonly newBtn: HTMLButtonElement = document.createElement('button');
+	private readonly newBtn: HTMLButtonElement;
 	/** 提交按钮 */
-	private readonly submitBtn: HTMLButtonElement = document.createElement('button');
+	private readonly submitBtn: HTMLButtonElement;
 	/** fieldset 底部的状态行 */
 	private readonly noteEl: HTMLParagraphElement = document.createElement('p');
 	/** 字段名 → 输入控件 */
@@ -137,21 +138,24 @@ class SandboxRecordEditorPanel {
 		this.idEl.id = `${id}-id`;
 		this.noteEl.id = `${id}-note`;
 
-		this.newBtn.id = `${id}-new`;
-		this.submitBtn.id = `${id}-submit`;
-		this.newBtn.textContent = '➕';
-		this.newBtn.classList.add('table-cell-new-btn');
-		this.submitBtn.textContent = '提交';
-		this.submitBtn.classList.add('default');
-		this.newBtn.addEventListener('click', () => { this.newRecord(); });
-		this.submitBtn.addEventListener('click', () => { void this.submit(); });
-
+		this.newBtn = UIButton.initElemt({
+			id: `${id}-new`,
+			textContent: '➕',
+			classList: ["table-cell-new-btn"],
+			events: { click: (e) => { this.newRecord(); } }
+		});
+		this.submitBtn = UIButton.initElemt({
+			id: `${id}-submit`,
+			textContent: '提交',
+			classList: ["default"],
+			events: { click: (e) => { void this.submit(); } }
+		});
 		if (opts.editBtn) {
-			const btn = document.createElement('button');
-			btn.id = `${id}-edit`;
-			btn.textContent = opts.editBtn.label;
-			btn.addEventListener('click', () => { opts.editBtn!.onClick(this.selectedRec); });
-			this.editBtn = btn;
+			this.editBtn = UIButton.initElemt({
+				id: `${id}-edit`,
+				textContent: opts.editBtn.label,
+				events: { click: (e) => { opts.editBtn!.onClick(this.selectedRec); } }
+			});
 		}
 
 		this.buildForm();
@@ -308,17 +312,20 @@ class SandboxRecordEditorPanel {
 			tr.appendChild(td);
 		}
 
-		const tdDel = document.createElement('td');
-		const del = document.createElement('button');
-		del.classList.add('table-cell-del-btn');
-		del.textContent = '❌';
+
 		// stopPropagation：删记录不该同时触发整行选中
-		del.addEventListener('click', (e) => {
-			e.stopPropagation();
-			// 删除不可逆，先走浏览器默认确认弹框，取消则不删
-			if (!window.confirm('确定要删除这条记录吗？')) { return; }
-			void this.handlers.remove(rec.id);
+		const del = UIButton.initElemt({
+			textContent : '❌',
+			classList: ['table-cell-del-btn'],
+			events: { click: (e) => {
+					e.stopPropagation();
+					// 删除不可逆，先走浏览器默认确认弹框，取消则不删
+					if (!window.confirm('确定要删除这条记录吗？')) { return; }
+					void this.handlers.remove(rec.id);
+				}}
 		});
+
+		const tdDel = document.createElement('td');
 		tdDel.appendChild(del);
 		tr.appendChild(tdDel);
 

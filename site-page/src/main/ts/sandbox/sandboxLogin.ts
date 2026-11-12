@@ -2,7 +2,7 @@ import { registerDefaultUIResource } from '@jade-dungeon/jade-utils/resource';
 import { JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam } from '@jade-dungeon/jade-utils/ui-window';
 import { WebUtil } from '@jade-dungeon/jade-utils/web';
 import { SandboxApi, CampaignListItem } from './sandboxApi.js';
-import { UIButton } from './components/comm.js';
+import { UIButton, UIFieldset } from './components/comm.js';
 
 /**
  * 沙盘的入口页：登录页（login.html）+ 选战役页（index.html）+ 修改密码页（changePassword.html）
@@ -222,9 +222,9 @@ class SandboxLoginWindow extends UIWindowAdapter {
 		this.username.type = 'text';
 		this.password.id = ids.password;
 		this.password.type = 'password';
-		this.loginBtn = UIButton.initElemt({ id: ids.loginBtn, textContent: '登录', classList: ['default'] });
-		this.changePasswordBtn= UIButton.initElemt({ id: ids.changePasswordBtn, textContent: '修改密码' });
-		this.backBtn= UIButton.initElemt({ id: ids.backBtn, textContent: '返回选战役' });
+		this.loginBtn = UIButton.createElem({ id: ids.loginBtn, textContent: '登录', classList: ['default'] });
+		this.changePasswordBtn= UIButton.createElem({ id: ids.changePasswordBtn, textContent: '修改密码' });
+		this.backBtn= UIButton.createElem({ id: ids.backBtn, textContent: '返回选战役' });
 		this.statusEl.id = ids.status;
 	}
 
@@ -250,10 +250,7 @@ class SandboxLoginWindow extends UIWindowAdapter {
 
 	/** 「身份」一栏：用户名 + 密码 + 登录/修改密码按钮 */
 	private buildIdentityFieldset(): HTMLFieldSetElement {
-		const fs = document.createElement('fieldset');
-		const legend = document.createElement('legend');
-		legend.textContent = '身份';
-		fs.appendChild(legend);
+		const fs = UIFieldset.createElem({ title: '身份' });
 		fs.appendChild(fieldRow('用户名', this.username));
 		fs.appendChild(fieldRow('密码', this.password));
 		const btns = document.createElement('div');
@@ -494,9 +491,9 @@ class SandboxIndexWindow extends UIWindowAdapter {
 		this.table.appendChild(this.buildHead());
 		this.table.appendChild(this.tbody);
 
-		this.enterBtn = UIButton.initElemt({ id: ids.enterBtn, textContent: '进入战役' });
-		this.editCampaignBtn =  UIButton.initElemt({ id: ids.editCampaignBtn, textContent: '编辑战役' });
-		this.switchBtn = UIButton.initElemt({ id: ids.switchBtn, textContent: '以其他身份登录' });
+		this.enterBtn = UIButton.createElem({ id: ids.enterBtn, textContent: '进入战役' });
+		this.editCampaignBtn =  UIButton.createElem({ id: ids.editCampaignBtn, textContent: '编辑战役' });
+		this.switchBtn = UIButton.createElem({ id: ids.switchBtn, textContent: '以其他身份登录' });
 
 		this.statusEl.id = ids.status;
 		this.noteEl.id = 'campaign-note';
@@ -549,10 +546,7 @@ class SandboxIndexWindow extends UIWindowAdapter {
 
 	/** 「战役列表」一栏：表格 + 说明行 + 进入/编辑按钮 */
 	private buildCampaignFieldset(): HTMLFieldSetElement {
-		const fs = document.createElement('fieldset');
-		const legend = document.createElement('legend');
-		legend.textContent = '战役列表';
-		fs.appendChild(legend);
+		const fs = UIFieldset.createElem({ title: '战役列表' });
 		// 表格外面套一层 sunken-panel：给表格内凹边框 + 固定尺寸
 		const tableWrap = document.createElement('div');
 		tableWrap.id = 'sdbx-cmp-select-panel';
@@ -922,8 +916,8 @@ class SandboxChangePasswordWindow extends UIWindowAdapter {
 		this.newPassword.type = 'password';
 		this.confirmPassword.id = ids.confirmPassword;
 		this.confirmPassword.type = 'password';
-		this.submitBtn = UIButton.initElemt({ id: ids.submitBtn, textContent: '修改密码', classList: ['default'] });
-		this.backBtn = UIButton.initElemt({ id: ids.backBtn, textContent: '返回登录' });
+		this.submitBtn = UIButton.createElem({ id: ids.submitBtn, textContent: '修改密码', classList: ['default'] });
+		this.backBtn = UIButton.createElem({ id: ids.backBtn, textContent: '返回登录' });
 		this.statusEl.id = ids.status;
 	}
 
@@ -946,10 +940,7 @@ class SandboxChangePasswordWindow extends UIWindowAdapter {
 
 	/** 「修改密码」一栏：旧密码 + 新密码×2 + 提交/返回 */
 	private buildFieldset(): HTMLFieldSetElement {
-		const fs = document.createElement('fieldset');
-		const legend = document.createElement('legend');
-		legend.textContent = '修改密码';
-		fs.appendChild(legend);
+		const fs = UIFieldset.createElem({ title: '修改密码' });
 		fs.appendChild(fieldRow('旧密码', this.oldPassword));
 		fs.appendChild(fieldRow('新密码', this.newPassword));
 		fs.appendChild(fieldRow('确认新密码', this.confirmPassword));

@@ -3,7 +3,7 @@ import {
 	JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam,
 } from '@jade-dungeon/jade-utils/ui-window';
 import { SandboxApi } from './sandboxApi.js';
-import { UIButton } from './components/comm.js';
+import { UIButton, UIFieldset } from './components/comm.js';
 
 /**
  * 沙盘的「编辑战役」页（editCampaign.html）
@@ -86,7 +86,7 @@ interface RecordEditorOpts {
 class SandboxRecordEditorPanel {
 
 	/** 整个 fieldset，交给窗口塞进 body */
-	readonly fieldset: HTMLFieldSetElement = document.createElement('fieldset');
+	readonly fieldset: HTMLFieldSetElement;
 	/** 表格主体 */
 	readonly tbody: HTMLTableSectionElement = document.createElement('tbody');
 	/** 表格本体（列宽拖拽改它的 <col>，见 buildFieldset） */
@@ -128,9 +128,8 @@ class SandboxRecordEditorPanel {
 		this.newDefaults = opts.newDefaults;
 
 		// legend 标题
-		const legend = document.createElement('legend');
-		legend.textContent = title;
-		this.fieldset.appendChild(legend);
+		this.fieldset = UIFieldset.createElem({ title: title });
+		
 
 		// 给几个元素挂上基于面板 id 的 id，方便单元测试定位（也方便调试）
 		this.tbody.id = `${id}-rows`;
@@ -138,20 +137,20 @@ class SandboxRecordEditorPanel {
 		this.idEl.id = `${id}-id`;
 		this.noteEl.id = `${id}-note`;
 
-		this.newBtn = UIButton.initElemt({
+		this.newBtn = UIButton.createElem({
 			id: `${id}-new`,
 			textContent: '➕',
 			classList: ["table-cell-opt-btn"],
 			events: { click: (e) => { this.newRecord(); } }
 		});
-		this.submitBtn = UIButton.initElemt({
+		this.submitBtn = UIButton.createElem({
 			id: `${id}-submit`,
 			textContent: '提交',
 			classList: ["default"],
 			events: { click: (e) => { void this.submit(); } }
 		});
 		if (opts.editBtn) {
-			this.editBtn = UIButton.initElemt({
+			this.editBtn = UIButton.createElem({
 				id: `${id}-edit`,
 				textContent: opts.editBtn.label,
 				events: { click: (e) => { opts.editBtn!.onClick(this.selectedRec); } }
@@ -314,7 +313,7 @@ class SandboxRecordEditorPanel {
 
 
 		// stopPropagation：删记录不该同时触发整行选中
-		const del = UIButton.initElemt({
+		const del = UIButton.createElem({
 			textContent : '❌', // 🗑
 			classList: ['table-cell-opt-btn'],
 			events: { click: (e) => {
@@ -442,7 +441,7 @@ class SandboxEditCampaignWindow extends UIWindowAdapter {
 	{
 		super(desktop, id, title, cfg);
 		this.hintEl.id = `${id}-hint`;
-		this.homeBtn = UIButton.initElemt({
+		this.homeBtn = UIButton.createElem({
 			id: `${id}-home`,
 			textContent: '退回首页',
 			classList: ['default'],

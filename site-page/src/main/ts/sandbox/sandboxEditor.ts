@@ -523,7 +523,7 @@ export class SandboxEditor {
 			tdVis.textContent = tk.visible ? '可见' : '隐形';
 			tr.appendChild(tdVis);
 
-			const del = UIButton.initElemt({ textContent : '❌', // 🗑 
+			const del = UIButton.createElem({ textContent : '❌', // 🗑 
 				classList: ['table-cell-opt-btn'],
 				events: { click: (e) => { void this.deleteToken(group, tk.id); } } });
 
@@ -541,7 +541,7 @@ export class SandboxEditor {
 		label.textContent = '新建：';
 		bar.appendChild(label);
 		for (const shape of GROUP_SHAPES[group]) {
-			const btn = UIButton.initElemt({
+			const btn = UIButton.createElem({
 				textContent: SHAPE_ICON[shape],
 				title: `新建${shape}，然后点地图落位`,
 				events: {
@@ -577,7 +577,7 @@ export class SandboxEditor {
 			tdUrl.textContent = img.url.length > 32 ? `${img.url.slice(0, 32)}…` : img.url;
 			tr.appendChild(tdUrl);
 
-			const del = UIButton.initElemt({
+			const del = UIButton.createElem({
 				textContent: '❌', // 🗑
 				classList: ['table-cell-opt-btn'],
 				events: {
@@ -605,7 +605,7 @@ export class SandboxEditor {
 		const label = document.createElement('span');
 		label.textContent = '新建：';
 		bar.appendChild(label);
-		const btn = UIButton.initElemt({
+		const btn = UIButton.createElem({
 			textContent: '🌠',
 			title: '新建图片资源（id 为 map 的那张是场景背景图）',
 			events: { click: (e) => { this.createImage(); } }

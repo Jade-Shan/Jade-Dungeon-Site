@@ -538,9 +538,9 @@ export class SandboxStatusWindow extends UIWindowAdapter {
 	constructor(desktop: UIDesktop, id: string, title: string, cfg?: WinParam) {
     	super(desktop, id, title, cfg);
 		// 98.css 的 button.default 是带强调边框的主按钮
-		this.saveBtn = UIButton.initElemt({ textContent: '保存并发布', classList: ['default'] });
+		this.saveBtn = UIButton.createElem({ textContent: '保存并发布', classList: ['default'] });
 
-		this.refreshBtn = UIButton.initElemt({ textContent: '刷新请求' });
+		this.refreshBtn = UIButton.createElem({ textContent: '刷新请求' });
 	}
 
 	/**

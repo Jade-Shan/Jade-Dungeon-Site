@@ -31,7 +31,7 @@ export interface BtnCfg extends CpmtCfg {
 
 export class UIButton {
 
-	public static initElemt(cfg: BtnCfg) : HTMLButtonElement {
+	public static createElem(cfg: BtnCfg) : HTMLButtonElement {
 		let elem: HTMLButtonElement = document.createElement('button');
 		UIComponent.initElemt(elem, cfg);
 		elem.textContent = cfg.textContent;
@@ -42,6 +42,25 @@ export class UIButton {
 				elem.addEventListener('click', (e) => { click(e); });
 			}
 		}
+		return elem;
+	}
+
+};
+
+
+/* 区框 */
+export interface FldsetCfg extends CpmtCfg {
+	title?: string;
+};
+
+export class UIFieldset {
+
+	public static createElem(cfg: FldsetCfg) : HTMLFieldSetElement {
+		let elem: HTMLFieldSetElement = document.createElement('fieldset');
+		const legend = document.createElement('legend');
+		if (cfg.title) { legend.textContent = cfg.title; }
+		elem.appendChild(legend);
+		UIComponent.initElemt(elem, cfg);
 		return elem;
 	}
 

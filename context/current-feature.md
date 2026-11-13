@@ -22,6 +22,24 @@
 
 ## 历史记录
 
+- **修 `SandboxIndexWindow` 表格内容被清空**（2026-11-13）
+  - 症状：选战役页的战役表格不显示任何行，连表头都没有；点行、URL 回填选中
+    也都静默失效（点行抛 `this.selectCampaign is not a function`）
+  - 根因是把手写 `HTMLTableElement` 抽成 `UITable` 组件时引入的三个 this/引用 bug：
+    - `UITable.cleanRecs()` 用 `this.elem.replaceChildren()` 清空**整张表**（thead +
+      tbody 一起摘掉），之后 `appendRow()` 仍往已脱离 DOM 的 `this.body` 加行 ——
+      这就是「内容被清空」的直接原因
+    - `rec2Row: this.buildRow` 传未绑定的方法引用，`UITable` 里
+      `this.cfg.rec2Row(rec)` 调用时 `this` 变成 cfg 对象，点行回调
+      `this.selectCampaign` 是 undefined
+    - `selectCampaign` 里 `this.refreshButtons` 同样传引用，`selectRows` 里
+      `callback()` 调用时 `this` 丢失，`refreshButtons` 读 `this.selectedCampaign`
+      抛 TypeError
+  - 修复：`cleanRecs()` 只清 `this.body.replaceChildren()`；两处回调改成箭头函数
+    绑 this（`rec2Row: (rec) => this.buildRow(rec)`、
+    `() => this.refreshButtons()`）
+  - 验证：`sandbox.index.test.ts` 29 条全绿（修复前 19 条挂）、site-page 264 条全绿、
+    架构约束 20 条全绿
 - **`site-api` 增加禁用 HTTP 注册的开关 + CLI 注册入口**（2026-11-07）
   - `config.properties` 新增 `AUTH_DISABLE_REGIST`：为 `true` 时 `/api/auth/regist`
     一律返回 `{ status: 'err', msg: 'http regist disabled' }`，防止对公网开放时

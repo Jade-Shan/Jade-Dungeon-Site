@@ -2,7 +2,7 @@ import { registerDefaultUIResource } from '@jade-dungeon/jade-utils/resource';
 import { JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam } from '@jade-dungeon/jade-utils/ui-window';
 import { WebUtil } from '@jade-dungeon/jade-utils/web';
 import { SandboxApi, CampaignListItem } from './sandboxApi.js';
-import { UIButton, UIFieldset } from './components/comm.js';
+import { UIButton, UIFieldset, UITable } from './components/comm.js';
 
 /**
  * 沙盘的入口页：登录页（login.html）+ 选战役页（index.html）+ 修改密码页（changePassword.html）
@@ -467,8 +467,7 @@ interface IndexFieldIds {
  */
 class SandboxIndexWindow extends UIWindowAdapter {
 
-	private readonly table: HTMLTableElement = document.createElement('table');
-	private readonly tbody: HTMLTableSectionElement = document.createElement('tbody');
+	private readonly table: UITable<CampaignListItem>;
 	private readonly enterBtn: HTMLButtonElement;
 	private readonly editCampaignBtn: HTMLButtonElement;
 	private readonly switchBtn: HTMLButtonElement;
@@ -485,11 +484,23 @@ class SandboxIndexWindow extends UIWindowAdapter {
 		super(desktop, id, title, cfg);
 
 		this.username = username;
-		this.table.id = ids.campaignTable;
-		// 98.css table 组件的「可交互」态：tbody 行显示 pointer 光标
-		this.table.classList.add('interactive');
-		this.table.appendChild(this.buildHead());
-		this.table.appendChild(this.tbody);
+		this.table = new UITable<CampaignListItem>({
+			id: ids.campaignTable,
+			// 98.css table 组件的「可交互」态：tbody 行显示 pointer 光标
+			classList: ['interactive'],
+			// buildRow 里点行要回调 this.selectCampaign，得用箭头函数绑住 this ——
+			// 直接传 this.buildRow 的话，UITable 里是 `this.cfg.rec2Row(rec)` 调用的，
+			// this 会变成 cfg 对象，点行时 this.selectCampaign 是 undefined
+			rec2Row: (rec) => this.buildRow(rec),
+			cols: [
+				{ title: '战役' },
+				{ title: '地点' },
+				{ title: '场景' },
+				{ title: 'owner', classList:['chmp-owner-col'] }],
+			styleNames: {
+				selectedRow: 'highlighted',
+			},
+		});
 
 		this.enterBtn = UIButton.createElem({ id: ids.enterBtn, textContent: '进入战役' });
 		this.editCampaignBtn =  UIButton.createElem({ id: ids.editCampaignBtn, textContent: '编辑战役' });
@@ -500,19 +511,6 @@ class SandboxIndexWindow extends UIWindowAdapter {
 
 		// 初始没选中任何行，两个按钮先禁用，选中后 refreshButtons 再放开
 		this.refreshButtons();
-	}
-
-	/** 表头：战役 / 地点 / 场景 / owner（98.css 自动给 thead 加 silver 立体边框） */
-	private buildHead(): HTMLTableSectionElement {
-		const thead = document.createElement('thead');
-		const tr = document.createElement('tr');
-		for (const label of ['战役', '地点', '场景', 'owner']) {
-			const th = document.createElement('th');
-			th.textContent = label;
-			tr.appendChild(th);
-		}
-		thead.appendChild(tr);
-		return thead;
 	}
 
 	renderIn(): void {
@@ -551,7 +549,7 @@ class SandboxIndexWindow extends UIWindowAdapter {
 		const tableWrap = document.createElement('div');
 		tableWrap.id = 'sdbx-cmp-select-panel';
 		tableWrap.classList.add('sunken-panel');
-		tableWrap.appendChild(this.table);
+		tableWrap.appendChild(this.table.getTable());
 		fs.appendChild(tableWrap);
 		fs.appendChild(this.noteEl);
 		const btns = document.createElement('div');
@@ -565,10 +563,8 @@ class SandboxIndexWindow extends UIWindowAdapter {
 	/** 填充表格：清空旧行，按列表顺序重填 */
 	setCampaigns(list: CampaignListItem[]): void {
 		this.campaigns = list;
-		this.tbody.replaceChildren();
-		for (const rec of list) {
-			this.tbody.appendChild(this.buildRow(rec));
-		}
+		this.table.cleanRecs();
+		for (const rec of list) { this.table.appendRow(rec); }
 		// 重填后没有选中行，按钮回到禁用
 		this.refreshButtons();
 	}
@@ -597,10 +593,13 @@ class SandboxIndexWindow extends UIWindowAdapter {
 
 	/** 当前选中的战役行，没选中返回 undefined */
 	selectedCampaign(): CampaignListItem | undefined {
-		const tr = this.tbody.querySelector<HTMLTableRowElement>('tr.highlighted');
-		if (!tr) { return undefined; }
-		const campaignId = Number(tr.dataset.campaignId);
-		return this.campaigns.find(s => s.campaignId === campaignId);
+		let rows = this.table.getSelectedRows();
+		if (!rows || rows.length < 1) {
+			return undefined;
+		} else {
+			const campaignId = Number(rows[0].dataset.campaignId);
+			return this.campaigns.find(s => s.campaignId === campaignId);
+		}
 	}
 
 	/**
@@ -610,10 +609,12 @@ class SandboxIndexWindow extends UIWindowAdapter {
 	 * `table>tbody>tr.highlighted` 是 navy 底 + 白字。
 	 */
 	selectCampaign(campaignId: number): void {
-		for (const tr of this.tbody.querySelectorAll<HTMLTableRowElement>('tr')) {
-			tr.classList.toggle('highlighted', tr.dataset.campaignId === String(campaignId));
-		}
-		this.refreshButtons();
+		this.table.selectRows(
+			tr => tr.dataset.campaignId === String(campaignId),
+			// 和 rec2Row 同理：refreshButtons 是实例方法，直接传引用会让 selectRows
+			// 里 `callback()` 调用时 this 变成 undefined，得用箭头函数绑住
+			() => this.refreshButtons()
+		)
 	}
 
 	/**

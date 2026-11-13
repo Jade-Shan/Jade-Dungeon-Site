@@ -524,7 +524,7 @@ export class SandboxEditor {
 			tr.appendChild(tdVis);
 
 			const del = UIButton.createElem({ textContent : '❌', // 🗑 
-				classList: ['table-cell-opt-btn'],
+				classList: ['table-cell-opt-btn', 'table-cell-del-btn'],
 				events: { click: (e) => { void this.deleteToken(group, tk.id); } } });
 
 			const tdDel = document.createElement('td');

@@ -1,5 +1,6 @@
-#sdbx-cmp-select-panel { height: 300px; width: 100%; };
-#sdbx-cmp-select-panel>#campaign-table { width: 100%; };
+/* ========================= */
+/* component common */
+/* ========================= */
 
 /* 表格中最后一列放着的按钮，定义一个大小 */
 button.table-cell-opt-btn {
@@ -12,4 +13,20 @@ table.col-resizable .col-resizer {
 	cursor: col-resize; user-select: none;
 };
 table.col-resizable .col-resizer:hover { background: #a0a0a0; };
+
+
+/* ========================= */
+/* for app only */
+/* ========================= */
+
+/* login page */
 th.chmp-owner-col { width: 55px;}
+#sdbx-cmp-select-panel { height: 300px; width: 100%; };
+#sdbx-cmp-select-panel>#campaign-table { width: 100%; };
+
+/* campaign edit page */
+table.chmpEditRecTable { width: 100%; table-layout: fixed; };
+th.rec-opt-col {width: 35px};
+th.num-field-col {width: 65px; text-align: center;}
+td.num-field-col {text-align: right;}
+div.chmp-sunken-panel { height : 250px; width : 350px; }

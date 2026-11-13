@@ -71,23 +71,25 @@ export interface TableCol {
 	id?: string,
 	name?: string,
 	title: string,
-	field?: string,
-	classList?:Array<string>,
+	fieldName?: string,
+	headClassList?:Array<string>,
+	rowClassList?:Array<string>,
 	canResize?: boolean
 };
 
 export interface TableCfg<T> extends CpmtCfg {
+	readonly bodyId?: string,
 	readonly cols: Array<TableCol>,
 	readonly rec2Row: (rec: T) => HTMLTableRowElement;
-	readonly styleNames: {
+	readonly styleNames?: {
 		readonly dragColWidth?: Array<string>,
-		readonly selectedRow: string,
+		readonly selectedRow?: string,
 	}
 };
 
 export class UITable<T> extends UIComponent {
 
-	private readonly elem: HTMLTableElement = document.createElement('table');
+	private readonly table: HTMLTableElement = document.createElement('table');
 	private readonly thead: HTMLTableSectionElement = document.createElement('thead');
 	private readonly body: HTMLTableSectionElement = document.createElement('tbody');
 
@@ -99,11 +101,11 @@ export class UITable<T> extends UIComponent {
 	constructor(cfg: TableCfg<T>) {
 		super();
 		this.cfg = cfg;
-		UIComponent.initElemt(this.elem, cfg);
+		UIComponent.initElemt(this.table, cfg);
 
-		if (cfg.styleNames.dragColWidth) {
+		if (cfg.styleNames?.dragColWidth) {
 			for (const cname of cfg.styleNames.dragColWidth) {
-				this.elem.classList.add(cname);
+				this.table.classList.add(cname);
 			}
 			// 不设 width:100% / tableLayout:fixed —— fixed 布局下没写宽度的列会「等分」
 			// 表格宽度，配合 CSS 的 width:100% 就把窄内容列（如 owner）也拉宽了。
@@ -128,8 +130,8 @@ export class UITable<T> extends UIComponent {
 			if (canResize) {
 				this.attachColResizer(th, i);
 			}
-			if (ccol.classList && ccol.classList.length > 0) {
-				for (const cname of ccol.classList) {
+			if (ccol.headClassList && ccol.headClassList.length > 0) {
+				for (const cname of ccol.headClassList) {
 					th.classList.add(cname);
 				}
 			}
@@ -137,9 +139,12 @@ export class UITable<T> extends UIComponent {
 		});
 		this.thead.appendChild(tr);
 
-		this.elem.appendChild(colgroup);
-		this.elem.appendChild(this.thead);
-		this.elem.appendChild(this.body);
+		this.table.appendChild(colgroup);
+		this.table.appendChild(this.thead);
+
+		//
+		if (cfg.bodyId) { this.body.id = cfg.bodyId; }
+		this.table.appendChild(this.body);
 	}
 
 	/**
@@ -179,9 +184,8 @@ export class UITable<T> extends UIComponent {
 	}
 
 
-	public getTable() {
-		return this.elem;
-	}
+	public getTable() { return this.table; }
+	public getBody() { return this.body; }
 
 	public cleanRecs() {
 		// 只清 tbody 里的行，保留 thead（列头）和 tbody 本身。
@@ -191,16 +195,16 @@ export class UITable<T> extends UIComponent {
 		this.body.replaceChildren();
 	}
 
-	public appendRow(rec: T) {
-		this.body.appendChild(this.cfg.rec2Row(rec));
-	}
+	public appendRec(rec: T) { this.body.appendChild(this.cfg.rec2Row(rec)); }
+	public appendRow(row: HTMLTableRowElement) { this.body.appendChild(row); }
 
 	/**
 	 * 查询前选中的哪些行
 	 * @returns 
 	 */
 	public getSelectedRows(): Array<HTMLTableRowElement> {
-		const tr = this.body.querySelector<HTMLTableRowElement>(`tr.${this.cfg.styleNames.selectedRow}`);
+		let name = this.cfg.styleNames?.selectedRow ? this.cfg.styleNames.selectedRow : "highlighted";
+		const tr = this.body.querySelector<HTMLTableRowElement>(`tr.${name}`);
 		return tr ? [tr] : [];
 	}
 
@@ -210,11 +214,9 @@ export class UITable<T> extends UIComponent {
 	 * @param callback 
 	 */
 	public selectRows(match: (tr: HTMLTableRowElement) => boolean, callback: () => void): void {
+		let name = this.cfg.styleNames?.selectedRow ? this.cfg.styleNames.selectedRow : "highlighted";
 		for (const tr of this.body.querySelectorAll<HTMLTableRowElement>('tr')) {
-			tr.classList.toggle(this.cfg.styleNames.selectedRow, 
-				// tr.dataset.campaignId === String(campaignId)
-				match(tr)
-				);
+			tr.classList.toggle(name, match(tr));
 		}
 		callback();
 	}

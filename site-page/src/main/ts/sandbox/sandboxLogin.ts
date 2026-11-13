@@ -496,9 +496,9 @@ class SandboxIndexWindow extends UIWindowAdapter {
 				{ title: '战役' },
 				{ title: '地点' },
 				{ title: '场景' },
-				{ title: 'owner', classList:['chmp-owner-col'] }],
+				{ title: 'owner', headClassList:['chmp-owner-col'] }],
 			styleNames: {
-				dragColWidth: ['interactive', 'col-resizable'],
+				dragColWidth: ['col-resizable'],
 				selectedRow: 'highlighted',
 			},
 		});
@@ -565,7 +565,7 @@ class SandboxIndexWindow extends UIWindowAdapter {
 	setCampaigns(list: CampaignListItem[]): void {
 		this.campaigns = list;
 		this.table.cleanRecs();
-		for (const rec of list) { this.table.appendRow(rec); }
+		for (const rec of list) { this.table.appendRec(rec); }
 		// 重填后没有选中行，按钮回到禁用
 		this.refreshButtons();
 	}

@@ -3,7 +3,7 @@ import {
 	JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam,
 } from '@jade-dungeon/jade-utils/ui-window';
 import { SandboxApi } from './sandboxApi.js';
-import { UIButton, UIFieldset } from './components/comm.js';
+import { TableCol, UIButton, UIFieldset, UITable } from './components/comm.js';
 
 /**
  * 沙盘的「编辑战役」页（editCampaign.html）
@@ -67,7 +67,7 @@ interface RecordEditorHandlers {
 
 /** fieldset 的配置：列 / 表单字段 / 三件回调 + 可选的额外按钮 */
 interface RecordEditorOpts {
-	columns: ColumnDef[];
+	columns: TableCol[];
 	fieldDefs: FieldDef[];
 	handlers: RecordEditorHandlers;
 	/** 可选：额外的按钮（放在「新建」「提交」之后），点击回调收到当前选中记录 */
@@ -87,10 +87,8 @@ class SandboxRecordEditorPanel {
 
 	/** 整个 fieldset，交给窗口塞进 body */
 	readonly fieldset: HTMLFieldSetElement;
-	/** 表格主体 */
-	readonly tbody: HTMLTableSectionElement = document.createElement('tbody');
-	/** 表格本体（列宽拖拽改它的 <col>，见 buildFieldset） */
-	private readonly table: HTMLTableElement = document.createElement('table');
+	/** 表格 */
+	private readonly uiTable: UITable<RecordRow>;
 	/** 每个数据列的 <col>，不含末尾删除列 —— 拖拽列宽时改它们的 width */
 	private readonly colEls: HTMLTableColElement[] = [];
 	/** 表单容器（字段在构造时按 fieldDefs 建好，不随选中变化） */
@@ -106,7 +104,7 @@ class SandboxRecordEditorPanel {
 	/** 字段名 → 输入控件 */
 	private readonly fields: Map<string, HTMLInputElement | HTMLTextAreaElement> = new Map();
 
-	private readonly columns: ColumnDef[];
+	private readonly columns: TableCol[];
 	private readonly fieldDefs: FieldDef[];
 	private readonly handlers: RecordEditorHandlers;
 	/** 可选的「编辑场景」按钮（只有传了 editBtn 配置才建） */
@@ -130,9 +128,35 @@ class SandboxRecordEditorPanel {
 		// legend 标题
 		this.fieldset = UIFieldset.createElem({ title: title });
 		
+		this.uiTable= new UITable<RecordRow>({
+			id: `${id}-table`,
+			bodyId:`${id}-rows`,
+			cols:opts.columns,
+			classList:['interactive', 'chmpEditRecTable'],
+			styleNames: {
+				dragColWidth: ['col-resizable'],
+				selectedRow: 'highlighted',
+			},
+			// buildRow 里要读 this.columns / this.handlers，得用箭头函数绑住 this ——
+			// 直接传 this.buildRow 的话，UITable 里是 `this.cfg.rec2Row(rec)` 调用的，
+			// this 会变成 cfg 对象，this.columns 就是 undefined
+			rec2Row: (rec) => this.buildRow(rec),
+		});
+		// const colgroup = document.createElement('colgroup');
+		// for (let i = 0; i < this.columns.length; i++) {
+		// 	const col = document.createElement('col');
+		// 	this.colEls.push(col);
+		// 	colgroup.appendChild(col);
+		// }
+		// const delCol = document.createElement('col');
+		// delCol.style.width = '40px';
+		// colgroup.appendChild(delCol);
+		// this.table.appendChild(colgroup);
+
+		// this.table.appendChild(this.buildHead());
+		// this.table.appendChild(this.tbody);
 
 		// 给几个元素挂上基于面板 id 的 id，方便单元测试定位（也方便调试）
-		this.tbody.id = `${id}-rows`;
 		this.form.id = `${id}-form`;
 		this.idEl.id = `${id}-id`;
 		this.noteEl.id = `${id}-note`;
@@ -165,29 +189,9 @@ class SandboxRecordEditorPanel {
 	private buildFieldset(): void {
 		// 上：表格（98.css 没有 grid 辅助，sunken-panel 里放整宽表格）
 		const panel = document.createElement('div');
-		panel.classList.add('sunken-panel');
-		panel.style.height = '250px';
-		panel.style.width = '350px';
+		panel.classList.add('sunken-panel', 'chmp-sunken-panel');
 
-		// 列宽可拖拽：fixed 布局下 <col> 的 width 才是权威，拖拽只改对应 <col>。
-		// 数据列等分，末尾删除列固定窄宽、不参与拖拽（见 buildHead / attachColResizer）
-		this.table.classList.add('interactive', 'col-resizable');
-		this.table.style.width = '100%';
-		this.table.style.tableLayout = 'fixed';
-		const colgroup = document.createElement('colgroup');
-		for (let i = 0; i < this.columns.length; i++) {
-			const col = document.createElement('col');
-			this.colEls.push(col);
-			colgroup.appendChild(col);
-		}
-		const delCol = document.createElement('col');
-		delCol.style.width = '40px';
-		colgroup.appendChild(delCol);
-		this.table.appendChild(colgroup);
-
-		this.table.appendChild(this.buildHead());
-		this.table.appendChild(this.tbody);
-		panel.appendChild(this.table);
+		panel.appendChild(this.uiTable.getTable());
 		this.fieldset.appendChild(panel);
 
 		// 下：属性编辑区
@@ -204,57 +208,6 @@ class SandboxRecordEditorPanel {
 		this.fieldset.appendChild(this.noteEl);
 	}
 
-	/** 表头：各列 + 末尾空的删除列 */
-	private buildHead(): HTMLTableSectionElement {
-		const thead = document.createElement('thead');
-		const tr = document.createElement('tr');
-		this.columns.forEach((c, i) => {
-			const th = document.createElement('th');
-			th.textContent = c.label;
-			this.attachColResizer(th, i);
-			tr.appendChild(th);
-		});
-		const thDel = document.createElement('th');
-		tr.appendChild(thDel);
-		thead.appendChild(tr);
-		return thead;
-	}
-
-	/**
-	 * 给表头列挂右侧的拖拽把手：按下把手后左右拖动改这一列的宽度。
-	 * 宽度改在 `colEls[index]` 上（fixed 布局下它决定整列），
-	 * 起点用 `<th>` 当前渲染宽度 —— 直接读 `<col>` 的 box 不可靠。
-	 */
-	private attachColResizer(th: HTMLTableCellElement, index: number): void {
-		const handle = document.createElement('span');
-		handle.className = 'col-resizer';
-		th.appendChild(handle);
-
-		handle.addEventListener('mousedown', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			const col = this.colEls[index];
-			if (!col) { return; }
-			const startX = e.clientX;
-			const startWidth = th.getBoundingClientRect().width;
-			const MIN = 24;
-
-			const onMove = (ev: MouseEvent): void => {
-				const w = Math.max(MIN, startWidth + ev.clientX - startX);
-				col.style.width = `${w}px`;
-			};
-			const onUp = (): void => {
-				document.removeEventListener('mousemove', onMove);
-				document.removeEventListener('mouseup', onUp);
-				document.body.style.cursor = '';
-				document.body.style.userSelect = '';
-			};
-			document.addEventListener('mousemove', onMove);
-			document.addEventListener('mouseup', onUp);
-			document.body.style.cursor = 'col-resize';
-			document.body.style.userSelect = 'none';
-		});
-	}
 
 	/** 按 fieldDefs 建表单字段（一次建好，之后只改值） */
 	private buildForm(): void {
@@ -291,12 +244,12 @@ class SandboxRecordEditorPanel {
 	 */
 	setRecords(records: RecordRow[]): void {
 		this.selectedId = undefined;
-		this.tbody.replaceChildren();
+		this.uiTable.cleanRecs();
 		for (const rec of records) {
-			this.tbody.appendChild(this.buildRow(rec));
+			this.uiTable.appendRec(rec);
 		}
 		// 记录行之后追加一行，最后一列放「新建」按钮
-		this.tbody.appendChild(this.buildNewRow());
+		this.uiTable.appendRow(this.buildNewRow());
 		this.clearForm();
 	}
 
@@ -306,9 +259,17 @@ class SandboxRecordEditorPanel {
 		tr.dataset.rid = String(rec.id);
 
 		for (const c of this.columns) {
-			const td = document.createElement('td');
-			td.textContent = String(rec[c.key] ?? '');
-			tr.appendChild(td);
+			if (c.fieldName) {
+				const td = document.createElement('td');
+				let fieldName = c.fieldName ? c.fieldName : "";
+				td.textContent = String(rec[fieldName] ?? '');
+				if (c.rowClassList && c.rowClassList.length > 0) {
+					for (let nStr of c.rowClassList) {
+						td.classList.add(nStr);
+					}
+				}
+				tr.appendChild(td);
+			}
 		}
 
 
@@ -337,7 +298,9 @@ class SandboxRecordEditorPanel {
 	private buildNewRow(): HTMLTableRowElement {
 		const tr = document.createElement('tr');
 		for (let i = 0; i < this.columns.length; i++) {
-			tr.appendChild(document.createElement('td'));
+			if (this.columns[i].fieldName) {
+				tr.appendChild(document.createElement('td'));
+			}
 		}
 		const td = document.createElement('td');
 		td.appendChild(this.newBtn);
@@ -347,18 +310,17 @@ class SandboxRecordEditorPanel {
 
 	/** 选中一条记录，高亮该行并回填下方表单 */
 	private select(rec: RecordRow): void {
-		this.selectedId = rec.id;
-		this.selectedRec = rec;
-		for (const tr of this.tbody.querySelectorAll<HTMLTableRowElement>('tr')) {
-			tr.classList.toggle('highlighted', tr.dataset.rid === String(rec.id));
-		}
-		this.setFormDisabled(false);
-		this.setEditBtnDisabled(false);
-		for (const f of this.fieldDefs) {
-			const el = this.fields.get(f.key);
-			if (el) { el.value = String(rec[f.key] ?? ''); }
-		}
-		this.idEl.textContent = `ID: ${rec.id}`;
+		this.uiTable.selectRows(tr => tr.dataset.rid === String(rec.id), () => {
+			this.selectedId = rec.id;
+			this.selectedRec = rec;
+			this.setFormDisabled(false);
+			this.setEditBtnDisabled(false);
+			for (const f of this.fieldDefs) {
+				const el = this.fields.get(f.key);
+				if (el) { el.value = String(rec[f.key] ?? ''); }
+			}
+			this.idEl.textContent = `ID: ${rec.id}`;
+		});
 	}
 
 	/** 清空选中与表单（未选中 / 新建都走这里） */
@@ -388,21 +350,20 @@ class SandboxRecordEditorPanel {
 
 	/** 「新建」：清掉选中，进入新建态 */
 	private newRecord(): void {
-		this.selectedId = undefined;
-		for (const tr of this.tbody.querySelectorAll<HTMLTableRowElement>('tr')) {
-			tr.classList.remove('highlighted');
-		}
-		this.clearForm();
-		// 可选的新建默认值：清空之后再填，比如场景新建时带出地点 id
-		if (this.newDefaults) {
-			for (const [key, value] of Object.entries(this.newDefaults())) {
-				const el = this.fields.get(key);
-				if (el) { el.value = value; }
+		this.uiTable.selectRows(tr => false, () => {
+			this.selectedId = undefined;
+			this.clearForm();
+			// 可选的新建默认值：清空之后再填，比如场景新建时带出地点 id
+			if (this.newDefaults) {
+				for (const [key, value] of Object.entries(this.newDefaults())) {
+					const el = this.fields.get(key);
+					if (el) { el.value = value; }
+				}
 			}
-		}
-		// 新建态要能输入：clearForm 刚禁用了字段，这里再启用
-		this.setFormDisabled(false);
-		this.setNote('新建：填好下方字段后点「提交」');
+			// 新建态要能输入：clearForm 刚禁用了字段，这里再启用
+			this.setFormDisabled(false);
+			this.setNote('新建：填好下方字段后点「提交」');
+		});
 	}
 
 	/** 「提交」：收集字段值交给页面（新建时 id 为 undefined） */
@@ -561,8 +522,9 @@ export class SandboxEditCampaign {
 
 		this.placePanel = new SandboxRecordEditorPanel('edit-campaign-place', '地点编辑', {
 			columns: [
-				{ key: 'id', label: '地点ID' },
-				{ key: 'placeName', label: '地点名' },
+				{ fieldName: 'id', title: '地点ID', headClassList:['num-field-col'], rowClassList:['num-field-col'] },
+				{ fieldName: 'placeName', title: '地点ID' },
+				{ title: '操作', headClassList:['rec-opt-col'] },
 			],
 			fieldDefs: [
 				{ key: 'placeName', label: '地点名', type: 'text' },
@@ -577,9 +539,10 @@ export class SandboxEditCampaign {
 
 		this.scenePanel = new SandboxRecordEditorPanel('edit-campaign-scene', '场景编辑', {
 			columns: [
-				{ key: 'id', label: '场景ID' },
-				{ key: 'sceneName', label: '场景名' },
-				{ key: 'placeId', label: '所属地点 ID' },
+				{ fieldName: 'id', title: '场景ID', headClassList:['num-field-col'], rowClassList:['num-field-col'] },
+				{ fieldName: 'sceneName', title: '场景名' },
+				{ fieldName: 'placeId', title: '所属地点 ID', headClassList:['num-field-col'], rowClassList:['num-field-col'] },
+				{ title: '操作', headClassList:['rec-opt-col'] },
 			],
 			fieldDefs: [
 				{ key: 'sceneName', label: '场景名', type: 'text' },

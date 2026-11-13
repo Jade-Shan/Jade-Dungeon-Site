@@ -79,8 +79,8 @@ export interface TableCol {
 
 export interface TableCfg<T> extends CpmtCfg {
 	readonly bodyId?: string,
-	readonly cols: Array<TableCol>,
-	readonly rec2Row: (rec: T) => HTMLTableRowElement;
+	readonly cols?: Array<TableCol>,
+	readonly rec2Row?: (rec: T) => HTMLTableRowElement;
 	readonly styleNames?: {
 		readonly dragColWidth?: Array<string>,
 		readonly selectedRow?: string,
@@ -115,7 +115,7 @@ export class UITable<T> extends UIComponent {
 
 		const tr = document.createElement('tr');
 		const colgroup = document.createElement('colgroup');
-		cfg.cols.forEach((ccol, i) => {
+		(cfg.cols ?? []).forEach((ccol, i) => {
 			// col-group
 			const col = document.createElement('col');
 			// 除非写明不能调节大小，否则默认可调节大小
@@ -195,7 +195,10 @@ export class UITable<T> extends UIComponent {
 		this.body.replaceChildren();
 	}
 
-	public appendRec(rec: T) { this.body.appendChild(this.cfg.rec2Row(rec)); }
+	public appendRec(rec: T) {
+		if (!this.cfg.rec2Row) { return; }
+		this.body.appendChild(this.cfg.rec2Row(rec));
+	}
 	public appendRow(row: HTMLTableRowElement) { this.body.appendChild(row); }
 
 	/**

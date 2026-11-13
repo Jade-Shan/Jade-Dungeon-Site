@@ -62,8 +62,13 @@ function makeEditor(): { editor: SandboxEditor, props: ReturnType<typeof mockPro
 	const props = mockPropsWin();
 	const any = editor as any;
 	any.propsWin = props;
+	const tbody = document.createElement('tbody');
 	any.listWin = {
-		listBody: document.createElement('tbody'),
+		table: {
+			getBody: () => tbody,
+			cleanRecs: () => { tbody.replaceChildren(); },
+			appendRow: (row: HTMLTableRowElement) => { tbody.appendChild(row); },
+		},
 		createBar: document.createElement('div'),
 		groupBar: document.createElement('ul'),
 	};
@@ -102,7 +107,7 @@ describe('SandboxEditor 资源文件联动', () => {
 		any.renderImageList();
 
 		// 点 icons 那一行的 url 列 —— 修复前只有 id 列绑了点击，点这里没反应
-		const rows = Array.from(any.listWin.listBody.querySelectorAll('tr')) as HTMLTableRowElement[];
+		const rows = Array.from(any.listWin.table.getBody().querySelectorAll('tr')) as HTMLTableRowElement[];
 		const iconsRow = rows.find((r) => r.textContent!.includes('icons'))!;
 		assert.ok(iconsRow, '列表里要有 icons 这一行');
 
@@ -123,7 +128,7 @@ describe('SandboxEditor 资源文件联动', () => {
 		any.currTab = 'images';
 		any.renderImageList();
 
-		const rows = Array.from(any.listWin.listBody.querySelectorAll('tr')) as HTMLTableRowElement[];
+		const rows = Array.from(any.listWin.table.getBody().querySelectorAll('tr')) as HTMLTableRowElement[];
 		const iconsRow = rows.find((r) => r.textContent!.includes('icons'))!;
 		const delBtn = iconsRow.children[2].querySelector('button')!;
 		delBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));

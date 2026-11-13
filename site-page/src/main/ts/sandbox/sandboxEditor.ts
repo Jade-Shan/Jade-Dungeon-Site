@@ -506,8 +506,7 @@ export class SandboxEditor {
 			return;
 		}
 		const group = this.currTab;
-		const body = this.listWin.listBody;
-		body.innerHTML = '';
+		this.listWin.table.cleanRecs();
 		for (const tk of this.scene.list(group)) {
 			const tr = document.createElement('tr');
 			if (this.selected?.token.id === tk.id) { tr.classList.add('highlighted'); }
@@ -531,7 +530,7 @@ export class SandboxEditor {
 			tdDel.appendChild(del);
 			tr.appendChild(tdDel);
 
-			body.appendChild(tr);
+			this.listWin.table.appendRow(tr);
 		}
 
 		// 创建按钮：按分组允许的形状给
@@ -562,8 +561,7 @@ export class SandboxEditor {
 	 * 图片资源没有「可见/隐形」这一列 —— 它是数据，不是地图元素。
 	 */
 	private renderImageList(): void {
-		const body = this.listWin.listBody;
-		body.innerHTML = '';
+		this.listWin.table.cleanRecs();
 		for (const img of this.scene.imageList()) {
 			const tr = document.createElement('tr');
 			if (this.selectedImage?.id === img.id) { tr.classList.add('highlighted'); }
@@ -596,7 +594,7 @@ export class SandboxEditor {
 			tr.style.cursor = 'pointer';
 			tr.addEventListener('click', () => { this.selectImage(img.id); });
 
-			body.appendChild(tr);
+			this.listWin.table.appendRow(tr);
 		}
 
 		// 新建资源：图片资源不是地图元素，点了直接建、不用去地图落位

@@ -1,7 +1,7 @@
 import {
 	JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam,
 } from '@jade-dungeon/jade-utils/ui-window';
-import { UIButton } from './components/comm.js';
+import { UIButton, UITable } from './components/comm.js';
 
 /**
  * 沙盘的窗口类
@@ -282,8 +282,11 @@ export class SandboxTokenListWindow extends UIWindowAdapter {
 
 	/** 分组标签页的容器（98.css 的 menu[role=tablist]） */
 	readonly groupBar: HTMLMenuElement = document.createElement('menu');
-	/** Token 列表的表格主体 */
-	readonly listBody: HTMLTableSectionElement = document.createElement('tbody');
+	/** Token 列表的表格（无表头，行由编辑器逐行 append） */
+	readonly table: UITable<unknown> = new UITable<unknown>({
+		classList: ['interactive','scene-token-list'],
+		styleNames: { selectedRow: 'highlighted' },
+	});
 	/** 创建新 Token 的按钮容器（按分组变化） */
 	readonly createBar: HTMLDivElement = document.createElement('div');
 
@@ -314,11 +317,8 @@ export class SandboxTokenListWindow extends UIWindowAdapter {
 			panel.classList.add('sunken-panel');
 			// 列表可能很长，给个固定高度让它自己滚
 			panel.style.height = `${Math.max(120, size.height - 110)}px`;
-			const table = document.createElement('table');
-			table.classList.add('interactive');
-			table.style.width = '100%';
-			table.appendChild(this.listBody);
-			panel.appendChild(table);
+			const tableEl = this.table.getTable();
+			panel.appendChild(tableEl);
 			tabBody.appendChild(panel);
 
 			this.createBar.classList.add('field-row');

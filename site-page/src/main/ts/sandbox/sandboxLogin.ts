@@ -498,6 +498,7 @@ class SandboxIndexWindow extends UIWindowAdapter {
 				{ title: '场景' },
 				{ title: 'owner', classList:['chmp-owner-col'] }],
 			styleNames: {
+				dragColWidth: ['interactive', 'col-resizable'],
 				selectedRow: 'highlighted',
 			},
 		});

@@ -73,12 +73,14 @@ export interface TableCol {
 	title: string,
 	field?: string,
 	classList?:Array<string>,
+	canResize?: boolean
 };
 
 export interface TableCfg<T> extends CpmtCfg {
 	readonly cols: Array<TableCol>,
 	readonly rec2Row: (rec: T) => HTMLTableRowElement;
 	readonly styleNames: {
+		readonly dragColWidth?: Array<string>,
 		readonly selectedRow: string,
 	}
 };
@@ -88,30 +90,94 @@ export class UITable<T> extends UIComponent {
 	private readonly elem: HTMLTableElement = document.createElement('table');
 	private readonly thead: HTMLTableSectionElement = document.createElement('thead');
 	private readonly body: HTMLTableSectionElement = document.createElement('tbody');
+
+	/** 每个数据列的 <col>，不含末尾删除列 —— 拖拽列宽时改它们的 width */
+	private readonly colEls: HTMLTableColElement[] = [];
+
 	private readonly cfg: TableCfg<T>;
 
 	constructor(cfg: TableCfg<T>) {
 		super();
 		this.cfg = cfg;
-
 		UIComponent.initElemt(this.elem, cfg);
 
+		if (cfg.styleNames.dragColWidth) {
+			for (const cname of cfg.styleNames.dragColWidth) {
+				this.elem.classList.add(cname);
+			}
+			// 不设 width:100% / tableLayout:fixed —— fixed 布局下没写宽度的列会「等分」
+			// 表格宽度，配合 CSS 的 width:100% 就把窄内容列（如 owner）也拉宽了。
+			// 保持 auto 布局则列宽按内容分配；拖拽改 <col> 的 width 仍能改宽
+			//（改窄受内容下限约束，内容不会被截断）。
+		}
+
 		const tr = document.createElement('tr');
-		for (const ccol of cfg.cols) {
+		const colgroup = document.createElement('colgroup');
+		cfg.cols.forEach((ccol, i) => {
+			// col-group
+			const col = document.createElement('col');
+			// 除非写明不能调节大小，否则默认可调节大小
+			let canResize = true; // ccol.canResize && !ccol.canResize ? true : false; 
+			if (canResize) {
+				this.colEls.push(col);
+			}
+			colgroup.appendChild(col);
+			// table head
 			const th = document.createElement('th');
 			th.textContent = ccol.title;
+			if (canResize) {
+				this.attachColResizer(th, i);
+			}
 			if (ccol.classList && ccol.classList.length > 0) {
 				for (const cname of ccol.classList) {
 					th.classList.add(cname);
 				}
 			}
 			tr.appendChild(th);
-		}
+		});
 		this.thead.appendChild(tr);
 
+		this.elem.appendChild(colgroup);
 		this.elem.appendChild(this.thead);
 		this.elem.appendChild(this.body);
 	}
+
+	/**
+	 * 给表头列挂右侧的拖拽把手：按下把手后左右拖动改这一列的宽度。
+	 * 宽度改在 `colEls[index]` 上（fixed 布局下它决定整列），
+	 * 起点用 `<th>` 当前渲染宽度 —— 直接读 `<col>` 的 box 不可靠。
+	 */
+	private attachColResizer(th: HTMLTableCellElement, index: number): void {
+		const handle = document.createElement('span');
+		handle.className = 'col-resizer';
+		th.appendChild(handle);
+
+		handle.addEventListener('mousedown', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			const col = this.colEls[index];
+			if (!col) { return; }
+			const startX = e.clientX;
+			const startWidth = th.getBoundingClientRect().width;
+			const MIN = 24;
+
+			const onMove = (ev: MouseEvent): void => {
+				const w = Math.max(MIN, startWidth + ev.clientX - startX);
+				col.style.width = `${w}px`;
+			};
+			const onUp = (): void => {
+				document.removeEventListener('mousemove', onMove);
+				document.removeEventListener('mouseup', onUp);
+				document.body.style.cursor = '';
+				document.body.style.userSelect = '';
+			};
+			document.addEventListener('mousemove', onMove);
+			document.addEventListener('mouseup', onUp);
+			document.body.style.cursor = 'col-resize';
+			document.body.style.userSelect = 'none';
+		});
+	}
+
 
 	public getTable() {
 		return this.elem;

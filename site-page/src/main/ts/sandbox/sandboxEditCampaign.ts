@@ -164,7 +164,7 @@ class SandboxRecordEditorPanel {
 		this.newBtn = UIButton.createElem({
 			id: `${id}-new`,
 			textContent: '➕',
-			classList: ["table-cell-opt-btn"],
+			classList: ["table-cell-opt-btn", "button.table-cell-add-btn"],
 			events: { click: (e) => { this.newRecord(); } }
 		});
 		this.submitBtn = UIButton.createElem({
@@ -276,7 +276,7 @@ class SandboxRecordEditorPanel {
 		// stopPropagation：删记录不该同时触发整行选中
 		const del = UIButton.createElem({
 			textContent : '❌', // 🗑
-			classList: ['table-cell-opt-btn'],
+			classList: ['table-cell-opt-btn', 'table-cell-del-btn'],
 			events: { click: (e) => {
 					e.stopPropagation();
 					// 删除不可逆，先走浏览器默认确认弹框，取消则不删

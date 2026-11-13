@@ -579,7 +579,7 @@ export class SandboxEditor {
 
 			const del = UIButton.createElem({
 				textContent: '❌', // 🗑
-				classList: ['table-cell-opt-btn'],
+				classList: ['table-cell-opt-btn', 'table-cell-del-btn'],
 				events: {
 					click: (e) => {
 						// 删除按钮 stopPropagation，避免点了删除又触发整行的选中

@@ -520,13 +520,21 @@ export class SandboxEditor {
 			const tdVis = document.createElement('td');
 			// 隐形的元素标出来 —— 墙壁几乎都是隐形的，列表里要能分辨
 			tdVis.textContent = tk.visible ? '可见' : '隐形';
+			tdVis.classList.add('rec-vsb-col');
 			tr.appendChild(tdVis);
+
+			const tdBlk = document.createElement('td');
+			// 遮挡视线的元素标出来 
+			tdBlk.textContent = tk.visible ? '遮挡' : '透明';
+			tdBlk.classList.add('rec-vsb-col');
+			tr.appendChild(tdBlk);
 
 			const del = UIButton.createElem({ textContent : '❌', // 🗑 
 				classList: ['table-cell-opt-btn', 'table-cell-del-btn'],
 				events: { click: (e) => { void this.deleteToken(group, tk.id); } } });
 
 			const tdDel = document.createElement('td');
+			tdDel.classList.add('rec-opt-col');
 			tdDel.appendChild(del);
 			tr.appendChild(tdDel);
 
@@ -587,6 +595,7 @@ export class SandboxEditor {
 				}
 			});
 			const tdDel = document.createElement('td');
+			tdDel.classList.add('rec-opt-col');
 			tdDel.appendChild(del);
 			tr.appendChild(tdDel);
 

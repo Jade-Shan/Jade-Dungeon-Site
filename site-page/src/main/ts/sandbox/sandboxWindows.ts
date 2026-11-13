@@ -2,6 +2,7 @@ import {
 	JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam,
 } from '@jade-dungeon/jade-utils/ui-window';
 import { UIButton, UITable } from './components/comm.js';
+import type { IToken2D, ImageResource } from '../trpg/sandtable.js';
 
 /**
  * 沙盘的窗口类
@@ -282,8 +283,8 @@ export class SandboxTokenListWindow extends UIWindowAdapter {
 
 	/** 分组标签页的容器（98.css 的 menu[role=tablist]） */
 	readonly groupBar: HTMLMenuElement = document.createElement('menu');
-	/** Token 列表的表格（无表头，行由编辑器逐行 append） */
-	readonly table: UITable<unknown> = new UITable<unknown>({
+	/** Token 列表的表格（无表头，行由编辑器逐行 append；记录是 Token 或资源文件） */
+	readonly table: UITable<IToken2D | ImageResource> = new UITable<IToken2D | ImageResource>({
 		classList: ['interactive','scene-token-list'],
 		styleNames: { selectedRow: 'highlighted' },
 	});

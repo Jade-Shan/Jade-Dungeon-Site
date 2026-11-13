@@ -111,7 +111,7 @@ gulp.task('process-style-workout', gulp.series(
 themeTasks.push('process-style-workout');
 
 // =======================
-// trpg 与 site（纯图片，无 Less）
+// trpg（沙盘图片 + sandbox 样式）与 site（favicon）
 //
 // site/ 是站点级资源分组，目前只有 favicon.ico ——
 // 它原来在库的 themes/window-ui/images/ 下，第 18 节决定 13 挪过来的
@@ -121,7 +121,18 @@ gulp.task('process-style-trpg', gulp.series(
 	() => gulp.src(['webroot/themes/trpg/images/*'],
 		{ read: false, allowEmpty: true }).pipe(clean()),
 	() => gulp.src(['src/main/themes/trpg/images/*'])
-		.pipe(gulp.dest('webroot/themes/trpg/images/'))
+		.pipe(gulp.dest('webroot/themes/trpg/images/')),
+	/* sandbox.less 单独编译成 sandbox.css（不并进 all.css），只给
+	 * sandbox/ 页面用。它只有一条规则，不走 theme-core 的变量体系。
+	 */
+	() => gulp.src(['webroot/themes/trpg/styles/*'],
+		{ read: false, allowEmpty: true }).pipe(clean()),
+	() => gulp.src(['src/main/themes/trpg/styles/sandbox.less'])
+		.pipe(less({ compress: false })).on('error', (e) => { console.log(e); })
+		.pipe(rename('sandbox.css'))
+		.pipe(gulp.dest('webroot/themes/trpg/styles/'))
+		.pipe(minifycss()).pipe(rename({ suffix: '.min' }))
+		.pipe(gulp.dest('webroot/themes/trpg/styles/'))
 ));
 themeTasks.push('process-style-trpg');
 

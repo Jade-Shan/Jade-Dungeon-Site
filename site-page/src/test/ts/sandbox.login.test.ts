@@ -1,8 +1,8 @@
 /**
- * 登录页：登录 / 修改密码跳转 / 返回选场景
+ * 登录页：登录 / 修改密码跳转 / 返回选战役
  *
- * sandbox 模块迁移的期 5 产物。2026-11-07 把「登录」和「选场景」拆成两页之后，
- * 这里只测 `login.html` 的登录页（选场景页的跳转测在 `sandbox.index.test.ts`，
+ * sandbox 模块迁移的期 5 产物。2026-11-07 把「登录」和「选战役」拆成两页之后，
+ * 这里只测 `login.html` 的登录页（选战役页的跳转测在 `sandbox.index.test.ts`，
  * 修改密码页测在 `sandbox.changePassword.test.ts`）。这一页不碰 Canvas，能测得比较全。
  *
  * 要盯住的：
@@ -193,7 +193,7 @@ describe('修改密码跳转', () => {
 
 });
 
-describe('返回选场景', () => {
+describe('返回选战役', () => {
 
 	test('点返回按钮带着场景参数回 index.html', () => {
 		withDom(PAGE, () => {

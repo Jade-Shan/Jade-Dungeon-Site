@@ -33,7 +33,7 @@ html,body {width:99%; height: 99%; overflow: auto;}
 		let placeName    = params.get('placeName'   ) || '';
 		let sceneName    = params.get('sceneName'   ) || '';
 
-		// 三个数字 id 都是正整数才进场景。缺了（或不是数字）就回选场景页 ——
+		// 三个数字 id 都是正整数才进战役。缺了（或不是数字）就回选战役页 ——
 		// 老应用这里是重定向到一组写死的 demo ID，那会让人以为场景存在
 		let idsOk = Number.isInteger(campaignId) && Number.isInteger(placeId) && Number.isInteger(sceneId)
 			&& campaignId > 0 && placeId > 0 && sceneId > 0;

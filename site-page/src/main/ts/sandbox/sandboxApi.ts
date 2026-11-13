@@ -55,8 +55,8 @@ export interface SceneName {
 	sceneName   : string;
 }
 
-/** 场景列表里的一行（后端 `ISceneListItem`），选场景页的表格用 */
-export interface SceneListItem {
+/** 战役列表里的一行（campaign 级，含其当前地点 / 场景），选战役页的表格用 */
+export interface CampaignListItem {
 	/** 战役 ID */
 	campaignId: number;
 	/** 战役名 */
@@ -71,6 +71,32 @@ export interface SceneListItem {
 	currSceneId: number;
 	/** 当前场景名 */
 	currSceneName: string;
+}
+
+/** 地点记录（后端 `IPlaceRecord`），编辑战役页的地点表格用 */
+export interface PlaceRecord {
+	/** 地点 ID */
+	id: number;
+	/** 所属战役 ID */
+	campaignId: number;
+	/** 地点名 */
+	placeName: string;
+	/** 地点描述 */
+	detailInfo: string;
+}
+
+/** 场景记录（后端 `ISceneRecord`），编辑战役页的场景表格用 */
+export interface SceneRecord {
+	/** 场景 ID */
+	id: number;
+	/** 所属战役 ID */
+	campaignId: number;
+	/** 所属地点 ID */
+	placeId: number;
+	/** 场景名 */
+	sceneName: string;
+	/** 场景描述 */
+	detailInfo: string;
 }
 
 /** 棋子的移动请求（后端 `IMoveRequest`） */
@@ -330,16 +356,118 @@ export class SandboxApi {
 	}
 
 	/**
-	 * 列出所有可进入的场景（三表 join：战役 / 地点 / 场景 + owner）
+	 * 列出所有可进入的战役（每个战役含其当前地点 / 场景 + owner）
 	 *
-	 * 选场景页的表格靠它填充。读接口，不需要身份。
+	 * 选战役页的表格靠它填充。读接口，不需要身份。
 	 *
-	 * @returns {Promise<ApiResult<Array<SceneListItem>>>} 没有场景时返回空数组
+	 * @returns {Promise<ApiResult<Array<CampaignListItem>>>} 没有战役时返回空数组
 	 */
-	async listScenes(): Promise<ApiResult<Array<SceneListItem>>> {
+	async listCampaigns(): Promise<ApiResult<Array<CampaignListItem>>> {
 		const url = `${this.root}/api/sandtable/list-scene?${qs({})}`;
-		return call<Array<SceneListItem>>(url,
-			r => (r.data as Array<SceneListItem>) ?? []);
+		return call<Array<CampaignListItem>>(url,
+			r => (r.data as Array<CampaignListItem>) ?? []);
+	}
+
+	// ── 地点 / 场景 CRUD ──
+
+	/**
+	 * 列出某战役的地点（编辑战役页的地点表格用）
+	 *
+	 * 读接口，不校验身份（和 list-scene 一致）。
+	 *
+	 * @param campaignId - 战役数字 ID
+	 * @returns {Promise<ApiResult<Array<PlaceRecord>>>}
+	 */
+	async listPlaces(campaignId: number): Promise<ApiResult<Array<PlaceRecord>>> {
+		const url = `${this.root}/api/sandtable/list-place?${qs({ campaignId })}`;
+		return call<Array<PlaceRecord>>(url,
+			r => (r.data as Array<PlaceRecord>) ?? []);
+	}
+
+	/**
+	 * 创建或更新地点（upsert）
+	 *
+	 * `id` 传 `0` / `undefined` 表示新建，后端 INSERT 并返回新 id；
+	 * 传正整数表示更新（UPDATE 带 `AND campaign_id` 防跨战役改别人的记录）。
+	 * 非该战役 owner 会得到 `ok: false` + `msg: 'not owner'`。
+	 *
+	 * @param campaignId - 战役数字 ID
+	 * @param id - 地点 ID，`0` / `undefined` 表示新建
+	 * @param placeName - 地点名（非空）
+	 * @param detailInfo - 地点描述（可空）
+	 * @param token - 登录 token（走 POST body，不进 URL）
+	 * @returns {Promise<ApiResult<void>>}
+	 */
+	async savePlace(campaignId: number, id: number | undefined, placeName: string,
+		detailInfo: string, token: string): Promise<ApiResult<void>> //
+	{
+		const url = `${this.root}/api/sandtable/save-place?${qs({})}`;
+		const body = qs({ campaignId, id, placeName, detailInfo, token });
+		return call<void>(url, undefined, body);
+	}
+
+	/**
+	 * 删除地点
+	 *
+	 * 该地点下还有场景时后端回 `ok: false` + `msg: '该地点下还有场景，请先删除场景'`。
+	 *
+	 * @param campaignId - 战役数字 ID
+	 * @param id - 地点 ID
+	 * @param token - 登录 token
+	 * @returns {Promise<ApiResult<void>>}
+	 */
+	async deletePlace(campaignId: number, id: number, token: string): Promise<ApiResult<void>> {
+		const url = `${this.root}/api/sandtable/delete-place?${qs({})}`;
+		const body = qs({ campaignId, id, token });
+		return call<void>(url, undefined, body);
+	}
+
+	/**
+	 * 列出某战役的场景（编辑战役页的场景表格用）
+	 *
+	 * 读接口，不校验身份。注意后端接口名是 `list-campaign-scene` ——
+	 * `list-scene` 已被「列出所有战役」占用。
+	 *
+	 * @param campaignId - 战役数字 ID
+	 * @returns {Promise<ApiResult<Array<SceneRecord>>>}
+	 */
+	async listCampaignScenes(campaignId: number): Promise<ApiResult<Array<SceneRecord>>> {
+		const url = `${this.root}/api/sandtable/list-campaign-scene?${qs({ campaignId })}`;
+		return call<Array<SceneRecord>>(url,
+			r => (r.data as Array<SceneRecord>) ?? []);
+	}
+
+	/**
+	 * 创建或更新场景（upsert），语义同 {@link SandboxApi.savePlace}
+	 *
+	 * @param campaignId - 战役数字 ID
+	 * @param id - 场景 ID，`0` / `undefined` 表示新建
+	 * @param placeId - 所属地点 ID（正整数）
+	 * @param sceneName - 场景名（非空）
+	 * @param detailInfo - 场景描述（可空）
+	 * @param token - 登录 token
+	 * @returns {Promise<ApiResult<void>>}
+	 */
+	async saveScene(campaignId: number, id: number | undefined, placeId: number,
+		sceneName: string, detailInfo: string, token: string): Promise<ApiResult<void>> //
+	{
+		const url = `${this.root}/api/sandtable/save-scene?${qs({})}`;
+		const body = qs({ campaignId, id, placeId, sceneName, detailInfo, token });
+		return call<void>(url, undefined, body);
+	}
+
+	/**
+	 * 删除场景
+	 *
+	 * @param campaignId - 战役数字 ID
+	 * @param id - 场景 ID
+	 * @param token - 登录 token
+	 * @returns {Promise<ApiResult<void>>}
+	 */
+	async deleteScene(campaignId: number, id: number, token: string): Promise<ApiResult<void>> {
+		const url = `${this.root}/api/sandtable/delete-scene?${qs({})}`;
+		const body = qs({ campaignId, id, token });
+		return call<void>(url, undefined, body);
 	}
 
 	// ── 移动请求 ──

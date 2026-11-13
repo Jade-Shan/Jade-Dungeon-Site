@@ -10,6 +10,7 @@ import {
 	SandboxDiceWindow, SandboxSceneWindow, SandboxPropsWindow,
 	SandboxStatusWindow, SandboxTokenListWindow,
 } from './sandboxWindows.js';
+import { UIButton } from './components/comm.js';
 
 /**
  * 沙盘的 GM 编辑器
@@ -505,8 +506,7 @@ export class SandboxEditor {
 			return;
 		}
 		const group = this.currTab;
-		const body = this.listWin.listBody;
-		body.innerHTML = '';
+		this.listWin.table.cleanRecs();
 		for (const tk of this.scene.list(group)) {
 			const tr = document.createElement('tr');
 			if (this.selected?.token.id === tk.id) { tr.classList.add('highlighted'); }
@@ -520,16 +520,25 @@ export class SandboxEditor {
 			const tdVis = document.createElement('td');
 			// 隐形的元素标出来 —— 墙壁几乎都是隐形的，列表里要能分辨
 			tdVis.textContent = tk.visible ? '可见' : '隐形';
+			tdVis.classList.add('rec-vsb-col');
 			tr.appendChild(tdVis);
 
+			const tdBlk = document.createElement('td');
+			// 遮挡视线的元素标出来 
+			tdBlk.textContent = tk.visible ? '遮挡' : '透明';
+			tdBlk.classList.add('rec-vsb-col');
+			tr.appendChild(tdBlk);
+
+			const del = UIButton.createElem({ textContent : '❌', // 🗑 
+				classList: ['table-cell-opt-btn', 'table-cell-del-btn'],
+				events: { click: (e) => { void this.deleteToken(group, tk.id); } } });
+
 			const tdDel = document.createElement('td');
-			const del = document.createElement('button');
-			del.textContent = '✕';
-			del.addEventListener('click', () => { void this.deleteToken(group, tk.id); });
+			tdDel.classList.add('rec-opt-col');
 			tdDel.appendChild(del);
 			tr.appendChild(tdDel);
 
-			body.appendChild(tr);
+			this.listWin.table.appendRow(tr);
 		}
 
 		// 创建按钮：按分组允许的形状给
@@ -539,12 +548,15 @@ export class SandboxEditor {
 		label.textContent = '新建：';
 		bar.appendChild(label);
 		for (const shape of GROUP_SHAPES[group]) {
-			const btn = document.createElement('button');
-			btn.textContent = SHAPE_ICON[shape];
-			btn.title = `新建${shape}，然后点地图落位`;
-			btn.addEventListener('click', () => {
-				this.pendingShape = { group, shape };
-				this.sceneWin.setStatus(`点地图放下这个${SHAPE_ICON[shape]}`);
+			const btn = UIButton.createElem({
+				textContent: SHAPE_ICON[shape],
+				title: `新建${shape}，然后点地图落位`,
+				events: {
+					click: (e) => {
+						this.pendingShape = { group, shape };
+						this.sceneWin.setStatus(`点地图放下这个${SHAPE_ICON[shape]}`);
+					}
+				}
 			});
 			bar.appendChild(btn);
 		}
@@ -557,8 +569,7 @@ export class SandboxEditor {
 	 * 图片资源没有「可见/隐形」这一列 —— 它是数据，不是地图元素。
 	 */
 	private renderImageList(): void {
-		const body = this.listWin.listBody;
-		body.innerHTML = '';
+		this.listWin.table.cleanRecs();
 		for (const img of this.scene.imageList()) {
 			const tr = document.createElement('tr');
 			if (this.selectedImage?.id === img.id) { tr.classList.add('highlighted'); }
@@ -572,14 +583,19 @@ export class SandboxEditor {
 			tdUrl.textContent = img.url.length > 32 ? `${img.url.slice(0, 32)}…` : img.url;
 			tr.appendChild(tdUrl);
 
-			const tdDel = document.createElement('td');
-			const del = document.createElement('button');
-			del.textContent = '✕';
-			// 删除按钮 stopPropagation，避免点了删除又触发整行的选中
-			del.addEventListener('click', (e) => {
-				e.stopPropagation();
-				void this.deleteImage(img.id);
+			const del = UIButton.createElem({
+				textContent: '❌', // 🗑
+				classList: ['table-cell-opt-btn', 'table-cell-del-btn'],
+				events: {
+					click: (e) => {
+						// 删除按钮 stopPropagation，避免点了删除又触发整行的选中
+						e.stopPropagation();
+						void this.deleteImage(img.id);
+					}
+				}
 			});
+			const tdDel = document.createElement('td');
+			tdDel.classList.add('rec-opt-col');
 			tdDel.appendChild(del);
 			tr.appendChild(tdDel);
 
@@ -587,7 +603,7 @@ export class SandboxEditor {
 			tr.style.cursor = 'pointer';
 			tr.addEventListener('click', () => { this.selectImage(img.id); });
 
-			body.appendChild(tr);
+			this.listWin.table.appendRow(tr);
 		}
 
 		// 新建资源：图片资源不是地图元素，点了直接建、不用去地图落位
@@ -596,10 +612,11 @@ export class SandboxEditor {
 		const label = document.createElement('span');
 		label.textContent = '新建：';
 		bar.appendChild(label);
-		const btn = document.createElement('button');
-		btn.textContent = '🌠';
-		btn.title = '新建图片资源（id 为 map 的那张是场景背景图）';
-		btn.addEventListener('click', () => { this.createImage(); });
+		const btn = UIButton.createElem({
+			textContent: '🌠',
+			title: '新建图片资源（id 为 map 的那张是场景背景图）',
+			events: { click: (e) => { this.createImage(); } }
+		});
 		bar.appendChild(btn);
 	}
 

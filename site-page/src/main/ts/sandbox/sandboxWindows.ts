@@ -1,6 +1,8 @@
 import {
 	JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam,
 } from '@jade-dungeon/jade-utils/ui-window';
+import { UIButton, UITable } from './components/comm.js';
+import type { IToken2D, ImageResource } from '../trpg/sandtable.js';
 
 /**
  * 沙盘的窗口类
@@ -281,8 +283,11 @@ export class SandboxTokenListWindow extends UIWindowAdapter {
 
 	/** 分组标签页的容器（98.css 的 menu[role=tablist]） */
 	readonly groupBar: HTMLMenuElement = document.createElement('menu');
-	/** Token 列表的表格主体 */
-	readonly listBody: HTMLTableSectionElement = document.createElement('tbody');
+	/** Token 列表的表格（无表头，行由编辑器逐行 append；记录是 Token 或资源文件） */
+	readonly table: UITable<IToken2D | ImageResource> = new UITable<IToken2D | ImageResource>({
+		classList: ['interactive','scene-token-list'],
+		styleNames: { selectedRow: 'highlighted' },
+	});
 	/** 创建新 Token 的按钮容器（按分组变化） */
 	readonly createBar: HTMLDivElement = document.createElement('div');
 
@@ -313,11 +318,8 @@ export class SandboxTokenListWindow extends UIWindowAdapter {
 			panel.classList.add('sunken-panel');
 			// 列表可能很长，给个固定高度让它自己滚
 			panel.style.height = `${Math.max(120, size.height - 110)}px`;
-			const table = document.createElement('table');
-			table.classList.add('interactive');
-			table.style.width = '100%';
-			table.appendChild(this.listBody);
-			panel.appendChild(table);
+			const tableEl = this.table.getTable();
+			panel.appendChild(tableEl);
 			tabBody.appendChild(panel);
 
 			this.createBar.classList.add('field-row');
@@ -524,15 +526,23 @@ export class SandboxPropsWindow extends UIWindowAdapter {
 export class SandboxStatusWindow extends UIWindowAdapter {
 
 	/** 保存并发布 */
-	readonly saveBtn: HTMLButtonElement = document.createElement('button');
+	readonly saveBtn: HTMLButtonElement;
 	/** 刷新移动请求 */
-	readonly refreshBtn: HTMLButtonElement = document.createElement('button');
+	readonly refreshBtn: HTMLButtonElement;
 	/** 定时刷新开关（选中后每 3 秒自动刷新一次移动请求） */
 	readonly autoRefresh: HTMLInputElement = document.createElement('input');
 	/** 当前角色视野开关（选中后以选中的玩家/生物为观察者显示视野与遮挡） */
 	readonly autoView: HTMLInputElement = document.createElement('input');
 	/** 信息显示区 */
 	readonly info: HTMLParagraphElement = document.createElement('p');
+
+	constructor(desktop: UIDesktop, id: string, title: string, cfg?: WinParam) {
+    	super(desktop, id, title, cfg);
+		// 98.css 的 button.default 是带强调边框的主按钮
+		this.saveBtn = UIButton.createElem({ textContent: '保存并发布', classList: ['default'] });
+
+		this.refreshBtn = UIButton.createElem({ textContent: '刷新请求' });
+	}
 
 	/**
 	 * 拼窗体：两个按钮 + 定时刷新开关 + 信息行
@@ -541,13 +551,11 @@ export class SandboxStatusWindow extends UIWindowAdapter {
 		const renderBody = (): HTMLDivElement => {
 			const body = this.ui.windowBody;
 			body.style.overflow = 'auto';
-			this.saveBtn.textContent = '保存并发布';
-			// 98.css 的 button.default 是带强调边框的主按钮
-			this.saveBtn.classList.add('default');
-			this.refreshBtn.textContent = '刷新请求';
 			const row = document.createElement('div');
 			row.classList.add('field-row');
+
 			row.appendChild(this.saveBtn);
+
 			row.appendChild(this.refreshBtn);
 			body.appendChild(row);
 

@@ -208,7 +208,7 @@ const readSceneParams = (data: IRequestData) => {
 | [sandboxLogin.ts](site-page/src/main/ts/sandbox/sandboxLogin.ts) | 选场景页 6 个输入框：campaignId / placeId / sceneId（数字 id）+ campaignName / placeName / sceneName（名字）；`SCENE_KEYS` 扩成 6 个 URL 参数 |
 | [sandboxApi.ts](site-page/src/main/ts/sandbox/sandboxApi.ts) | 三级定位参数 `campaignId` / `placeId` / `sceneId` 类型改 `number`（值=数字 id）；名字不进 API 参数 |
 | [sandboxView.ts](site-page/src/main/ts/sandbox/sandboxView.ts) / [sandboxEditor.ts](site-page/src/main/ts/sandbox/sandboxEditor.ts) | 标题栏显示改用 `campaignName / placeName / sceneName`；调 `mapOwner` 等用数字 id |
-| `sandbox/index.html` / `login.html` / `view.html` / `editor.html` | URL 参数从 3 个名字扩成 6 个（3 数字 id + 3 名字），页面读参同步 |
+| `sandbox/index.html` / `login.html` / `view.html`（这文件现已名为 `viewScene.html`） / `editor.html`（这文件现已名为 `editScene.html`） | URL 参数从 3 个名字扩成 6 个（3 数字 id + 3 名字），页面读参同步 |
 | 测试 `sandbox.*.test.ts` | 三级定位断言从「名字」改成「数字 id + name 分离」 |
 
 ## 边界行为变化

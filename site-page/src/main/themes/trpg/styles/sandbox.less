@@ -1,0 +1,41 @@
+/* ========================= */
+/* component common */
+/* ========================= */
+
+/* 表格中最后一列放着的按钮，定义一个大小 */
+button.table-cell-opt-btn {
+	width: 24px; height: 24px; min-width: 24px; min-height: 24px;
+	padding: 0; font-size: 14px;
+};
+button.table-cell-add-btn { color: green; };
+button.table-cell-del-btn { color: red; };
+
+table th, table td { border-bottom: 1px dashed #ccc; border-right: 1px dashed #ccc; };
+table.col-resizable th { position: relative; };
+table.col-resizable .col-resizer {
+	position: absolute; top: 0; right: -3px; width: 6px; height: 100%;
+	cursor: col-resize; user-select: none;
+};
+table.col-resizable .col-resizer:hover { background: #a0a0a0; };
+
+
+/* ========================= */
+/* for app only */
+/* ========================= */
+
+/* login page */
+th.chmp-owner-col { width: 55px;}
+#sdbx-cmp-select-panel { height: 300px; width: 100%; };
+#sdbx-cmp-select-panel>#campaign-table { width: 100%; };
+
+/* campaign edit page */
+table.chmpEditRecTable { width: 100%; table-layout: fixed; };
+th.rec-opt-col {width: 35px};
+th.num-field-col {width: 65px; text-align: center;}
+td.num-field-col {text-align: right;}
+div.chmp-sunken-panel { height : 250px; width : 350px; }
+
+/* scene edit page */
+td.rec-vsb-col {width: 30px};
+td.rec-opt-col {width: 35px};
+table.scene-token-list {width: 100%}

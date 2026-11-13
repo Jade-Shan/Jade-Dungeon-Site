@@ -3,11 +3,12 @@
 	<head>
 @@include('./src/main/html/parts/meta-charset.html', { })
 @@include('./src/main/html/parts/importmap.html', { })
-		<title>沙盘 - 场景编辑器</title>
+		<title>沙盘 - 编辑战役</title>
 @@include('./src/main/html/parts/favicon.html', { })
 
 @@include('./src/main/html/parts/vendor-98css.html', { })
 @@include('./src/main/html/parts/theme-window-ui.html', { })
+		<link type="text/css" rel="stylesheet" href="@@staticRoot/themes/trpg/styles/sandbox.min.css?v=@@buildversion" />
 		<!-- 桌面要占满视口，html/body 两层都得显式设高度 -->
 		<style>
 html,body {width:99%; height: 99%; overflow: auto;}
@@ -18,49 +19,37 @@ html,body {width:99%; height: 99%; overflow: auto;}
 	</body>
 	<script type="module">
 		import { WebUtil } from "@jade-dungeon/jade-utils/web";
-		import { initSandboxEditor } from "@jade-dungeon/site-page/sandbox-editor";
+		import { initSandboxEditCampaign } from "@jade-dungeon/site-page/sandbox-edit-campaign";
 
 		let params = new URLSearchParams(window.location.search);
 		let campaignId   = Number(params.get('campaignId'));
-		let placeId      = Number(params.get('placeId'   ));
-		let sceneId      = Number(params.get('sceneId'   ));
 		let campaignName = params.get('campaignName') || '';
-		let placeName    = params.get('placeName'   ) || '';
-		let sceneName    = params.get('sceneName'   ) || '';
 
 		let username   = WebUtil.loadCookieValue('username'  ) || '';
 		let loginToken = WebUtil.loadCookieValue('loginToken') || '';
 
-		// 三个数字 id 都是正整数才算定位有效
-		let idsOk = Number.isInteger(campaignId) && Number.isInteger(placeId) && Number.isInteger(sceneId)
-			&& campaignId > 0 && placeId > 0 && sceneId > 0;
+		// campaignId 得是正整数；编辑战役要身份（写操作靠 loginToken 鉴权）
+		let idOk = Number.isInteger(campaignId) && campaignId > 0;
 
-		// 编辑器要身份（保存时后端靠 loginToken 鉴权），没登录就回登录页
-		if (!idsOk) {
+		if (!idOk) {
 			window.location = './index.html';
 		} else if (!(username && loginToken)) {
 			window.location = './index.html?campaignId=' + encodeURIComponent(campaignId)
-				+ '&placeId=' + encodeURIComponent(placeId)
-				+ '&sceneId=' + encodeURIComponent(sceneId)
-				+ '&campaignName=' + encodeURIComponent(campaignName)
-				+ '&placeName=' + encodeURIComponent(placeName)
-				+ '&sceneName=' + encodeURIComponent(sceneName);
+				+ '&campaignName=' + encodeURIComponent(campaignName);
 		} else {
 			window.onload = function() {
-				initSandboxEditor({
+				initSandboxEditCampaign({
 					apiRoot     : '@@apiRoot',
-					assetRoot   : '@@staticRoot/themes/trpg/images',
 					desktopId   : 'sandbox-desktop',
-					iconBaseUrl     : '@@cdn3rd/SE98',
-					diceIconBaseUrl : '@@cdn3rd/jade-trpg',
-					scene           : { campaignId: campaignId, placeId: placeId, sceneId: sceneId },
-					sceneName       : { campaignName: campaignName, placeName: placeName, sceneName: sceneName },
+					iconBaseUrl : '@@cdn3rd/SE98',
+					campaignId  : campaignId,
+					campaignName: campaignName,
 					username    : username,
 					loginToken  : loginToken
 				}).catch(e => {
-					console.error('编辑器启动失败:', e);
+					console.error('编辑战役页启动失败:', e);
 					document.getElementById('sandbox-desktop').innerHTML =
-						'<p style="padding:1em">编辑器启动失败：' + e.message + '</p>';
+						'<p style="padding:1em">编辑战役页启动失败：' + e.message + '</p>';
 				});
 			}
 		}

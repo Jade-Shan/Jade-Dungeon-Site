@@ -39,3 +39,48 @@ div.chmp-sunken-panel { height : 250px; width : 350px; }
 td.rec-vsb-col {width: 30px};
 td.rec-opt-col {width: 35px};
 table.scene-token-list {width: 100%}
+
+/* ========================= */
+/* CSS extracted from TS（ui-css-refactor） */
+/* ========================= */
+
+/* 可点击行的光标（编辑战役/编辑器列表） */
+.cursor-pointer { cursor: pointer; }
+
+/* 编辑战役页：窗口 body 的上下布局 */
+.chmp-edit-body {
+	overflow: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.chmp-edit-top-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+.chmp-edit-hint { margin: 0; }
+.chmp-edit-fieldset { flex: 1; min-width: 0; }
+
+/* 记录编辑面板：ID 行与状态行的小间距 */
+.ipt-id { margin: 4px 0; }
+.ipt-noteel { margin-top: 6px; }
+
+/* 两个 fieldset 左右并排 */
+.edit-col-grid-flex {
+	display: flex;
+	gap: 10px;
+	align-items: flex-start;
+}
+
+/* 登录 / 选战役 / 改密码窗口 body 滚动 */
+.auto-win-body { overflow: auto; }
+
+/* 沙盘各窗口 */
+.sandbox-overflow { overflow: scroll; }
+.dice-cmdinput { width: 100%; }
+.gmpnl-hidden { display: none; }
+.tknwin-sott { overflow: auto; }
+.tknpop-win-body { overflow: auto; }
+.field-lb { width: 5em; }
+.csl-win-body { overflow: auto; }

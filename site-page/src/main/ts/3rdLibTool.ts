@@ -235,7 +235,7 @@ export class BootStrapHelper {
 				<div class="modal-dialog">
 					<div class="modal-content">
 						<div class="modal-header">
-							<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button><h4 class="modal-title" id="${photoFrameId}-label" style="margin-right:20px;"></h4>
+							<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button><h4 class="modal-title photo-pop-frame-h4" id="${photoFrameId}-label"></h4>
 						</div>
 						<div class="modal-body row">
 							<img id="${photoFrameId}-img" alt="" src="" class="col-xs-12 col-sm-12 col-md-12 col-lg-12">

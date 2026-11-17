@@ -381,7 +381,6 @@ export namespace TestJadeTRPG {
 			this.bufferCanvas.height = height;
 			this.bufferCanvas.style.width  = `${width }px`;
 			this.bufferCanvas.style.height = `${height}px`;
-			this.bufferCanvas.style.display = `hidden`;
 		}
 
 		renderIn(): void {
@@ -390,8 +389,7 @@ export namespace TestJadeTRPG {
 				windowBody.style.overflow = this.cfg.body.overflow;
 				windowBody.style.width = `${this.cfg.body.initSize.width}px`;
 				windowBody.style.height = `${this.cfg.body.initSize.height}px`;
-				windowBody.style.overflowX = 'scroll';
-				windowBody.style.overflowY = 'scroll';
+				windowBody.classList.add('demo-scroll-body');
 				windowBody.appendChild(this.finalCanvas);
 				return windowBody;
 			}

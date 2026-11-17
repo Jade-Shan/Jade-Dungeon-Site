@@ -107,7 +107,7 @@ export namespace TestJadeUI {
 				<li>Or even a File Explorer!</li>
 			</ul>
 
-			<div class="sunken-panel" style="height: 120px; width: 240px;">
+			<div class="sunken-panel demo-sunken-panel">
 				<table class="interactive">
 					<thead>
 						<tr><th>Name</th><th>Version</th><th>Company</th></tr>
@@ -189,8 +189,7 @@ export namespace TestJadeUI {
 			this.canvas.id = `canvas-${id}`;
 			this.canvas.width = 1600;
 			this.canvas.height = 600;
-			this.canvas.style.width  = `1600px`;
-			this.canvas.style.height = `600px`;
+			this.canvas.classList.add('demo-canvas');
 		}
 
 		renderIn(): void {
@@ -199,8 +198,7 @@ export namespace TestJadeUI {
 				windowBody.style.overflow = this.cfg.body.overflow;
 				windowBody.style.width  = `${this.cfg.body.initSize.width }px`;
 				windowBody.style.height = `${this.cfg.body.initSize.height}px`;
-				windowBody.style.overflowX = 'auto';
-				windowBody.style.overflowY = 'auto';
+				windowBody.classList.add('demo-auto-body');
 				windowBody.appendChild(this.canvas);
 				return windowBody;
 			}

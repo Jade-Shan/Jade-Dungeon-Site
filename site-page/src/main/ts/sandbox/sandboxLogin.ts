@@ -231,7 +231,7 @@ class SandboxLoginWindow extends UIWindowAdapter {
 	renderIn(): void {
 		const renderBody = (): HTMLDivElement => {
 			const body = this.ui.windowBody;
-			body.style.overflow = 'auto';
+			body.classList.add('auto-win-body');
 
 			body.appendChild(this.buildIdentityFieldset());
 
@@ -518,7 +518,7 @@ class SandboxIndexWindow extends UIWindowAdapter {
 	renderIn(): void {
 		const renderBody = (): HTMLDivElement => {
 			const body = this.ui.windowBody;
-			body.style.overflow = 'auto';
+			body.classList.add('auto-win-body');
 
 			body.appendChild(this.buildCampaignFieldset());
 
@@ -922,7 +922,7 @@ class SandboxChangePasswordWindow extends UIWindowAdapter {
 	renderIn(): void {
 		const renderBody = (): HTMLDivElement => {
 			const body = this.ui.windowBody;
-			body.style.overflow = 'auto';
+			body.classList.add('auto-win-body');
 
 			const who = document.createElement('p');
 			who.textContent = this.username ? `用户名：${this.username}` : '用户名：未指定（请从登录页进入）';

@@ -73,7 +73,7 @@ export class BlogPage {
 			html += `
 				<li><div class="img-text-itm"><div class="item-thumbnail">
 					<a href="${StrUtil.escapeHtml(t.link)}" target="_blank"><img class="img-hov" alt="" src="${StrUtil.escapeHtml(t.thumbnail)}" border="0"></a></div><div class="item-title">
-					<a href="${StrUtil.escapeHtml(t.link)}">${StrUtil.escapeHtml(t.title)}</a></div></div><div style="clear: both;">
+					<a href="${StrUtil.escapeHtml(t.link)}">${StrUtil.escapeHtml(t.title)}</a></div></div><div class="site-recomm">
 				</div></li>`;
 		}
 		let tk = document.querySelector(blogSelectors(slt).recommends);

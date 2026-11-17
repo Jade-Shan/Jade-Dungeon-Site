@@ -123,7 +123,7 @@ gulp.task('process-style-trpg', gulp.series(
 	() => gulp.src(['src/main/themes/trpg/images/*'])
 		.pipe(gulp.dest('webroot/themes/trpg/images/')),
 	/* sandbox.less 单独编译成 sandbox.css（不并进 all.css），只给
-	 * sandbox/ 页面用。它只有一条规则，不走 theme-core 的变量体系。
+	 * sandbox/ 页面用。它是沙盘专用的一小组规则，不走 theme-core 的变量体系。
 	 */
 	() => gulp.src(['webroot/themes/trpg/styles/*'],
 		{ read: false, allowEmpty: true }).pipe(clean()),

@@ -138,6 +138,8 @@ export class SandboxView {
 		this.sceneWin.renderIn();
 
 		this.diceWin = new SandboxDiceWindow(desktop, 'sandbox-dice', '检定',
+			() => { this.refreshRollResults() },
+			{ cmdInput: (e) => { if (e.key === 'Enter') { void this.rollDice(); } } },
 			{
 				// supportSizes 62 = 16|24|32|48|64；标题栏取 16、Dock 取 48
 				icons: { supportSizes: 62, baseUrl: this.cfg.diceIconBaseUrl, category: 'dice', name: 'd20.png' },
@@ -146,7 +148,6 @@ export class SandboxView {
 
 		await this.loadScene();
 		this.bindSceneEvents();
-		this.bindDiceEvents();
 		await this.refreshRollResults();
 	}
 
@@ -335,24 +336,11 @@ export class SandboxView {
 	}
 
 	/**
-	 * 绑定掷骰窗口：回车掷骰，点结果区刷新
-	 */
-	private bindDiceEvents(): void {
-		this.diceWin.cmdInput.addEventListener('keydown', e => {
-			if (e.key === 'Enter') { void this.rollDice(); }
-		});
-		// 老代码是 textarea 的 onClick 刷新，保留这个习惯
-		this.diceWin.logArea.addEventListener('click', () => {
-			void this.refreshRollResults();
-		});
-	}
-
-	/**
 	 * 掷骰
 	 * @returns {Promise<void>}
 	 */
 	private async rollDice(): Promise<void> {
-		const cmd = this.diceWin.cmdInput.value.trim();
+		const cmd = this.diceWin.cmdInput.getValue().trim();
 		if (cmd.length < 1) {
 			this.diceWin.setLog('请输入骰子表达式，例如 2d6+1d4+3');
 			return;

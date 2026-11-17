@@ -5,7 +5,9 @@
  * 98.css 的 OptionButton（radio）。这里钉住几条行为：
  *
  * - options 字段渲染成 radio，不再有 select
- * - `fieldValue` / `setFieldValue` / `bindChange` 都认得 radio 组
+ * - `fieldValue` / `setFieldValue` 都认得 radio 组
+ * - 初始化选中值要真正落到 DOM 上（`radio.checked`）
+ * - `renderFields` 的 `onChange` 形参在任一字段变更时触发
  *
  * `renderFields` 只拼 DOM，不碰 `getContext('2d')` 也不碰 desktop，
  * 所以能在 jsdom 里直接实例化 `SandboxPropsWindow`（desktop 传占位对象）。
@@ -21,11 +23,11 @@ after(dom.teardown);
 
 /** 两个带 options 的典型字段：可见 + 遮挡（都要 `widget: 'radio'`） */
 function booleanFields(): Array<{
-	key: string, label: string, value: string, options: Array<[string, string]>, widget?: 'radio',
+	key: string, label: string, value: string, options: Array<{label: string, value: string}>, widget?: 'radio',
 }> {
 	return [
-		{ key: 'visible', label: '可见', value: 'true', options: [['true', '可见'], ['false', '隐形']], widget: 'radio' },
-		{ key: 'blockView', label: '遮挡', value: 'false', options: [['true', '遮挡视线'], ['false', '后方可见']], widget: 'radio' },
+		{ key: 'visible', label: '可见', value: 'true', options: [{label: '可见', value: 'true'}, {label: '隐形', value: 'false'}], widget: 'radio' },
+		{ key: 'blockView', label: '遮挡', value: 'false', options: [{label: '遮挡视线', value: 'true'}, {label: '后方可见', value: 'false'}], widget: 'radio' },
 	];
 }
 
@@ -34,11 +36,14 @@ function makeWin(): SandboxPropsWindow {
 	return new SandboxPropsWindow({} as never, 'props', '属性');
 }
 
+/** 占位的 onChange 回调 */
+const noop = (): void => {};
+
 describe('SandboxPropsWindow 单选字段（可见/遮挡）', () => {
 
 	test('options 字段渲染成 98.css 的 radio，不再是 select', () => {
 		const win = makeWin();
-		win.renderFields(booleanFields());
+		win.renderFields(booleanFields(), noop);
 
 		const radios = win.form.querySelectorAll('input[type=radio]');
 		const selects = win.form.querySelectorAll('select');
@@ -52,7 +57,7 @@ describe('SandboxPropsWindow 单选字段（可见/遮挡）', () => {
 
 	test('radio 后面紧跟 label（98.css 靠相邻选择器画圆点）', () => {
 		const win = makeWin();
-		win.renderFields(booleanFields());
+		win.renderFields(booleanFields(), noop);
 		// 每个 radio 的 nextElementSibling 都应是 label，且 htmlFor 指回 radio
 		for (const radio of Array.from(win.form.querySelectorAll('input[type=radio]'))) {
 			const lbl = radio.nextElementSibling;
@@ -62,27 +67,26 @@ describe('SandboxPropsWindow 单选字段（可见/遮挡）', () => {
 		}
 	});
 
-	test('fieldValue 读的是选中的 radio', () => {
+	test('fieldValue 读的是选中的 radio（初始化选中值落到 DOM）', () => {
 		const win = makeWin();
-		win.renderFields(booleanFields());
+		win.renderFields(booleanFields(), noop);
 		assert.equal(win.fieldValue('visible'), 'true', '初始选中 true');
 		assert.equal(win.fieldValue('blockView'), 'false', '初始选中 false');
 	});
 
 	test('setFieldValue 切换选中项', () => {
 		const win = makeWin();
-		win.renderFields(booleanFields());
+		win.renderFields(booleanFields(), noop);
 		win.setFieldValue('visible', 'false');
 		assert.equal(win.fieldValue('visible'), 'false');
 		win.setFieldValue('blockView', 'true');
 		assert.equal(win.fieldValue('blockView'), 'true');
 	});
 
-	test('bindChange 给每个 radio 都绑 change', () => {
+	test('renderFields 的 onChange 在切换 radio 时触发', () => {
 		const win = makeWin();
-		win.renderFields(booleanFields());
 		let calls = 0;
-		win.bindChange(() => { calls++; });
+		win.renderFields(booleanFields(), () => { calls++; });
 
 		const invisible = win.form
 			.querySelector('input[name=visible][value=false]') as HTMLInputElement;
@@ -96,8 +100,8 @@ describe('SandboxPropsWindow 单选字段（可见/遮挡）', () => {
 		const win = makeWin();
 		win.renderFields([{
 			key: 'imgKey', label: '图片', value: 'icons',
-			options: [['map', 'map'], ['icons', 'icons']] as Array<[string, string]>,
-		}]);
+			options: [{label: 'map', value: 'map'}, {label: 'icons', value: 'icons'}],
+		}], noop);
 
 		assert.equal(win.form.querySelectorAll('select').length, 1, '「图片」要恢复成下拉框');
 		assert.equal(win.form.querySelectorAll('input[type=radio]').length, 0, '不带 widget 就不该出 radio');

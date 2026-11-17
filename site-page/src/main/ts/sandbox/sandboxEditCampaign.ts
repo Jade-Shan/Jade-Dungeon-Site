@@ -3,7 +3,7 @@ import {
 	JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam,
 } from '@jade-dungeon/jade-utils/ui-window';
 import { SandboxApi } from './sandboxApi.js';
-import { TableCol, UIButton, UIFieldset, UITable } from './components/comm.js';
+import { TableCol, UIButton, UICheckBox, UIFieldset, UINumberInput, UIRadioIpt, UISelectList, UITable, UITextArea, UITextIpt } from './components/comm.js';
 
 /**
  * 沙盘的「编辑战役」页（editCampaign.html）
@@ -89,8 +89,6 @@ class SandboxRecordEditorPanel {
 	readonly fieldset: HTMLFieldSetElement;
 	/** 表格 */
 	private readonly uiTable: UITable<RecordRow>;
-	/** 每个数据列的 <col>，不含末尾删除列 —— 拖拽列宽时改它们的 width */
-	private readonly colEls: HTMLTableColElement[] = [];
 	/** 表单容器（字段在构造时按 fieldDefs 建好，不随选中变化） */
 	private readonly form: HTMLDivElement = document.createElement('div');
 	/** 选中记录的 ID 展示行 */
@@ -102,7 +100,7 @@ class SandboxRecordEditorPanel {
 	/** fieldset 底部的状态行 */
 	private readonly noteEl: HTMLParagraphElement = document.createElement('p');
 	/** 字段名 → 输入控件 */
-	private readonly fields: Map<string, HTMLInputElement | HTMLTextAreaElement> = new Map();
+	private readonly fields: Map<string, UITextIpt | UINumberInput | UITextArea> = new Map();
 
 	private readonly columns: TableCol[];
 	private readonly fieldDefs: FieldDef[];
@@ -133,8 +131,8 @@ class SandboxRecordEditorPanel {
 			bodyId:`${id}-rows`,
 			cols:opts.columns,
 			classList:['interactive', 'chmpEditRecTable'],
+			wrapperClass: ['chmp-spl-panel'],
 			styleNames: {
-				wrapperClass: ['chmp-sunken-panel'],
 				dragColWidth: ['col-resizable'],
 				selectedRow: 'highlighted',
 			},
@@ -143,19 +141,6 @@ class SandboxRecordEditorPanel {
 			// this 会变成 cfg 对象，this.columns 就是 undefined
 			rec2Row: (rec) => this.buildRow(rec),
 		});
-		// const colgroup = document.createElement('colgroup');
-		// for (let i = 0; i < this.columns.length; i++) {
-		// 	const col = document.createElement('col');
-		// 	this.colEls.push(col);
-		// 	colgroup.appendChild(col);
-		// }
-		// const delCol = document.createElement('col');
-		// delCol.style.width = '40px';
-		// colgroup.appendChild(delCol);
-		// this.table.appendChild(colgroup);
-
-		// this.table.appendChild(this.buildHead());
-		// this.table.appendChild(this.tbody);
 
 		// 给几个元素挂上基于面板 id 的 id，方便单元测试定位（也方便调试）
 		this.form.id = `${id}-form`;
@@ -166,19 +151,19 @@ class SandboxRecordEditorPanel {
 			id: `${id}-new`,
 			textContent: '➕',
 			classList: ["table-cell-opt-btn", "table-cell-add-btn"],
-			events: { click: (e) => { this.newRecord(); } }
+			events: { mouseClick: (e) => { this.newRecord(); } }
 		});
 		this.submitBtn = UIButton.createElem({
 			id: `${id}-submit`,
 			textContent: '提交',
 			classList: ["default"],
-			events: { click: (e) => { void this.submit(); } }
+			events: { mouseClick: (e) => { void this.submit(); } }
 		});
 		if (opts.editBtn) {
 			this.editBtn = UIButton.createElem({
 				id: `${id}-edit`,
 				textContent: opts.editBtn.label,
-				events: { click: (e) => { opts.editBtn!.onClick(this.selectedRec); } }
+				events: { mouseClick: (e) => { opts.editBtn!.onClick(this.selectedRec); } }
 			});
 		}
 
@@ -215,19 +200,22 @@ class SandboxRecordEditorPanel {
 			label.textContent = f.label;
 			row.appendChild(label);
 
-			let el: HTMLInputElement | HTMLTextAreaElement;
+			let el: UITextIpt | UINumberInput | UITextArea;
 			if (f.type === 'textarea') {
-				el = document.createElement('textarea');
-				el.rows = 3;
+				el = new UITextArea({
+					fieldName: f.key,
+					rows: 3 
+				});
+			} else if (f.type === 'number') {
+				el = new UINumberInput({ fieldName: f.key, });
 			} else {
-				const ipt = document.createElement('input');
-				ipt.type = f.type ?? 'text';
-				el = ipt;
+				el = new UITextIpt({
+					fieldName: f.key,
+				})
 			}
 			// 挂上字段名，测试按 data-field 定位输入控件
-			el.dataset.field = f.key;
 			this.fields.set(f.key, el);
-			row.appendChild(el);
+			row.appendChild(el.getElem());
 			this.form.appendChild(row);
 		}
 		this.clearForm();
@@ -272,7 +260,7 @@ class SandboxRecordEditorPanel {
 		const del = UIButton.createElem({
 			textContent : '❌', // 🗑
 			classList: ['table-cell-opt-btn', 'table-cell-del-btn'],
-			events: { click: (e) => {
+			events: { mouseClick: (e) => {
 					e.stopPropagation();
 					// 删除不可逆，先走浏览器默认确认弹框，取消则不删
 					if (!window.confirm('确定要删除这条记录吗？')) { return; }
@@ -312,7 +300,7 @@ class SandboxRecordEditorPanel {
 			this.setEditBtnDisabled(false);
 			for (const f of this.fieldDefs) {
 				const el = this.fields.get(f.key);
-				if (el) { el.value = String(rec[f.key] ?? ''); }
+				if (el) { el.setValue(String(rec[f.key] ?? '')); }
 			}
 			this.idEl.textContent = `ID: ${rec.id}`;
 		});
@@ -323,7 +311,7 @@ class SandboxRecordEditorPanel {
 		this.selectedRec = undefined;
 		for (const f of this.fieldDefs) {
 			const el = this.fields.get(f.key);
-			if (el) { el.value = ''; }
+			if (el) { el.setValue(''); }
 		}
 		this.idEl.textContent = '（未选中记录）';
 		this.setFormDisabled(true);
@@ -333,7 +321,7 @@ class SandboxRecordEditorPanel {
 	/** 让表单字段与提交按钮整体启用/禁用：未选中时禁用，选中或新建时启用 */
 	private setFormDisabled(disabled: boolean): void {
 		for (const el of this.fields.values()) {
-			el.disabled = disabled;
+			el.setDisable(disabled);
 		}
 		this.submitBtn.disabled = disabled;
 	}
@@ -352,7 +340,7 @@ class SandboxRecordEditorPanel {
 			if (this.newDefaults) {
 				for (const [key, value] of Object.entries(this.newDefaults())) {
 					const el = this.fields.get(key);
-					if (el) { el.value = value; }
+					if (el) { el.setValue(value); }
 				}
 			}
 			// 新建态要能输入：clearForm 刚禁用了字段，这里再启用
@@ -365,7 +353,7 @@ class SandboxRecordEditorPanel {
 	private async submit(): Promise<void> {
 		const values: Record<string, string> = {};
 		for (const f of this.fieldDefs) {
-			values[f.key] = this.fields.get(f.key)?.value ?? '';
+			values[f.key] = this.fields.get(f.key)?.getValue() ?? '';
 		}
 		await this.handlers.save(this.selectedId, values);
 	}
@@ -401,7 +389,7 @@ class SandboxEditCampaignWindow extends UIWindowAdapter {
 			id: `${id}-home`,
 			textContent: '退回首页',
 			classList: ['default'],
-			events: { click: () => { onBackHome(); } },
+			events: { mouseClick: () => { onBackHome(); } },
 		});
 	}
 

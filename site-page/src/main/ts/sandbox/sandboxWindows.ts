@@ -74,7 +74,7 @@ export class SandboxSceneWindow extends UIWindowAdapter {
 			body.style.width = `${size.width}px`;
 			body.style.height = `${size.height}px`;
 			// 地图通常比窗口大，所以窗体自己滚动
-			body.style.overflow = 'scroll';
+			body.classList.add('sdbx-body-scroll');
 			body.appendChild(this.finalCanvas);
 			return body;
 		};
@@ -189,10 +189,10 @@ export class SandboxDiceWindow extends UIWindowAdapter {
 		super(desktop, id, title, cfg);
 		this.cmdInput.type = 'text';
 		this.cmdInput.placeholder = '例如 2d6+1d4+3，回车掷骰';
-		this.cmdInput.style.width = '100%';
+		this.cmdInput.classList.add('dice-cmd-input');
 		this.logArea.readOnly = true;
 		this.logArea.rows = 10;
-		this.logArea.style.width = '100%';
+		this.logArea.classList.add('dice-log-area');
 		this.thresholdInput.type = 'number';
 		this.thresholdInput.placeholder = '阈值';
 	}
@@ -207,7 +207,7 @@ export class SandboxDiceWindow extends UIWindowAdapter {
 			const body = this.ui.windowBody;
 
 			// GM 面板：给某个玩家设检定阈值
-			this.gmPanel.style.display = 'none';
+			this.gmPanel.classList.add('dice-gm-panel');
 			const gmRow = document.createElement('div');
 			gmRow.classList.add('field-row');
 			const gmLabel = document.createElement('label');
@@ -247,7 +247,7 @@ export class SandboxDiceWindow extends UIWindowAdapter {
 	 * @param usernames - 玩家名单（取自场景的 teams 分组）
 	 */
 	enableGmPanel(usernames: Array<string>): void {
-		this.gmPanel.style.display = '';
+		this.gmPanel.classList.remove('dice-gm-panel');
 		this.targetSelect.innerHTML = '';
 		for (const name of usernames) {
 			const opt = document.createElement('option');
@@ -300,7 +300,7 @@ export class SandboxTokenListWindow extends UIWindowAdapter {
 			const size = this.cfg.body.initSize ?? DEFAULT_BODY;
 			body.style.width = `${size.width}px`;
 			body.style.height = `${size.height}px`;
-			body.style.overflow = 'auto';
+			body.classList.add('sdbx-body');
 
 			// 98.css 的标签页：menu[role=tablist] 是标签栏
 			this.groupBar.setAttribute('role', 'tablist');
@@ -314,13 +314,8 @@ export class SandboxTokenListWindow extends UIWindowAdapter {
 			tabBody.classList.add('window-body');
 			tabPanel.appendChild(tabBody);
 
-			const panel = document.createElement('div');
-			panel.classList.add('sunken-panel');
-			// 列表可能很长，给个固定高度让它自己滚
-			panel.style.height = `${Math.max(120, size.height - 110)}px`;
-			const tableEl = this.table.getTable();
-			panel.appendChild(tableEl);
-			tabBody.appendChild(panel);
+			this.table.getElem().style.height = `${Math.max(120, size.height - 110)}px`;
+			tabBody.appendChild(this.table.getElem());
 
 			this.createBar.classList.add('field-row');
 			tabBody.appendChild(this.createBar);
@@ -367,7 +362,7 @@ export class SandboxPropsWindow extends UIWindowAdapter {
 			const size = this.cfg.body.initSize ?? DEFAULT_BODY;
 			body.style.width = `${size.width}px`;
 			body.style.height = `${size.height}px`;
-			body.style.overflow = 'auto';
+			body.classList.add('sdbx-body');
 			body.appendChild(this.form);
 
 			const panel = document.createElement('div');
@@ -408,7 +403,7 @@ export class SandboxPropsWindow extends UIWindowAdapter {
 			row.classList.add('field-row');
 			const label = document.createElement('label');
 			label.textContent = d.label;
-			label.style.width = '5em';
+			label.classList.add('props-field-label');
 			row.appendChild(label);
 
 			if (d.options) {
@@ -550,7 +545,7 @@ export class SandboxStatusWindow extends UIWindowAdapter {
 	renderIn(): void {
 		const renderBody = (): HTMLDivElement => {
 			const body = this.ui.windowBody;
-			body.style.overflow = 'auto';
+			body.classList.add('sdbx-body');
 			const row = document.createElement('div');
 			row.classList.add('field-row');
 

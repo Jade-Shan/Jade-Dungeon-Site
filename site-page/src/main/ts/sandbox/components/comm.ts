@@ -78,6 +78,7 @@ export interface TableCol {
 };
 
 export interface TableCfg<T> extends CpmtCfg {
+	readonly wrapId?: string,
 	readonly bodyId?: string,
 	readonly cols?: Array<TableCol>,
 	readonly rec2Row?: (rec: T) => HTMLTableRowElement;
@@ -89,6 +90,7 @@ export interface TableCfg<T> extends CpmtCfg {
 
 export class UITable<T> extends UIComponent {
 
+	private readonly panel: HTMLDivElement = document.createElement('div');
 	private readonly table: HTMLTableElement = document.createElement('table');
 	private readonly thead: HTMLTableSectionElement = document.createElement('thead');
 	private readonly body: HTMLTableSectionElement = document.createElement('tbody');
@@ -102,6 +104,11 @@ export class UITable<T> extends UIComponent {
 		super();
 		this.cfg = cfg;
 		UIComponent.initElemt(this.table, cfg);
+
+
+		// 上：表格（98.css 没有 grid 辅助，sunken-panel 里放整宽表格）
+		this.panel.classList.add('sunken-panel');
+		this.panel.appendChild(this.table);
 
 		if (cfg.styleNames?.dragColWidth) {
 			for (const cname of cfg.styleNames.dragColWidth) {
@@ -173,18 +180,17 @@ export class UITable<T> extends UIComponent {
 			const onUp = (): void => {
 				document.removeEventListener('mousemove', onMove);
 				document.removeEventListener('mouseup', onUp);
-				document.body.style.cursor = '';
-				document.body.style.userSelect = '';
+				document.body.classList.remove('col-resizing');
 			};
 			document.addEventListener('mousemove', onMove);
 			document.addEventListener('mouseup', onUp);
-			document.body.style.cursor = 'col-resize';
-			document.body.style.userSelect = 'none';
+			document.body.classList.add('col-resizing');
 		});
 	}
 
 
-	public getTable() { return this.table; }
+	public getElem() { return this.panel; }
+	public getTableOld() { return this.table; }
 	public getBody() { return this.body; }
 
 	public cleanRecs() {

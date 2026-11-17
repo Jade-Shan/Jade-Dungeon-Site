@@ -164,7 +164,7 @@ class SandboxRecordEditorPanel {
 		this.newBtn = UIButton.createElem({
 			id: `${id}-new`,
 			textContent: '➕',
-			classList: ["table-cell-opt-btn", "button.table-cell-add-btn"],
+			classList: ["table-cell-opt-btn", "table-cell-add-btn"],
 			events: { click: (e) => { this.newRecord(); } }
 		});
 		this.submitBtn = UIButton.createElem({
@@ -187,15 +187,10 @@ class SandboxRecordEditorPanel {
 
 	/** 组装 fieldset 的内部结构：上表格，下属性编辑区，末尾状态行 */
 	private buildFieldset(): void {
-		// 上：表格（98.css 没有 grid 辅助，sunken-panel 里放整宽表格）
-		const panel = document.createElement('div');
-		panel.classList.add('sunken-panel', 'chmp-sunken-panel');
-
-		panel.appendChild(this.uiTable.getTable());
-		this.fieldset.appendChild(panel);
+		this.fieldset.appendChild(this.uiTable.getElem());
 
 		// 下：属性编辑区
-		this.idEl.style.margin = '4px 0';
+		this.idEl.classList.add('rec-editor-id');
 		this.fieldset.appendChild(this.idEl);
 		this.fieldset.appendChild(this.form);
 		const btns = document.createElement('div');
@@ -204,7 +199,7 @@ class SandboxRecordEditorPanel {
 		if (this.editBtn) { btns.appendChild(this.editBtn); }
 		this.fieldset.appendChild(btns);
 
-		this.noteEl.style.marginTop = '6px';
+		this.noteEl.classList.add('rec-editor-note');
 		this.fieldset.appendChild(this.noteEl);
 	}
 
@@ -289,7 +284,7 @@ class SandboxRecordEditorPanel {
 		tdDel.appendChild(del);
 		tr.appendChild(tdDel);
 
-		tr.style.cursor = 'pointer';
+		tr.classList.add('clickable');
 		tr.addEventListener('click', () => { this.select(rec); });
 		return tr;
 	}
@@ -418,31 +413,22 @@ class SandboxEditCampaignWindow extends UIWindowAdapter {
 	renderIn(): void {
 		const renderBody = (): HTMLDivElement => {
 			const body = this.ui.windowBody;
-			body.style.overflow = 'auto';
-			body.style.display = 'flex';
-			body.style.flexDirection = 'column';
-			body.style.gap = '6px';
+			body.classList.add('sdbx-body', 'chmp-win-body');
 
 			// 顶部一行：owner 提示在左、「退回首页」按钮在右
 			const top = document.createElement('div');
-			top.style.display = 'flex';
-			top.style.justifyContent = 'space-between';
-			top.style.alignItems = 'center';
-			this.hintEl.style.margin = '0';
+			top.classList.add('chmp-top-row');
+			this.hintEl.classList.add('chmp-hint');
 			top.appendChild(this.hintEl);
 			top.appendChild(this.homeBtn);
 			body.appendChild(top);
 
 			// 两个 fieldset 左右并排（98.css 没有 grid 辅助，用 flex）
 			const cols = document.createElement('div');
-			cols.style.display = 'flex';
-			cols.style.gap = '10px';
-			cols.style.alignItems = 'flex-start';
+			cols.classList.add('chmp-cols');
 
-			this.placePanel.fieldset.style.flex = '1';
-			this.placePanel.fieldset.style.minWidth = '0';
-			this.scenePanel.fieldset.style.flex = '1';
-			this.scenePanel.fieldset.style.minWidth = '0';
+			this.placePanel.fieldset.classList.add('chmp-field-col');
+			this.scenePanel.fieldset.classList.add('chmp-field-col');
 			cols.appendChild(this.placePanel.fieldset);
 			cols.appendChild(this.scenePanel.fieldset);
 

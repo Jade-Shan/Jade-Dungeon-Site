@@ -231,7 +231,7 @@ class SandboxLoginWindow extends UIWindowAdapter {
 	renderIn(): void {
 		const renderBody = (): HTMLDivElement => {
 			const body = this.ui.windowBody;
-			body.style.overflow = 'auto';
+			body.classList.add('sdbx-body');
 
 			body.appendChild(this.buildIdentityFieldset());
 
@@ -485,6 +485,7 @@ class SandboxIndexWindow extends UIWindowAdapter {
 
 		this.username = username;
 		this.table = new UITable<CampaignListItem>({
+			wrapId: 'sdbx-cmp-select-panel',
 			id: ids.campaignTable,
 			// 98.css table 组件的「可交互」态：tbody 行显示 pointer 光标
 			classList: ['interactive'],
@@ -517,7 +518,7 @@ class SandboxIndexWindow extends UIWindowAdapter {
 	renderIn(): void {
 		const renderBody = (): HTMLDivElement => {
 			const body = this.ui.windowBody;
-			body.style.overflow = 'auto';
+			body.classList.add('sdbx-body');
 
 			body.appendChild(this.buildCampaignFieldset());
 
@@ -546,12 +547,7 @@ class SandboxIndexWindow extends UIWindowAdapter {
 	/** 「战役列表」一栏：表格 + 说明行 + 进入/编辑按钮 */
 	private buildCampaignFieldset(): HTMLFieldSetElement {
 		const fs = UIFieldset.createElem({ title: '战役列表' });
-		// 表格外面套一层 sunken-panel：给表格内凹边框 + 固定尺寸
-		const tableWrap = document.createElement('div');
-		tableWrap.id = 'sdbx-cmp-select-panel';
-		tableWrap.classList.add('sunken-panel');
-		tableWrap.appendChild(this.table.getTable());
-		fs.appendChild(tableWrap);
+		fs.appendChild(this.table.getElem());
 		fs.appendChild(this.noteEl);
 		const btns = document.createElement('div');
 		btns.classList.add('field-row');
@@ -926,7 +922,7 @@ class SandboxChangePasswordWindow extends UIWindowAdapter {
 	renderIn(): void {
 		const renderBody = (): HTMLDivElement => {
 			const body = this.ui.windowBody;
-			body.style.overflow = 'auto';
+			body.classList.add('sdbx-body');
 
 			const who = document.createElement('p');
 			who.textContent = this.username ? `用户名：${this.username}` : '用户名：未指定（请从登录页进入）';

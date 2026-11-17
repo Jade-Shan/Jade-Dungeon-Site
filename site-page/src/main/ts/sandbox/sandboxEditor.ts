@@ -513,7 +513,7 @@ export class SandboxEditor {
 
 			const tdName = document.createElement('td');
 			tdName.textContent = tk.id;
-			tdName.classList.add('clickable');
+			tdName.style.cursor = 'pointer';
 			tdName.addEventListener('click', () => { this.select(group, tk.id); });
 			tr.appendChild(tdName);
 
@@ -600,7 +600,7 @@ export class SandboxEditor {
 			tr.appendChild(tdDel);
 
 			// 整行都可点选中（不只 id 列）—— url 那列很长，用户容易点到它
-			tr.classList.add('clickable');
+			tr.style.cursor = 'pointer';
 			tr.addEventListener('click', () => { this.selectImage(img.id); });
 
 			this.listWin.table.appendRow(tr);

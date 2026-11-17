@@ -83,6 +83,7 @@ export interface TableCfg<T> extends CpmtCfg {
 	readonly cols?: Array<TableCol>,
 	readonly rec2Row?: (rec: T) => HTMLTableRowElement;
 	readonly styleNames?: {
+		readonly wrapperClass?: Array<string>,
 		readonly dragColWidth?: Array<string>,
 		readonly selectedRow?: string,
 	}
@@ -106,8 +107,17 @@ export class UITable<T> extends UIComponent {
 		UIComponent.initElemt(this.table, cfg);
 
 
-		// 上：表格（98.css 没有 grid 辅助，sunken-panel 里放整宽表格）
+		if (cfg.wrapId) { this.panel.id = cfg.wrapId; }
+		// 表格（98.css 没有 grid 辅助，sunken-panel 里放整宽表格）
+		// 表格外面套一层 sunken-panel：给表格内凹边框 + 固定尺寸
 		this.panel.classList.add('sunken-panel');
+		if (cfg.styleNames && cfg.styleNames.wrapperClass) {
+			for (let str of cfg.styleNames.wrapperClass) {
+				if (str && str.length > 0) {
+					this.panel.classList.add(str);
+				}
+			}
+		}
 		this.panel.appendChild(this.table);
 
 		if (cfg.styleNames?.dragColWidth) {

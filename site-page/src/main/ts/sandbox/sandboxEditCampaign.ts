@@ -134,6 +134,7 @@ class SandboxRecordEditorPanel {
 			cols:opts.columns,
 			classList:['interactive', 'chmpEditRecTable'],
 			styleNames: {
+				wrapperClass: ['chmp-sunken-panel'],
 				dragColWidth: ['col-resizable'],
 				selectedRow: 'highlighted',
 			},
@@ -188,9 +189,8 @@ class SandboxRecordEditorPanel {
 	/** 组装 fieldset 的内部结构：上表格，下属性编辑区，末尾状态行 */
 	private buildFieldset(): void {
 		this.fieldset.appendChild(this.uiTable.getElem());
-
 		// 下：属性编辑区
-		this.idEl.classList.add('rec-editor-id');
+		this.idEl.style.margin = '4px 0';
 		this.fieldset.appendChild(this.idEl);
 		this.fieldset.appendChild(this.form);
 		const btns = document.createElement('div');
@@ -199,7 +199,7 @@ class SandboxRecordEditorPanel {
 		if (this.editBtn) { btns.appendChild(this.editBtn); }
 		this.fieldset.appendChild(btns);
 
-		this.noteEl.classList.add('rec-editor-note');
+		this.noteEl.style.marginTop = '6px';
 		this.fieldset.appendChild(this.noteEl);
 	}
 
@@ -284,7 +284,7 @@ class SandboxRecordEditorPanel {
 		tdDel.appendChild(del);
 		tr.appendChild(tdDel);
 
-		tr.classList.add('clickable');
+		tr.style.cursor = 'pointer';
 		tr.addEventListener('click', () => { this.select(rec); });
 		return tr;
 	}
@@ -413,22 +413,31 @@ class SandboxEditCampaignWindow extends UIWindowAdapter {
 	renderIn(): void {
 		const renderBody = (): HTMLDivElement => {
 			const body = this.ui.windowBody;
-			body.classList.add('sdbx-body', 'chmp-win-body');
+			body.style.overflow = 'auto';
+			body.style.display = 'flex';
+			body.style.flexDirection = 'column';
+			body.style.gap = '6px';
 
 			// 顶部一行：owner 提示在左、「退回首页」按钮在右
 			const top = document.createElement('div');
-			top.classList.add('chmp-top-row');
-			this.hintEl.classList.add('chmp-hint');
+			top.style.display = 'flex';
+			top.style.justifyContent = 'space-between';
+			top.style.alignItems = 'center';
+			this.hintEl.style.margin = '0';
 			top.appendChild(this.hintEl);
 			top.appendChild(this.homeBtn);
 			body.appendChild(top);
 
 			// 两个 fieldset 左右并排（98.css 没有 grid 辅助，用 flex）
 			const cols = document.createElement('div');
-			cols.classList.add('chmp-cols');
+			cols.style.display = 'flex';
+			cols.style.gap = '10px';
+			cols.style.alignItems = 'flex-start';
 
-			this.placePanel.fieldset.classList.add('chmp-field-col');
-			this.scenePanel.fieldset.classList.add('chmp-field-col');
+			this.placePanel.fieldset.style.flex = '1';
+			this.placePanel.fieldset.style.minWidth = '0';
+			this.scenePanel.fieldset.style.flex = '1';
+			this.scenePanel.fieldset.style.minWidth = '0';
 			cols.appendChild(this.placePanel.fieldset);
 			cols.appendChild(this.scenePanel.fieldset);
 

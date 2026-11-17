@@ -200,7 +200,7 @@ export class UITable<T> extends UIComponent {
 
 
 	public getElem() { return this.panel; }
-	public getTableOld() { return this.table; }
+	public getInnerTable() { return this.table; }
 	public getBody() { return this.body; }
 
 	public cleanRecs() {

@@ -1,7 +1,7 @@
 import {
 	JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam,
 } from '@jade-dungeon/jade-utils/ui-window';
-import { UIButton, UITable } from './components/comm.js';
+import { UIButton, UICheckBox, UINumberInput, UIRadioGroup, UISelectList, UITable, UITextArea, UITextIpt } from './components/comm.js';
 import type { IToken2D, ImageResource } from '../trpg/sandtable.js';
 
 /**
@@ -169,13 +169,13 @@ export class SandboxSceneWindow extends UIWindowAdapter {
 export class SandboxDiceWindow extends UIWindowAdapter {
 
 	/** 骰子表达式输入框 */
-	readonly cmdInput: HTMLInputElement = document.createElement('input');
+	readonly cmdInput: UITextIpt;
 	/** 结果显示区（只读多行文本） */
-	readonly logArea: HTMLTextAreaElement = document.createElement('textarea');
+	readonly logArea: UITextArea;
 	/** GM 用：选被要求检定的玩家 */
 	readonly targetSelect: HTMLSelectElement = document.createElement('select');
 	/** GM 用：阈值输入框 */
-	readonly thresholdInput: HTMLInputElement = document.createElement('input');
+	readonly thresholdInput: UINumberInput;
 	/** GM 面板的容器，默认隐藏 */
 	private gmPanel: HTMLDivElement = document.createElement('div');
 
@@ -183,18 +183,33 @@ export class SandboxDiceWindow extends UIWindowAdapter {
 	 * @param desktop - 所在桌面
 	 * @param id - 窗口 ID
 	 * @param title - 窗口标题
+	 * @param clickDiceLog - 点结果区刷新的回调
+	 * @param keydowns - 各输入框的回车提交回调：`cmdInput` 掷骰、`thresholdInput` 设阈值
 	 * @param cfg - 窗口参数
 	 */
-	constructor(desktop: UIDesktop, id: string, title: string, cfg?: WinParam) {
+	constructor(desktop: UIDesktop, id: string, title: string, clickDiceLog: () => void,
+		keydowns: {
+			cmdInput?: (e: KeyboardEvent) => void;
+			thresholdInput?: (e: KeyboardEvent) => void;
+		},
+		cfg?: WinParam) // nl
+	{
 		super(desktop, id, title, cfg);
-		this.cmdInput.type = 'text';
-		this.cmdInput.placeholder = '例如 2d6+1d4+3，回车掷骰';
-		this.cmdInput.classList.add('dice-cmdinput');
-		this.logArea.readOnly = true;
-		this.logArea.rows = 10;
-		this.logArea.classList.add('dice-cmdinput');
-		this.thresholdInput.type = 'number';
-		this.thresholdInput.placeholder = '阈值';
+		this.cmdInput = new UITextIpt({
+			placeholder: '例如 2d6+1d4+3，回车掷骰',
+			classList:['dice-cmdinput'],
+			events: { keyDown: keydowns.cmdInput }
+		})
+		this.thresholdInput = new UINumberInput({
+			placeholder: '阈值',
+			events: { keyDown: keydowns.thresholdInput },
+		})
+		this.logArea= new UITextArea({
+			readonly: true,
+			rows:10,
+			classList: ['dice-cmdinput'],
+			events: { mouseClick: (e) => { clickDiceLog(); } }
+		});
 	}
 
 	/**
@@ -214,7 +229,7 @@ export class SandboxDiceWindow extends UIWindowAdapter {
 			gmLabel.textContent = '要求检定：';
 			gmRow.appendChild(gmLabel);
 			gmRow.appendChild(this.targetSelect);
-			gmRow.appendChild(this.thresholdInput);
+			gmRow.appendChild(this.thresholdInput.getElem());
 			this.gmPanel.appendChild(gmRow);
 			body.appendChild(this.gmPanel);
 
@@ -224,14 +239,10 @@ export class SandboxDiceWindow extends UIWindowAdapter {
 			const rollLabel = document.createElement('label');
 			rollLabel.textContent = '掷骰：';
 			rollRow.appendChild(rollLabel);
-			rollRow.appendChild(this.cmdInput);
+			rollRow.appendChild(this.cmdInput.getElem());
 			body.appendChild(rollRow);
 
-			// 结果区。外面套 sunken-panel 是 98.css 给列表/文本区的内凹边框
-			const panel = document.createElement('div');
-			panel.classList.add('sunken-panel');
-			panel.appendChild(this.logArea);
-			body.appendChild(panel);
+			body.appendChild(this.logArea.getElem());
 			return body;
 		};
 
@@ -262,7 +273,7 @@ export class SandboxDiceWindow extends UIWindowAdapter {
 	 * @param text - `renderRollResults()` 生成的文本
 	 */
 	setLog(text: string): void {
-		this.logArea.value = text;
+		this.logArea.setValue(text);
 	}
 
 }
@@ -342,8 +353,8 @@ export class SandboxTokenListWindow extends UIWindowAdapter {
  */
 /** 属性表单里一个字段的控件：单个输入框/下拉框，或一组单选框 */
 type FieldControl =
-	| { kind: 'single', el: HTMLInputElement | HTMLSelectElement }
-	| { kind: 'radio', radios: HTMLInputElement[] };
+	| { kind: 'single', el: UITextIpt | UINumberInput | UISelectList }
+	| { kind: 'radio', radios: UIRadioGroup };
 
 export class SandboxPropsWindow extends UIWindowAdapter {
 
@@ -393,10 +404,10 @@ export class SandboxPropsWindow extends UIWindowAdapter {
 	 * 98.css 的 OptionButton（一组 radio），否则渲染成 `<select>` 下拉框。
 	 * 不带 `options` 的渲染成 `<input>`。
 	 */
-	renderFields(defs: Array<{
-		key: string, label: string, value: string,
-		type?: string, options?: Array<[string, string]>, widget?: 'radio',
-	}>): void {
+	renderFields(defs: Array<{key: string, label: string, value: string,
+		type?: string, options?: Array<{label: string, value: string}>, 
+		widget?: 'radio'}>, onChange: () => void): void 
+	{
 		this.form.innerHTML = '';
 		this.fields.clear();
 		for (const d of defs) {
@@ -409,43 +420,21 @@ export class SandboxPropsWindow extends UIWindowAdapter {
 
 			if (d.options) {
 				if (d.widget === 'radio') {
-					// 98.css 的 OptionButton：`input[type=radio]` 后面紧跟 `label`，
-					// 圆点与选中点全靠这两个相邻选择器画出来 —— 别拆开，
-					// 也不要用「label 包 input」，那会让 `+` 选择器失效。
-					const radios: HTMLInputElement[] = [];
-					d.options.forEach(([v, t], i) => {
-						const radio = document.createElement('input');
-						radio.type = 'radio';
-						radio.name = d.key;
-						radio.value = v;
-						radio.checked = v === d.value;
-						radio.id = `fld-${d.key}-${i}`;
-						row.appendChild(radio);
-						const optLabel = document.createElement('label');
-						optLabel.htmlFor = radio.id;
-						optLabel.textContent = t;
-						row.appendChild(optLabel);
-						radios.push(radio);
-					});
+					const radios: UIRadioGroup = new UIRadioGroup(d.key, d.options, d.value, {change: onChange});
+					radios.appendIn(row);
 					this.fields.set(d.key, { kind: 'radio', radios });
 				} else {
-					// 下拉框：选项多的字段用它（如「图片」的图片资源列表）
-					const sel = document.createElement('select');
-					for (const [v, t] of d.options) {
-						const opt = document.createElement('option');
-						opt.value = v;
-						opt.textContent = t;
-						sel.appendChild(opt);
-					}
-					sel.value = d.value;
-					row.appendChild(sel);
+					const sel = new UISelectList({ items: d.options, currValue: d.value, events: { change: onChange } });
+					row.appendChild(sel.getElem());
 					this.fields.set(d.key, { kind: 'single', el: sel });
 				}
 			} else {
-				const ipt = document.createElement('input');
-				ipt.type = d.type ?? 'text';
-				ipt.value = d.value;
-				row.appendChild(ipt);
+				const isNum = d.type === 'number';
+				const ipt = isNum
+					? new UINumberInput({ events: { change: onChange } })
+					: new UITextIpt({ events: { change: onChange } });
+				ipt.setValue(d.value);
+				row.appendChild(ipt.getElem());
 				this.fields.set(d.key, { kind: 'single', el: ipt });
 			}
 			this.form.appendChild(row);
@@ -461,8 +450,8 @@ export class SandboxPropsWindow extends UIWindowAdapter {
 	fieldValue(key: string): string {
 		const f = this.fields.get(key);
 		if (!f) { return ''; }
-		if (f.kind === 'radio') { return f.radios.find(r => r.checked)?.value ?? ''; }
-		return f.el.value;
+		if (f.kind === 'radio') { return f.radios.getValue(); }
+		return f.el.getValue();
 	}
 
 	/**
@@ -478,29 +467,29 @@ export class SandboxPropsWindow extends UIWindowAdapter {
 		const f = this.fields.get(key);
 		if (!f) { return; }
 		if (f.kind === 'radio') {
-			for (const r of f.radios) { r.checked = r.value === value; }
+			f.radios.setValue(value);
 		} else {
-			f.el.value = value;
+			f.el.setValue(value);
 		}
 	}
 
-	/**
-	 * 给表单的每个字段绑定变更回调
-	 *
-	 * 老代码是「改完按按钮提交」，这里改成**改完即生效** ——
-	 * 编辑地图时属性改一下就要看到效果，多一次点击很烦。
-	 *
-	 * @param onChange - 任一字段变更时调用
-	 */
-	bindChange(onChange: () => void): void {
-		for (const f of this.fields.values()) {
-			if (f.kind === 'radio') {
-				for (const r of f.radios) { r.addEventListener('change', onChange); }
-			} else {
-				f.el.addEventListener('change', onChange);
-			}
-		}
-	}
+	// /**
+	//  * 给表单的每个字段绑定变更回调
+	//  *
+	//  * 老代码是「改完按按钮提交」，这里改成**改完即生效** ——
+	//  * 编辑地图时属性改一下就要看到效果，多一次点击很烦。
+	//  *
+	//  * @param onChange - 任一字段变更时调用
+	//  */
+	// bindChange(onChange: () => void): void {
+	// 	for (const f of this.fields.values()) {
+	// 		if (f.kind === 'radio') {
+	// 			for (const r of f.radios) { r.addEventListener('change', onChange); }
+	// 		} else {
+	// 			f.el.addEventListener('change', onChange);
+	// 		}
+	// 	}
+	// }
 
 	/** 清空表单与预览（没选中 Token 时） */
 	clear(): void {
@@ -526,18 +515,31 @@ export class SandboxStatusWindow extends UIWindowAdapter {
 	/** 刷新移动请求 */
 	readonly refreshBtn: HTMLButtonElement;
 	/** 定时刷新开关（选中后每 3 秒自动刷新一次移动请求） */
-	readonly autoRefresh: HTMLInputElement = document.createElement('input');
+	readonly autoRefresh: UICheckBox;
 	/** 当前角色视野开关（选中后以选中的玩家/生物为观察者显示视野与遮挡） */
-	readonly autoView: HTMLInputElement = document.createElement('input');
+	readonly autoView: UICheckBox;
 	/** 信息显示区 */
 	readonly info: HTMLParagraphElement = document.createElement('p');
 
-	constructor(desktop: UIDesktop, id: string, title: string, cfg?: WinParam) {
+	constructor(desktop: UIDesktop, id: string, title: string, 
+		changeAutoRefresh: () => void, changeShowSight : () => void, 
+		clickSave: () => void, clickRefresh: () => void, 
+		cfg?: WinParam) 
+	{
     	super(desktop, id, title, cfg);
 		// 98.css 的 button.default 是带强调边框的主按钮
-		this.saveBtn = UIButton.createElem({ textContent: '保存并发布', classList: ['default'] });
-
-		this.refreshBtn = UIButton.createElem({ textContent: '刷新请求' });
+		this.saveBtn = UIButton.createElem({ textContent: '保存并发布', classList: ['default'], 
+			events: { mouseClick: clickSave }
+		});
+		this.refreshBtn = UIButton.createElem({ textContent: '刷新请求', events: { mouseClick: clickRefresh } });
+		this.autoRefresh = new UICheckBox({id: 'sandbox-auto-refresh', label: '定时刷新', events: {
+				change: () => { changeAutoRefresh(); }
+			}
+		});
+		this.autoView = new UICheckBox({id: 'sandbox-auto-view', label: '当前角色视野', events: {
+				change: () => { changeShowSight(); }
+			}
+		});
 	}
 
 	/**
@@ -545,41 +547,17 @@ export class SandboxStatusWindow extends UIWindowAdapter {
 	 */
 	renderIn(): void {
 		const renderBody = (): HTMLDivElement => {
-			const body = this.ui.windowBody;
-			body.classList.add('csl-win-body');
+			//
 			const row = document.createElement('div');
 			row.classList.add('field-row');
-
 			row.appendChild(this.saveBtn);
-
 			row.appendChild(this.refreshBtn);
+			//
+			const body = this.ui.windowBody;
+			body.classList.add('csl-win-body');
 			body.appendChild(row);
-
-			// 定时刷新开关。98.css 的 checkbox 用 `input + label` 相邻兄弟
-			// 选择器画外观，所以 label 必须紧跟 input、且用 for 关联。
-			this.autoRefresh.type = 'checkbox';
-			this.autoRefresh.id = 'sandbox-auto-refresh';
-			const refreshRow = document.createElement('div');
-			refreshRow.classList.add('field-row');
-			const refreshLabel = document.createElement('label');
-			refreshLabel.htmlFor = 'sandbox-auto-refresh';
-			refreshLabel.textContent = '定时刷新';
-			refreshRow.appendChild(this.autoRefresh);
-			refreshRow.appendChild(refreshLabel);
-			body.appendChild(refreshRow);
-
-			// 当前角色视野开关。同样是 98.css checkbox，label 紧跟 input、用 for 关联。
-			this.autoView.type = 'checkbox';
-			this.autoView.id = 'sandbox-auto-view';
-			const viewRow = document.createElement('div');
-			viewRow.classList.add('field-row');
-			const viewLabel = document.createElement('label');
-			viewLabel.htmlFor = 'sandbox-auto-view';
-			viewLabel.textContent = '当前角色视野';
-			viewRow.appendChild(this.autoView);
-			viewRow.appendChild(viewLabel);
-			body.appendChild(viewRow);
-
+			body.appendChild(this.autoRefresh.getElem());
+			body.appendChild(this.autoView.getElem());
 			body.appendChild(this.info);
 			return body;
 		};

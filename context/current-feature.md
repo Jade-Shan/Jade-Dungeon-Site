@@ -22,6 +22,25 @@
 
 ## 历史记录
 
+- **修 `UIRadioGroup` 初始化选中值 + onChange 失效**（2026-11-21）
+  - 症状：提交 `5243f65` 把属性窗口的单选字段（可见/遮挡）从手写 radio 抽成
+    `UIRadioGroup`/`UIRadioIpt` 组件后，初始选中项不显示；改一个 radio 时
+    `applyProps` 会把另一个 radio 也读成空值写回，看起来像 onChange 没生效
+  - 根因：`UIRadioIpt` 构造函数里 `if (cfg.checked) { this.radio.checked; }`
+    是一句读值表达式、什么都不做，选中态永远落不到 DOM。change 事件本身经
+    `applyInputCfg → initElemt` 是正确绑上的，但初始 checked 为空导致
+    `UIRadioGroup.getValue()` 返回 ""，`applyProps` 把别的 radio 字段一起重置
+  - 修复：`this.radio.checked = cfg.checked === true;`；`getElem()` 返回类型
+    `HTMLDivElement` → `HTMLInputElement`（去掉 row 包裹后 getElem 就是 radio 本身），
+    泛型同步改 `InputField<HTMLInputElement, HTMLInputElement, string>`
+  - 顺带修 `renderFields` 丢掉的 `type: 'number'`：无 options 字段原来统一
+    `new UITextIpt`，x/y/宽/高/裁剪这些数字字段都变成文本框，改成分叉
+    `d.type === 'number' ? UINumberInput : UITextIpt`，`FieldControl` 联合类型补
+    `UINumberInput`
+  - 测试：`sandbox.props.test.ts` / `sandbox.comm.test.ts` 因本次提交改 API 编译不过
+    （`renderFields` 少参、`bindChange` 不存在、`UIRadioIpt` 缺 label/value、
+    `getElem()` 类型对不上），同步更新到新 API，`booleanFields()` 的 options 从
+    元组改成 `{label, value}` 对象。全量 `npm test` 230+268+20 全绿
 - **修 `SandboxIndexWindow` 表格内容被清空**（2026-11-13）
   - 症状：选战役页的战役表格不显示任何行，连表头都没有；点行、URL 回填选中
     也都静默失效（点行抛 `this.selectCampaign is not a function`）

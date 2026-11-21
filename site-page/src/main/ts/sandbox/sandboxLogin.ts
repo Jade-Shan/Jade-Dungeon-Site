@@ -2,7 +2,7 @@ import { registerDefaultUIResource } from '@jade-dungeon/jade-utils/resource';
 import { JadeWindowUI, UIDesktop, UIWindowAdapter, WinParam } from '@jade-dungeon/jade-utils/ui-window';
 import { WebUtil } from '@jade-dungeon/jade-utils/web';
 import { SandboxApi, CampaignListItem } from './sandboxApi.js';
-import { UIButton, UIFieldset, UITable } from './components/comm.js';
+import { UIButton, UIFieldset, UITable, UITextIpt } from './components/comm.js';
 
 /**
  * 沙盘的入口页：登录页（login.html）+ 选战役页（index.html）+ 修改密码页（changePassword.html）
@@ -55,14 +55,14 @@ function idOf(slt: string): string {
 }
 
 /** label + 输入框的一行 */
-function fieldRow(label: string, input: HTMLInputElement): HTMLDivElement {
+function fieldRow(label: string, input: UITextIpt): HTMLDivElement {
 	const row = document.createElement('div');
 	row.classList.add('field-row');
 	const lbl = document.createElement('label');
-	lbl.htmlFor = input.id;
+	lbl.htmlFor = input.getElem().id;
 	lbl.textContent = label;
 	row.appendChild(lbl);
-	row.appendChild(input);
+	row.appendChild(input.getElem());
 	return row;
 }
 
@@ -208,8 +208,8 @@ interface LoginFieldIds {
  */
 class SandboxLoginWindow extends UIWindowAdapter {
 
-	private readonly username: HTMLInputElement = document.createElement('input');
-	private readonly password: HTMLInputElement = document.createElement('input');
+	private readonly username: UITextIpt;
+	private readonly password: UITextIpt;
 	private readonly loginBtn: HTMLButtonElement;
 	private readonly changePasswordBtn: HTMLButtonElement;
 	private readonly backBtn: HTMLButtonElement;
@@ -218,10 +218,8 @@ class SandboxLoginWindow extends UIWindowAdapter {
 	constructor(desktop: UIDesktop, id: string, title: string, cfg: WinParam, ids: LoginFieldIds) {
 		super(desktop, id, title, cfg);
 
-		this.username.id = ids.username;
-		this.username.type = 'text';
-		this.password.id = ids.password;
-		this.password.type = 'password';
+		this.username = new UITextIpt({id: ids.username});
+		this.password = new UITextIpt({id: ids.password, needMask: true});
 		this.loginBtn = UIButton.createElem({ id: ids.loginBtn, textContent: '登录', classList: ['default'] });
 		this.changePasswordBtn= UIButton.createElem({ id: ids.changePasswordBtn, textContent: '修改密码' });
 		this.backBtn= UIButton.createElem({ id: ids.backBtn, textContent: '返回选战役' });
@@ -894,9 +892,9 @@ function checkNewPassword(pw: string): { ok: boolean; msg: string } {
  */
 class SandboxChangePasswordWindow extends UIWindowAdapter {
 
-	private readonly oldPassword: HTMLInputElement = document.createElement('input');
-	private readonly newPassword: HTMLInputElement = document.createElement('input');
-	private readonly confirmPassword: HTMLInputElement = document.createElement('input');
+	private readonly oldPassword: UITextIpt;
+	private readonly newPassword: UITextIpt;
+	private readonly confirmPassword: UITextIpt;
 	private readonly submitBtn: HTMLButtonElement;
 	private readonly backBtn: HTMLButtonElement;
 	private readonly statusEl: HTMLParagraphElement = document.createElement('p');
@@ -906,14 +904,10 @@ class SandboxChangePasswordWindow extends UIWindowAdapter {
 		ids: ChangePasswordFieldIds, username: string) //
 	{
 		super(desktop, id, title, cfg);
-
 		this.username = username;
-		this.oldPassword.id = ids.oldPassword;
-		this.oldPassword.type = 'password';
-		this.newPassword.id = ids.newPassword;
-		this.newPassword.type = 'password';
-		this.confirmPassword.id = ids.confirmPassword;
-		this.confirmPassword.type = 'password';
+		this.oldPassword = new UITextIpt({ id: ids.oldPassword, needMask: true });
+		this.newPassword = new UITextIpt({ id: ids.newPassword, needMask: true });
+		this.confirmPassword = new UITextIpt({ id: ids.confirmPassword, needMask: true });
 		this.submitBtn = UIButton.createElem({ id: ids.submitBtn, textContent: '修改密码', classList: ['default'] });
 		this.backBtn = UIButton.createElem({ id: ids.backBtn, textContent: '返回登录' });
 		this.statusEl.id = ids.status;

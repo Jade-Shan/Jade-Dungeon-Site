@@ -221,6 +221,8 @@ export class SandboxEditor {
 		this.propsWin.renderIn();
 
 		this.diceWin = new SandboxDiceWindow(desktop, 'sandbox-dice', '检定',
+			() => { this.refreshRollResults(); },
+			{ thresholdInput: (e) => { if (e.key === 'Enter') { void this.setThreshold(); } } },
 			{
 				// supportSizes 62 = 16|24|32|48|64；标题栏取 16、Dock 取 48
 				icons: { supportSizes: 62, baseUrl: this.cfg.diceIconBaseUrl, category: 'dice', name: 'd20.png' },
@@ -229,18 +231,32 @@ export class SandboxEditor {
 		this.diceWin.renderIn();
 
 		this.statusWin = new SandboxStatusWindow(desktop, 'sandbox-status', '状态',
+			() => {// changeAutoRefresh: 
+				// 定时刷新：选中启动 3 秒一次的自动刷新，取消就停
+				if (this.statusWin.autoRefresh.getChecked()) {
+					this.autoRefreshTimer = window.setInterval(() => { void this.loadMoveRequests(); }, 3000);
+				} else if (this.autoRefreshTimer !== undefined) {
+					window.clearInterval(this.autoRefreshTimer);
+					this.autoRefreshTimer = undefined;
+				}
+			},
+			() => {//changeShowSight : 
+				// 当前角色视野：以选中的玩家/生物为观察者预览视野与遮挡
+				void this.toggleViewMode()
+			},
+			() => { this.save(); },
+			() => { this.loadMoveRequests(); },
 			{
 				icons: this.icon('actions', 'download.png'),
 				body: { initSize: { width: 300, height: 140 }, overflow: 'auto' },
 			});
+
 		this.statusWin.renderIn();
 
 		this.tileWindows();
 
 		await this.loadScene();
 		this.bindSceneEvents();
-		this.bindStatusEvents();
-		this.bindDiceEvents();
 		this.bindPropsEvents();
 		this.renderGroupBar();
 		this.renderTokenList();
@@ -531,7 +547,7 @@ export class SandboxEditor {
 
 			const del = UIButton.createElem({ textContent : '❌', // 🗑 
 				classList: ['table-cell-opt-btn', 'table-cell-del-btn'],
-				events: { click: (e) => { void this.deleteToken(group, tk.id); } } });
+				events: { mouseClick: (e) => { void this.deleteToken(group, tk.id); } } });
 
 			const tdDel = document.createElement('td');
 			tdDel.classList.add('rec-opt-col');
@@ -552,7 +568,7 @@ export class SandboxEditor {
 				textContent: SHAPE_ICON[shape],
 				title: `新建${shape}，然后点地图落位`,
 				events: {
-					click: (e) => {
+					mouseClick: (e) => {
 						this.pendingShape = { group, shape };
 						this.sceneWin.setStatus(`点地图放下这个${SHAPE_ICON[shape]}`);
 					}
@@ -587,7 +603,7 @@ export class SandboxEditor {
 				textContent: '❌', // 🗑
 				classList: ['table-cell-opt-btn', 'table-cell-del-btn'],
 				events: {
-					click: (e) => {
+					mouseClick: (e) => {
 						// 删除按钮 stopPropagation，避免点了删除又触发整行的选中
 						e.stopPropagation();
 						void this.deleteImage(img.id);
@@ -615,7 +631,7 @@ export class SandboxEditor {
 		const btn = UIButton.createElem({
 			textContent: '🌠',
 			title: '新建图片资源（id 为 map 的那张是场景背景图）',
-			events: { click: (e) => { this.createImage(); } }
+			events: { mouseClick: (e) => { this.createImage(); } }
 		});
 		bar.appendChild(btn);
 	}
@@ -643,7 +659,7 @@ export class SandboxEditor {
 		// 否则 checkbox 还勾着、画面却是全图，状态对不上
 		if (this.viewMode && !this.canPreviewView) {
 			this.viewMode = false;
-			this.statusWin.autoView.checked = false;
+			this.statusWin.autoView.setChecked(false);
 		}
 		void this.redraw();
 	}
@@ -663,7 +679,7 @@ export class SandboxEditor {
 		this.selected = undefined;
 		if (this.viewMode) {
 			this.viewMode = false;
-			this.statusWin.autoView.checked = false;
+			this.statusWin.autoView.setChecked(false);
 		}
 		this.renderImageProps();
 		this.renderImageList();
@@ -681,12 +697,12 @@ export class SandboxEditor {
 		if (!this.selected) { this.propsWin.clear(); return; }
 		const tk = this.selected.token;
 		const rec = tk.toRecord() as unknown as Record<string, unknown>;
-		const imgOpts: Array<[string, string]> = this.scene.imageList()
-			.map(i => [i.id, i.id]);
+		const imgOpts: Array<{label: string, value: string}> = this.scene.imageList()
+			.map(i => { return { label: i.id, value: i.id }; });
 
 		const defs: Array<{
 			key: string, label: string, value: string,
-			type?: string, options?: Array<[string, string]>, widget?: 'radio',
+			type?: string, options?: Array<{label: string, value: string}>, widget?: 'radio',
 		}> = [
 			{ key: 'id', label: 'ID', value: String(rec.id ?? '') },
 			{ key: 'x', label: 'x', value: String(rec.x ?? 0), type: 'number' },
@@ -705,11 +721,11 @@ export class SandboxEditor {
 
 		defs.push({
 			key: 'visible', label: '可见', value: tk.visible ? 'true' : 'false',
-			options: [['true', '可见'], ['false', '隐形']], widget: 'radio',
+			options: [{value:'true', label:'可见'}, {value:'false', label:'隐形'}], widget: 'radio',
 		});
 		defs.push({
 			key: 'blockView', label: '遮挡', value: tk.blockView ? 'true' : 'false',
-			options: [['true', '遮挡视线'], ['false', '后方可见']], widget: 'radio',
+			options: [{value:'true', label:'遮挡视线'}, {value:'false', label:'后方可见'}], widget: 'radio',
 		});
 		defs.push({ key: 'color', label: '颜色', value: String(rec.color ?? '#0000FF') });
 
@@ -723,8 +739,8 @@ export class SandboxEditor {
 			defs.push({ key: 'sh', label: '裁剪高', value: String(img?.height ?? 50), type: 'number' });
 		}
 
-		this.propsWin.renderFields(defs);
-		this.propsWin.bindChange(() => { void this.applyProps(); });
+		this.propsWin.renderFields(defs, () => { void this.applyProps(); });
+		// this.propsWin.bindChange(() => { void this.applyProps(); });
 		this.drawClipPreview();
 	}
 
@@ -796,8 +812,8 @@ export class SandboxEditor {
 		this.propsWin.renderFields([
 			{ key: 'id', label: 'ID', value: this.selectedImage.id },
 			{ key: 'url', label: '地址', value: this.selectedImage.url },
-		]);
-		this.propsWin.bindChange(() => { void this.applyImageProps(); });
+		], () => { void this.applyImageProps(); });
+		// this.propsWin.bindChange(() => { void this.applyImageProps(); });
 		this.drawImagePreview();
 	}
 
@@ -1193,25 +1209,6 @@ export class SandboxEditor {
 	}
 
 	/**
-	 * 绑定状态窗口：保存并发布、刷新移动请求、定时刷新开关、当前角色视野开关
-	 */
-	private bindStatusEvents(): void {
-		this.statusWin.saveBtn.addEventListener('click', () => { void this.save(); });
-		this.statusWin.refreshBtn.addEventListener('click', () => { void this.loadMoveRequests(); });
-		// 定时刷新：选中启动 3 秒一次的自动刷新，取消就停
-		this.statusWin.autoRefresh.addEventListener('change', () => {
-			if (this.statusWin.autoRefresh.checked) {
-				this.autoRefreshTimer = window.setInterval(() => { void this.loadMoveRequests(); }, 3000);
-			} else if (this.autoRefreshTimer !== undefined) {
-				window.clearInterval(this.autoRefreshTimer);
-				this.autoRefreshTimer = undefined;
-			}
-		});
-		// 当前角色视野：以选中的玩家/生物为观察者预览视野与遮挡
-		this.statusWin.autoView.addEventListener('change', () => { void this.toggleViewMode(); });
-	}
-
-	/**
 	 * 切换「当前角色视野」
 	 *
 	 * 选中时先检查有没有选中的对象、是不是玩家/生物 —— 不是就弹回 checkbox、
@@ -1220,12 +1217,12 @@ export class SandboxEditor {
 	 * @returns {Promise<void>}
 	 */
 	private async toggleViewMode(): Promise<void> {
-		if (this.statusWin.autoView.checked && !this.canPreviewView) {
+		if (this.statusWin.autoView.getChecked() && !this.canPreviewView) {
 			// 没选中对象、或选中的不是玩家/生物：什么都不做，checkbox 弹回
-			this.statusWin.autoView.checked = false;
+			this.statusWin.autoView.setChecked(false);
 			return;
 		}
-		this.viewMode = this.statusWin.autoView.checked;
+		this.viewMode = this.statusWin.autoView.getChecked();
 		await this.redraw();
 	}
 
@@ -1289,18 +1286,6 @@ export class SandboxEditor {
 	}
 
 	/**
-	 * 绑定掷骰窗口：GM 给玩家设阈值
-	 */
-	private bindDiceEvents(): void {
-		this.diceWin.thresholdInput.addEventListener('keydown', e => {
-			if (e.key === 'Enter') { void this.setThreshold(); }
-		});
-		this.diceWin.logArea.addEventListener('click', () => {
-			void this.refreshRollResults();
-		});
-	}
-
-	/**
 	 * 给某个玩家设检定阈值
 	 *
 	 * ⚠️ 下拉里选的是**被要求检定的玩家**，不是 GM 自己。
@@ -1309,7 +1294,7 @@ export class SandboxEditor {
 	 */
 	private async setThreshold(): Promise<void> {
 		const target = this.diceWin.targetSelect.value;
-		const threshold = parseInt(this.diceWin.thresholdInput.value, 10);
+		const threshold = parseInt(this.diceWin.thresholdInput.getValue(), 10);
 		if (!target || !Number.isFinite(threshold)) {
 			this.diceWin.setLog('请选玩家并填一个数字阈值');
 			return;
